@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard</title>
+<link rel="stylesheet" href="/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<nav class="topbar">
+    <div class="nav-left">
+
+        <span class="logo">⏱️ Tracksy</span>
+
+        <div class="dropdown" id="adminMenu">
+            <button type="button" class="admin-btn">🚩 Admin</button>
+
+            <div class="dropdown-content">
+                <a href="#" onclick="loadPage('projekt'); return false;">🗂️ Projekt erstellen</a>
+                <a href="#" onclick="loadPage('archiv'); return false;">📦 Archiv</a>
+                <a href="#" onclick="loadPage('adminDaten'); return false;">🧹 Daten bereinigen</a>
+                <a href="#" onclick="loadPage('zeitenKorrigieren'); return false;">🛠️ Zeiten korrigieren</a>
+                <a href="#" onclick="loadPage('benutzerVerwaltung'); return false;">👤 Benutzer verwalten</a>
+                <a href="#" onclick="printOrPDF(); return false;">🖨️ Drucken/PDF speichern</a>
+            </div>
+        </div>
+
+        <button onclick="loadPage('start')">🏠 <span>Start</span></button>
+        <button onclick="loadPage('zeiten')">⌛ <span>Zeiten</span></button>
+        <button onclick="loadPage('auswertung')">📊 <span>Auswertung</span></button>
+        <button onclick="loadPage('report')">💻 <span>Report</span></button>
+        <button onclick="loadPage('projekte')">📁 <span>Projekte</span></button>
+        <button onclick="loadPage('nachrichten')">📩 <span>Nachrichten</span> <span id="msgBadge" class="badge"></span>
+        </button>
+        <button onclick="loadPage('benutzer')">👤 <span>Benutzer</span></button>
+
+    </div>
+
+    <div class="nav-right">
+        <span id="datetime"></span>
+        <span class="user"><span id="user"></span> ✅</span>
+        <button class="logout-btn" onclick="logout()">🔒Abmelden</button>
+    </div>
+</nav>
+
+<div id="content"></div>
+
+<div id="reportModal" class="modal">
+    <div class="modal-box">
+        <h2>Bericht schreiben</h2>
+        <textarea id="reportText" placeholder="Bericht eingeben"></textarea>
+        <button onclick="saveReportPopup()">Speichern</button>
+        <button onclick="closeReportPopup()">Abbrechen</button>
+    </div>
+</div>
+
+<script>
+const content = document.getElementById("content");
+
+function ensureAdminExists(){
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+
+    if(!users.some(u => u.admin === true)){
+        users.push({ name: "admin", pw: "admin", admin: true });
+        localStorage.setItem("users", JSON.stringify(users));
+    }
+}
+ensureAdminExists();
+
+let currentUser = localStorage.getItem("username") || "Gast";
+let isAdmin = localStorage.getItem("isAdmin") === "true";
+
+document.getElementById("user").textContent = currentUser;
+
+if(!isAdmin){
+    document.getElementById("adminMenu").style.display = "none";
+}
+
+function loadPage(page){
+
+    document.body.classList.remove("no-scroll");
+
+    if(page === "start"){
+    document.body.classList.add("no-scroll");
+
+    let running = getRunningTime();
+
+    let runningText = running
+        ? "🟢 Läuft: " + running.project + " / " + running.task + "<br>Seit: " + running.start
+        : "⚪ Keine laufende Zeit";
+
+    content.innerHTML = `
+    <div class="center-box">
+        <h2>Start</h2>
+
+        <div class="running-box">${runningText}</div>
+
+        <select id="startProject" class="field-project"></select>
+        <select id="startTask" class="field-task"></select>
+
+        <button class="start-btn" onclick="startTime()">Start</button>
+        <button class="stop-btn" onclick="stopTime()">Stop</button>
+    </div>
+    `;
+
+    loadProjectsToStart();
+    return;
+}
+
+    if(page === "zeiten"){
+        let times = JSON.parse(localStorage.getItem("times")) || [];
+
+        let html = `
+        <h2>Zeiten</h2>
+        <table>
+            <tr>
+                <th>User</th>
+                <th>Projekt</th>
+                <th>Aufgabe</th>
+                <th>Start</th>
+                <th>Stop</th>
+                <th>Bericht</th>
+            </tr>
+        `;
+
+        times.forEach(t => {
+            html += `
+            <tr>
+                <td>${t.user || "-"}</td>
+                <td>${t.project || "-"}</td>
+                <td>${t.task || "-"}</td>
+                <td>${t.start || "-"}</td>
+                <td>${t.stop || "-"}</td>
+                <td>${t.report || "-"}</td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        content.innerHTML = html;
+        return;
+    }
+
+    if(page === "auswertung"){
+        let times = JSON.parse(localStorage.getItem("times")) || [];
+
+        let users = {};
+        let taskColors = {};
+        let colors = [
+            "#22c55e",
+            "#3b82f6",
+            "#f97316",
+            "#a855f7",
+            "#ef4444",
+            "#14b8a6",
+            "#eab308",
+            "#ec4899"
+        ];
+
+        times.forEach(t => {
+            if(t.start && t.stop){
+                let user = t.user || "Unbekannt";
+                let project = t.project || "Unbekannt";
+                let task = t.task || "Ohne Aufgabe";
+
+                let label = project + " / " + task;
+
+                let start = new Date(t.start);
+                let stop = new Date(t.stop);
+                let minutes = Math.floor((stop - start) / 1000 / 60);
+
+                if(!users[user]){
+                    users[user] = {};
+                }
+
+                if(!users[user][label]){
+                    users[user][label] = 0;
+                }
+
+                users[user][label] += minutes;
+
+                if(!taskColors[label]){
+                    taskColors[label] = colors[Object.keys(taskColors).length % colors.length];
+                }
+            }
+        });
+
+        let html = `<h2>Auswertung Zeit</h2>`;
+
+        Object.keys(users).forEach((user, index) => {
+            html += `
+            <div class="chart-box">
+                <h3>👤 ${user}</h3>
+                <canvas id="userChart_${index}"></canvas>
+            </div>
+            `;
+        });
+
+        content.innerHTML = html;
+
+        Object.keys(users).forEach((user, index) => {
+            let labels = Object.keys(users[user]);
+            let data = Object.values(users[user]);
+            let bgColors = labels.map(label => taskColors[label]);
+
+            new Chart(document.getElementById("userChart_" + index), {
+                type: "doughnut",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: bgColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: "right",
+                            labels: {
+                                color: "white"
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context){
+                                    let minutes = context.raw;
+                                    let h = Math.floor(minutes / 60);
+                                    let m = minutes % 60;
+
+                                    return context.label + ": " + h + "h " + m + "m";
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        return;
+    }
+
+    if(page === "report"){
+        let times = JSON.parse(localStorage.getItem("times")) || [];
+
+        if(!isAdmin){
+            times = times.filter(t => !t.adminOnly);
+        }
+
+        let html = `
+        <h2>Report</h2>
+        <table>
+            <tr>
+                <th>User</th>
+                <th>Projekt</th>
+                <th>Aufgabe</th>
+                <th>Bericht</th>
+                <th>Datum</th>
+                <th>Gesamtzeit</th>
+                <th>Status</th>
+            </tr>
+        `;
+
+        times.forEach(t => {
+            let duration = "-";
+
+            if(t.start && t.stop){
+                let start = new Date(t.start);
+                let stop = new Date(t.stop);
+
+                let diff = Math.floor((stop - start) / 1000);
+
+                let h = Math.floor(diff / 3600);
+                let m = Math.floor((diff % 3600) / 60);
+                let s = diff % 60;
+
+                duration =
+                    String(h).padStart(2, "0") + ":" +
+                    String(m).padStart(2, "0") + ":" +
+                    String(s).padStart(2, "0");
+            }
+
+            html += `
+            <tr>
+                <td>${t.user || "-"}</td>
+                <td>${t.project || "-"}</td>
+                <td>${t.task || "-"}</td>
+                <td>${t.report || "-"}</td>
+                <td>${t.stop || "-"}</td>
+                <td>${duration}</td>
+                <td>${t.adminOnly ? "❌ kein Stop" : "-"}</td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        content.innerHTML = html;
+        return;
+    }
+
+    if(page === "projekte"){
+        let projects = JSON.parse(localStorage.getItem("projects")) || [];
+
+        let html = `
+        <h2>Projekte</h2>
+        <table>
+            <tr>
+                <th>Projekt</th>
+                <th>Aufgaben</th>
+                <th>Aktuell in Bearbeitung</th>
+            </tr>
+        `;
+
+        projects.forEach(p => {
+            let tasks = (p.tasks || []).join("<br>");
+            let status = p.currentTask ? `👤 ${p.currentUser} bearbeitet: ${p.currentTask}` : "-";
+
+            html += `
+            <tr>
+                <td>${p.name}</td>
+                <td>${tasks || "-"}</td>
+                <td>${status}</td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        content.innerHTML = html;
+        return;
+    }
+
+    if(page === "projekt"){
+        let projects = JSON.parse(localStorage.getItem("projects")) || [];
+
+        let html = `
+        <h2>Projekt erstellen</h2>
+
+        <input id="pName" placeholder="Projektname">
+        <input id="pDesc" maxlength="100" placeholder="Beschreibung max. 100 Zeichen">
+        <button onclick="addProject()">Projekt erstellen</button>
+
+        <h2>Projekt Verwaltung</h2>
+        <table>
+            <tr>
+                <th>Projekt</th>
+                <th>Beschreibung</th>
+                <th>Aufgaben</th>
+                <th>Aktuell</th>
+                <th>Aktionen</th>
+            </tr>
+        `;
+
+        projects.forEach((p, i) => {
+            let tasks = (p.tasks || []).join("<br>");
+            let status = p.currentTask ? `👤 ${p.currentUser} bearbeitet: ${p.currentTask}` : "-";
+
+            html += `
+            <tr>
+                <td>${p.name}</td>
+                <td>${p.desc || "-"}</td>
+                <td>${tasks || "-"}</td>
+                <td>${status}</td>
+                <td>
+                    <button onclick="addTask(${i})">➕ Aufgabe</button>
+                    <button onclick="editTask(${i})">✏️ Aufgabe</button>
+                    <button onclick="archiveTask(${i})">📦 Aufgabe</button>
+                    <button onclick="deleteTask(${i})">❌ Aufgabe</button>
+                    <button onclick="deleteProject(${i})">🗑️ Projekt</button>
+                </td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        content.innerHTML = html;
+        return;
+    }
+
+    if(page === "archiv"){
+        let archiveTasks = JSON.parse(localStorage.getItem("archiveTasks")) || [];
+
+        let html = `
+        <h2>Archiv</h2>
+        <table>
+            <tr>
+                <th>Projekt</th>
+                <th>Archivierte Aufgabe</th>
+                <th>Aktion</th>
+            </tr>
+        `;
+
+        archiveTasks.forEach((a, i) => {
+            html += `
+            <tr>
+                <td>${a.project || "-"}</td>
+                <td>${a.task || "-"}</td>
+                <td>
+                    <button onclick="restoreArchiveTask(${i})">↩️ Wiederherstellen</button>
+                    <button onclick="deleteArchiveTask(${i})">❌ Löschen</button>
+                </td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        content.innerHTML = html;
+        return;
+    }
+
+    if(page === "nachrichten"){
+    let messages = JSON.parse(localStorage.getItem("messages")) || [];
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+
+    messages.forEach(m => {
+        if(m.to === currentUser){
+            m.read = true;
+        }
+    });
+
+    localStorage.setItem("messages", JSON.stringify(messages));
+    updateMessageBadge();
+
+    let visibleMessages = messages.filter(m =>
+        m.to === currentUser || (isAdmin && m.to === "admin")
+    );
+
+        let html = `
+        <h2>Nachrichten</h2>
+
+        <h3>Nachricht schreiben</h3>
+
+        <select id="msgTo">
+            <option value="">Empfänger wählen</option>
+        `;
+
+        users.forEach(u => {
+            html += `<option value="${u.name}">${u.name}</option>`;
+        });
+
+        html += `
+        </select>
+
+        <input id="msgText" placeholder="Nachricht schreiben">
+        <button onclick="sendMessage()">Senden</button>
+
+        <h3>Meine Nachrichten</h3>
+
+        <table>
+            <tr>
+                <th>Von</th>
+                <th>Nachricht</th>
+                <th>Datum</th>
+                <th>Aktionen</th>
+            </tr>
+        `;
+
+        visibleMessages.forEach(m => {
+            let realIndex = messages.indexOf(m);
+
+            html += `
+            <tr>
+                <td>${m.from || "-"}</td>
+                <td>${m.text || m.comment || "-"}</td>
+                <td>${m.date || "-"}</td>
+                <td>
+                    <button onclick="printMessage(${realIndex})">🖨️ Drucken/PDF</button>
+                    <button onclick="deleteMessage(${realIndex})">❌ Löschen</button>
+                </td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        content.innerHTML = html;
+        return;
+    }
+
+    if(page === "benutzer"){
+        let users = JSON.parse(localStorage.getItem("users")) || [];
+        let ownUser = users.find(u => u.name === currentUser);
+
+        content.innerHTML = `
+        <h2>Benutzer</h2>
+
+        <table>
+            <tr>
+                <th>Feld</th>
+                <th>Deine Daten</th>
+            </tr>
+            <tr>
+                <td>Name</td>
+                <td>${ownUser ? ownUser.name : currentUser}</td>
+            </tr>
+            <tr>
+                <td>Email</td>
+                <td>${ownUser && ownUser.email ? ownUser.email : "-"}</td>
+            </tr>
+            <tr>
+                <td>Rolle</td>
+                <td>${ownUser && ownUser.admin ? "Admin" : "Benutzer"}</td>
+            </tr>
+            <tr>
+                <td>Letzte Änderung</td>
+                <td>${ownUser && ownUser.lastChange ? ownUser.lastChange : "-"}</td>
+            </tr>
+        </table>
+
+        <h3>Eigene Daten ändern</h3>
+
+        <input id="ownName" value="${ownUser ? ownUser.name : currentUser}" placeholder="Name">
+        <input id="ownEmail" value="${ownUser && ownUser.email ? ownUser.email : ""}" placeholder="Email">
+
+        <input id="oldPw" type="password" placeholder="Altes Passwort">
+        <input id="newPw1" type="password" placeholder="Neues Passwort">
+        <input id="newPw2" type="password" placeholder="Neues Passwort wiederholen">
+
+        <button onclick="changeOwnUser()">Speichern</button>
+        `;
+        return;
+    }
+
+    if(page === "adminDaten"){
+        if(!isAdmin){
+            alert("Nur Admin");
+            return;
+        }
+
+        let times = JSON.parse(localStorage.getItem("times")) || [];
+        let reports = JSON.parse(localStorage.getItem("reports")) || [];
+
+        let html = `
+        <h2>Daten bereinigen</h2>
+
+        <div class="admin-actions">
+            <button class="btn-delete" onclick="deleteSelectedTimes()">🗑️ Zeiten löschen</button>
+            <button class="btn-delete" onclick="deleteSelectedReports()">🗑️ Reports löschen</button>
+            <button class="btn-danger" onclick="deleteAllTimes()">💣 Alle Zeiten</button>
+            <button class="btn-danger" onclick="deleteAllReports()">💣 Alle Reports</button>
+        </div>
+
+        <h3>Zeiten</h3>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>User</th>
+                <th>Projekt</th>
+                <th>Aufgabe</th>
+                <th>Start</th>
+                <th>Stop</th>
+                <th>Auswahl</th>
+            </tr>
+        `;
+
+        times.forEach((t, i) => {
+            html += `
+            <tr>
+                <td>${i}</td>
+                <td>${t.user || "-"}</td>
+                <td>${t.project || "-"}</td>
+                <td>${t.task || "-"}</td>
+                <td>${t.start || "-"}</td>
+                <td>${t.stop || "-"}</td>
+                <td><input type="checkbox" class="timeCheck" value="${i}"></td>
+            </tr>`;
+        });
+
+        html += `
+        </table>
+
+        <h3>Reports</h3>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>User</th>
+                <th>Projekt</th>
+                <th>Aufgabe</th>
+                <th>Report</th>
+                <th>Datum</th>
+                <th>Auswahl</th>
+            </tr>
+        `;
+
+        reports.forEach((r, i) => {
+            html += `
+            <tr>
+                <td>${i}</td>
+                <td>${r.user || "-"}</td>
+                <td>${r.project || "-"}</td>
+                <td>${r.task || "-"}</td>
+                <td>${r.report || "-"}</td>
+                <td>${r.date || "-"}</td>
+                <td><input type="checkbox" class="reportCheck" value="${i}"></td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        content.innerHTML = html;
+        return;
+    }
+
+    if(page === "zeitenKorrigieren"){
+    if(!isAdmin){
+        alert("Nur Admin");
+        return;
+    }
+
+    let times = JSON.parse(localStorage.getItem("times")) || [];
+
+    let html = `
+    <h2>Zeiten korrigieren</h2>
+
+    <table>
+        <tr>
+            <th>#</th>
+            <th>User</th>
+            <th>Projekt</th>
+            <th>Aufgabe</th>
+            <th>Start</th>
+            <th>Stop</th>
+            <th>Bericht</th>
+            <th>Aktion</th>
+        </tr>
+    `;
+
+    times.forEach((t, i) => {
+        html += `
+        <tr>
+            <td>${i}</td>
+            <td>${t.user || "-"}</td>
+            <td>${t.project || "-"}</td>
+            <td>${t.task || "-"}</td>
+            <td>${t.start || "-"}</td>
+            <td>${t.stop || "-"}</td>
+            <td>${t.report || "-"}</td>
+            <td>
+                <button onclick="editTimeEntry(${i})">✏️ Bearbeiten</button>
+            </td>
+        </tr>`;
+    });
+
+    html += "</table>";
+    content.innerHTML = html;
+    return;
+}
+
+    if(page === "benutzerVerwaltung"){
+        let users = JSON.parse(localStorage.getItem("users")) || [];
+
+        let html = `
+        <h2>Benutzer verwalten</h2>
+
+        <input id="newUser" placeholder="Benutzername">
+        <input id="newEmail" placeholder="E-Mail">
+        <input id="newPw" placeholder="Passwort">
+        <button onclick="addUser()">Benutzer erstellen</button>
+
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>E-Mail</th>
+                <th>Admin</th>
+                <th>Aktionen</th>
+            </tr>
+        `;
+
+        users.forEach((u, i) => {
+            html += `
+            <tr>
+                <td>${u.name}</td>
+                <td>${u.email || "-"}</td>
+                <td>${u.admin ? "✔" : "❌"}</td>
+                <td>
+                    <button onclick="editUser(${i})">✏️ Bearbeiten</button>
+                    <button onclick="deleteUser(${i})">❌ Löschen</button>
+                </td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        content.innerHTML = html;
+        return;
+    }
+}
+
+function sendMessage(){
+    let messages = JSON.parse(localStorage.getItem("messages")) || [];
+
+    let to = document.getElementById("msgTo").value;
+    let text = document.getElementById("msgText").value;
+
+    if(!to || !text){
+        alert("Empfänger und Nachricht ausfüllen");
+        return;
+    }
+
+    messages.push({
+        from: currentUser,
+        to: to,
+        text: text,
+        date: new Date().toLocaleString(),
+        read: false
+    });
+
+    localStorage.setItem("messages", JSON.stringify(messages));
+
+    alert("Nachricht gesendet");
+    loadPage("nachrichten");
+    updateMessageBadge();
+}
+
+function startTime(){
+    let project = document.getElementById("startProject").value;
+    let task = document.getElementById("startTask").value;
+
+    if(!project || project === "Projekt wählen" || !task || task === "Aufgabe wählen"){
+        alert("Projekt & Aufgabe wählen");
+        return;
+    }
+
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+    let projectData = projects.find(p => p.name === project);
+
+    if(projectData && projectData.tasks.includes(task)){
+        projectData.currentTask = task;
+        projectData.currentUser = currentUser;
+        localStorage.setItem("projects", JSON.stringify(projects));
+    }
+
+    let times = JSON.parse(localStorage.getItem("times")) || [];
+
+    times.push({
+        user: currentUser,
+        project: project,
+        task: task,
+        start: new Date().toLocaleString(),
+        stop: null,
+        report: null
+    });
+
+    localStorage.setItem("times", JSON.stringify(times));
+    alert("Gestartet");
+    loadPage("start");
+}
+
+function stopTime(){
+    let times = JSON.parse(localStorage.getItem("times")) || [];
+
+    if(times.length === 0){
+        alert("Keine Zeit gestartet");
+        return;
+    }
+
+    let last = times[times.length - 1];
+
+    if(last.stop){
+        alert("Keine laufende Zeit");
+        return;
+    }
+
+    openReportPopup();
+}
+
+function openReportPopup(){
+    document.getElementById("reportModal").style.display = "flex";
+}
+
+function closeReportPopup(){
+    document.getElementById("reportModal").style.display = "none";
+}
+
+function saveReportPopup(){
+    let report = document.getElementById("reportText").value;
+
+    if(!report){
+        alert("Bericht erforderlich");
+        return;
+    }
+
+    let times = JSON.parse(localStorage.getItem("times")) || [];
+    let last = times[times.length - 1];
+
+    last.stop = new Date().toLocaleString();
+    last.report = report;
+    last.adminOnly = window.adminOnlyReport === true;
+
+    localStorage.setItem("times", JSON.stringify(times));
+
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+    let projectData = projects.find(p => p.name === last.project);
+
+    if(projectData && projectData.currentTask === last.task){
+        delete projectData.currentTask;
+        delete projectData.currentUser;
+        localStorage.setItem("projects", JSON.stringify(projects));
+    }
+
+    let reports = JSON.parse(localStorage.getItem("reports")) || [];
+
+    reports.push({
+        user: last.user || currentUser,
+        project: last.project,
+        task: last.task,
+        report: report,
+        date: last.stop,
+        adminOnly: window.adminOnlyReport === true
+    });
+
+    localStorage.setItem("reports", JSON.stringify(reports));
+
+    window.adminOnlyReport = false;
+
+    document.getElementById("reportText").value = "";
+    closeReportPopup();
+
+    alert("Gestoppt");
+    loadPage("start");
+
+    if(window.logoutAfterReport === true){
+        window.logoutAfterReport = false;
+        localStorage.removeItem("username");
+        localStorage.removeItem("isAdmin");
+        location.href = "/login";
+    }
+}
+
+function loadProjectsToStart(){
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+
+    let p = document.getElementById("startProject");
+    let t = document.getElementById("startTask");
+
+    p.innerHTML = '<option>Projekt wählen</option>';
+    t.innerHTML = '<option>Aufgabe wählen</option>';
+
+    projects.forEach(pr => {
+        let option = document.createElement("option");
+        option.value = pr.name;
+        option.textContent = pr.name;
+        p.appendChild(option);
+    });
+
+    p.onchange = function(){
+        let selected = projects.find(x => x.name === this.value);
+
+        t.innerHTML = '<option>Aufgabe wählen</option>';
+
+        if(selected && selected.tasks){
+            selected.tasks.forEach(task => {
+                let option = document.createElement("option");
+                option.value = task;
+                option.textContent = task;
+                t.appendChild(option);
+            });
+        }
+    };
+}
+
+function addProject(){
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+
+    let name = document.getElementById("pName").value;
+    let desc = document.getElementById("pDesc").value;
+
+    if(!name){
+        alert("Projektname fehlt");
+        return;
+    }
+
+    projects.push({ name, desc, tasks: [] });
+
+    localStorage.setItem("projects", JSON.stringify(projects));
+    alert("Projekt erstellt");
+    loadPage("projekt");
+}
+
+function addTask(index){
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+
+    let task = prompt("Aufgabe erstellen:");
+    if(!task) return;
+
+    projects[index].tasks.push(task);
+
+    localStorage.setItem("projects", JSON.stringify(projects));
+    loadPage("projekt");
+}
+
+function editTask(projectIndex){
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+    let tasks = projects[projectIndex].tasks || [];
+
+    if(tasks.length === 0){
+        alert("Keine Aufgaben vorhanden");
+        return;
+    }
+
+    let list = tasks.map((t, i) => i + ": " + t).join("\n");
+    let taskIndex = prompt("Welche Aufgabe bearbeiten?\n" + list);
+
+    if(taskIndex === null) return;
+
+    taskIndex = parseInt(taskIndex);
+
+    if(isNaN(taskIndex) || taskIndex < 0 || taskIndex >= tasks.length){
+        alert("Ungültige Auswahl");
+        return;
+    }
+
+    let newTask = prompt("Neue Aufgabe:", tasks[taskIndex]);
+    if(!newTask) return;
+
+    projects[projectIndex].tasks[taskIndex] = newTask;
+
+    localStorage.setItem("projects", JSON.stringify(projects));
+    loadPage("projekt");
+}
+
+function deleteTask(projectIndex){
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+    let tasks = projects[projectIndex].tasks || [];
+
+    if(tasks.length === 0){
+        alert("Keine Aufgaben vorhanden");
+        return;
+    }
+
+    let list = tasks.map((t, i) => i + ": " + t).join("\n");
+    let taskIndex = prompt("Welche Aufgabe löschen?\n" + list);
+
+    if(taskIndex === null) return;
+
+    taskIndex = parseInt(taskIndex);
+
+    if(isNaN(taskIndex) || taskIndex < 0 || taskIndex >= tasks.length){
+        alert("Ungültige Auswahl");
+        return;
+    }
+
+    projects[projectIndex].tasks.splice(taskIndex, 1);
+
+    localStorage.setItem("projects", JSON.stringify(projects));
+    loadPage("projekt");
+}
+
+function deleteProject(index){
+    if(!confirm("Projekt wirklich löschen?")) return;
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+
+    projects.splice(index, 1);
+    localStorage.setItem("projects", JSON.stringify(projects));
+
+    loadPage("projekt");
+}
+
+function restoreArchiveTask(index){
+    let archiveTasks = JSON.parse(localStorage.getItem("archiveTasks")) || [];
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+
+    let archived = archiveTasks[index];
+
+    if(!archived){
+        alert("Archivierte Aufgabe nicht gefunden");
+        return;
+    }
+
+    let project = projects.find(p => p.name === archived.project);
+
+    if(!project){
+        projects.push({
+            name: archived.project,
+            desc: "",
+            tasks: []
+        });
+
+        project = projects[projects.length - 1];
+    }
+
+    project.tasks.push(archived.task);
+    archiveTasks.splice(index, 1);
+
+    localStorage.setItem("projects", JSON.stringify(projects));
+    localStorage.setItem("archiveTasks", JSON.stringify(archiveTasks));
+
+    alert("Aufgabe wiederhergestellt");
+    loadPage("archiv");
+}
+
+function deleteArchiveTask(index){
+    if(!confirm("Archivierte Aufgabe löschen?")) return;
+    let archiveTasks = JSON.parse(localStorage.getItem("archiveTasks")) || [];
+
+    archiveTasks.splice(index, 1);
+    localStorage.setItem("archiveTasks", JSON.stringify(archiveTasks));
+
+    loadPage("archiv");
+}
+
+function archiveTask(projectIndex){
+    let projects = JSON.parse(localStorage.getItem("projects")) || [];
+    let archive = JSON.parse(localStorage.getItem("archiveTasks")) || [];
+
+    let tasks = projects[projectIndex].tasks || [];
+
+    if(tasks.length === 0){
+        alert("Keine Aufgaben vorhanden");
+        return;
+    }
+
+    let list = tasks.map((t, i) => i + ": " + t).join("\n");
+    let taskIndex = prompt("Welche Aufgabe archivieren?\n" + list);
+
+    if(taskIndex === null) return;
+
+    taskIndex = parseInt(taskIndex);
+
+    if(isNaN(taskIndex) || taskIndex < 0 || taskIndex >= tasks.length){
+        alert("Ungültige Auswahl");
+        return;
+    }
+
+    let taskName = tasks[taskIndex];
+
+    archive.push({
+        project: projects[projectIndex].name,
+        task: taskName
+    });
+
+    projects[projectIndex].tasks.splice(taskIndex, 1);
+
+    localStorage.setItem("projects", JSON.stringify(projects));
+    localStorage.setItem("archiveTasks", JSON.stringify(archive));
+
+    alert("Aufgabe archiviert");
+    loadPage("projekt");
+}
+
+function addUser(){
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+
+    let name = document.getElementById("newUser").value;
+    let email = document.getElementById("newEmail").value;
+    let pw = document.getElementById("newPw").value;
+
+    if(!name || !pw){
+        alert("Bitte alles ausfüllen");
+        return;
+    }
+
+    let admin = false;
+
+    if(confirm("Admin Benutzer erstellen?\n\nOK = JA\nAbbrechen = NEIN")){
+        admin = true;
+    }
+
+    users.push({
+        name,
+        email,
+        pw,
+        admin,
+        lastChange: new Date().toLocaleString()
+    });
+
+    localStorage.setItem("users", JSON.stringify(users));
+    loadPage("benutzerVerwaltung");
+}
+
+function editUser(index){
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+
+    let name = prompt("Name:", users[index].name);
+    if(name === null) return;
+
+    let pw = prompt("Passwort:", users[index].pw);
+    if(pw === null) return;
+
+    let admin = confirm("Admin?");
+
+    users[index].name = name;
+    users[index].pw = pw;
+    users[index].admin = admin;
+    users[index].lastChange = new Date().toLocaleString();
+
+    localStorage.setItem("users", JSON.stringify(users));
+    loadPage("benutzerVerwaltung");
+}
+
+function deleteUser(index){
+    if(!confirm("Wirklich Benutzer löschen?")) return;
+
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+
+    users.splice(index, 1);
+    localStorage.setItem("users", JSON.stringify(users));
+
+    loadPage("benutzerVerwaltung");
+}
+
+function changeOwnUser(){
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+
+    let user = users.find(u => u.name === currentUser);
+
+    if(!user){
+        alert("Benutzer nicht gefunden");
+        return;
+    }
+
+    let newName = document.getElementById("ownName").value;
+    let email = document.getElementById("ownEmail").value;
+
+    let oldPw = document.getElementById("oldPw").value;
+    let newPw1 = document.getElementById("newPw1").value;
+    let newPw2 = document.getElementById("newPw2").value;
+
+    if(!newName){
+        alert("Name fehlt");
+        return;
+    }
+
+    if(oldPw !== user.pw){
+        alert("Altes Passwort falsch");
+        return;
+    }
+
+    if(!newPw1 || !newPw2){
+        alert("Neues Passwort ausfüllen");
+        return;
+    }
+
+    if(newPw1 !== newPw2){
+        alert("Passwörter stimmen nicht überein");
+        return;
+    }
+
+    user.name = newName;
+    user.email = email;
+    user.pw = newPw1;
+    user.lastChange = new Date().toLocaleString();
+
+    localStorage.setItem("users", JSON.stringify(users));
+    localStorage.setItem("username", newName);
+
+    currentUser = newName;
+    document.getElementById("user").textContent = newName;
+
+    alert("Eigene Daten geändert");
+    loadPage("benutzer");
+}
+
+function deleteMessage(index){
+    if(!confirm("Nachricht wirklich löschen?")) return;
+    let messages = JSON.parse(localStorage.getItem("messages")) || [];
+
+    messages.splice(index, 1);
+    localStorage.setItem("messages", JSON.stringify(messages));
+
+    loadPage("nachrichten");
+}
+
+function printMessage(index){
+    let messages = JSON.parse(localStorage.getItem("messages")) || [];
+    let msg = messages[index];
+
+    if(!msg){
+        alert("Nachricht nicht gefunden");
+        return;
+    }
+
+    let printWindow = window.open("", "", "width=700,height=600");
+
+    printWindow.document.write(`
+    <html>
+    <head>
+        <title>Nachricht drucken</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 25px; color: black; }
+            h1 { border-bottom: 2px solid black; padding-bottom: 8px; }
+            .box { border: 1px solid black; padding: 15px; margin-top: 20px; }
+            p { font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <h1>Tracksy Nachricht</h1>
+
+        <div class="box">
+            <p><b>Von:</b> ${msg.from || "-"}</p>
+            <p><b>An:</b> ${msg.to || "-"}</p>
+            <p><b>Datum:</b> ${msg.date || "-"}</p>
+            <p><b>Nachricht:</b></p>
+            <p>${msg.text || msg.comment || "-"}</p>
+        </div>
+
+        <script>
+            setTimeout(() => {
+                window.focus();
+                window.print();
+            }, 300);
+        <\/script>
+    </body>
+    </html>
+    `);
+
+    printWindow.document.close();
+}
+
+function deleteSelectedTimes(){
+    let times = JSON.parse(localStorage.getItem("times")) || [];
+
+    let checks = document.querySelectorAll(".timeCheck:checked");
+    let indices = Array.from(checks).map(c => parseInt(c.value));
+
+    indices.sort((a,b) => b - a).forEach(i => {
+        times.splice(i, 1);
+    });
+
+    localStorage.setItem("times", JSON.stringify(times));
+    loadPage("adminDaten");
+}
+
+function deleteSelectedReports(){
+    let reports = JSON.parse(localStorage.getItem("reports")) || [];
+
+    let checks = document.querySelectorAll(".reportCheck:checked");
+    let indices = Array.from(checks).map(c => parseInt(c.value));
+
+    indices.sort((a,b) => b - a).forEach(i => {
+        reports.splice(i, 1);
+    });
+
+    localStorage.setItem("reports", JSON.stringify(reports));
+    loadPage("adminDaten");
+}
+
+function deleteAllTimes(){
+    if(!confirm("ALLE Zeiten löschen?")) return;
+    localStorage.setItem("times", JSON.stringify([]));
+    loadPage("adminDaten");
+}
+
+function deleteAllReports(){
+    if(!confirm("ALLE Reports löschen?")) return;
+    localStorage.setItem("reports", JSON.stringify([]));
+    loadPage("adminDaten");
+}
+
+function logout(){
+    let times = JSON.parse(localStorage.getItem("times")) || [];
+    let last = times[times.length - 1];
+
+    if(last && !last.stop){
+        window.logoutAfterReport = true;
+        window.adminOnlyReport = true;
+        openReportPopup();
+        return;
+    }
+
+    localStorage.removeItem("username");
+    localStorage.removeItem("isAdmin");
+    location.href = "/login";
+}
+
+function printOrPDF(){
+    let times = JSON.parse(localStorage.getItem("times")) || [];
+
+    let printWindow = window.open("", "", "width=1000,height=800");
+
+    printWindow.document.write(`
+    <html>
+    <head>
+        <title>Tracksy Zusammenfassung</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; color: black; }
+            h1 { text-align: center; }
+            h2 { margin-top: 25px; border-bottom: 2px solid black; padding-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+            th, td { border: 1px solid black; padding: 5px; text-align: left; }
+        </style>
+    </head>
+    <body>
+        <h1>Tracksy Zusammenfassung</h1>
+
+        <h2>Zeiten</h2>
+        ${buildTimesTable(times)}
+
+        <h2>Report</h2>
+        ${buildReportTable(times)}
+
+        <script>
+            setTimeout(() => {
+                window.focus();
+                window.print();
+            }, 500);
+        <\/script>
+    </body>
+    </html>
+    `);
+
+    printWindow.document.close();
+}
+
+function buildTimesTable(times){
+    let html = `
+    <table>
+        <tr>
+            <th>User</th>
+            <th>Projekt</th>
+            <th>Aufgabe</th>
+            <th>Start</th>
+            <th>Stop</th>
+            <th>Bericht</th>
+        </tr>
+    `;
+
+    times.forEach(t => {
+        html += `
+        <tr>
+            <td>${t.user || "-"}</td>
+            <td>${t.project || "-"}</td>
+            <td>${t.task || "-"}</td>
+            <td>${t.start || "-"}</td>
+            <td>${t.stop || "-"}</td>
+            <td>${t.report || "-"}</td>
+        </tr>`;
+    });
+
+    html += "</table>";
+    return html;
+}
+
+function buildReportTable(times){
+    let html = `
+    <table>
+        <tr>
+            <th>User</th>
+            <th>Projekt</th>
+            <th>Aufgabe</th>
+            <th>Bericht</th>
+            <th>Datum</th>
+            <th>Gesamtzeit</th>
+        </tr>
+    `;
+
+    times.forEach(t => {
+        let duration = "-";
+
+        if(t.start && t.stop){
+            let diff = Math.floor((new Date(t.stop) - new Date(t.start)) / 1000);
+            let h = Math.floor(diff / 3600);
+            let m = Math.floor((diff % 3600) / 60);
+
+            duration = h + "h " + m + "m";
+        }
+
+        html += `
+        <tr>
+            <td>${t.user || "-"}</td>
+            <td>${t.project || "-"}</td>
+            <td>${t.task || "-"}</td>
+            <td>${t.report || "-"}</td>
+            <td>${t.stop || "-"}</td>
+            <td>${duration}</td>
+        </tr>`;
+    });
+
+    html += "</table>";
+    return html;
+}
+
+function editTimeEntry(index){
+    let times = JSON.parse(localStorage.getItem("times")) || [];
+
+    let t = times[index];
+
+    if(!t){
+        alert("Zeit nicht gefunden");
+        return;
+    }
+
+    let user = prompt("User:", t.user || "");
+    if(user === null) return;
+
+    let project = prompt("Projekt:", t.project || "");
+    if(project === null) return;
+
+    let task = prompt("Aufgabe:", t.task || "");
+    if(task === null) return;
+
+    let start = prompt("Start:", t.start || "");
+    if(start === null) return;
+
+    let stop = prompt("Stop:", t.stop || "");
+    if(stop === null) return;
+
+    let report = prompt("Bericht:", t.report || "");
+    if(report === null) return;
+
+    t.user = user;
+    t.project = project;
+    t.task = task;
+    t.start = start;
+    t.stop = stop;
+    t.report = report;
+
+    localStorage.setItem("times", JSON.stringify(times));
+
+    alert("Zeit korrigiert");
+    loadPage("zeitenKorrigieren");
+}
+
+function updateMessageBadge(){
+    let messages = JSON.parse(localStorage.getItem("messages")) || [];
+
+    let unread = messages.filter(m =>
+        m.to === currentUser && !m.read
+    ).length;
+
+    let badge = document.getElementById("msgBadge");
+
+    if(unread > 0){
+        badge.style.display = "inline-block";
+        badge.textContent = unread;
+    } else {
+        badge.style.display = "none";
+    }
+}
+
+setInterval(() => {
+    let now = new Date();
+
+    let datum = now.toLocaleDateString("de-DE", {
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
+
+    let zeit = now.toLocaleTimeString("de-DE");
+
+    document.getElementById("datetime").innerHTML =
+    "📅 " + datum + "<br>⏰ " + zeit;
+}, 1000);
+
+function getRunningTime(){
+    let times = JSON.parse(localStorage.getItem("times")) || [];
+
+    return times.find(t =>
+        t.user === currentUser && !t.stop
+    );
+}
+
+loadPage("start");
+updateMessageBadge();
+
+setInterval(updateMessageBadge, 2000);
+</script>
+
+</body>
+</html>
