@@ -1,7 +1,14 @@
 const express = require("express");
+const { Pool } = require("pg");
 const path = require("path");
 const authRoutes = require("./routes/auth");
 const app = express();
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
 
 
 app.use("/", authRoutes);
@@ -27,6 +34,6 @@ app.get("/dashboard.html", (req, res) => {
     res.sendFile(path.join(__dirname, "views", "dashboard.html"));
 });
 
-app.listen(3000, () => {
+app.listen(process.env.PORT || 3000, () => {
     console.log("http://localhost:3000");
 });
