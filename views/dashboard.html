@@ -15,7 +15,7 @@
         <span class="logo">⏱️ Tracksy</span>
 
         <div class="dropdown" id="adminMenu">
-            <button type="button" class="admin-btn">🚩 Admin</button>
+            <button type="button" class="admin-btn" onclick="toggleAdminMenu()">🚩 Admin</button>
 
             <div class="dropdown-content">
                 <a href="#" onclick="loadPage('projekt'); return false;">🗂️ Projekt erstellen</a>
@@ -77,7 +77,7 @@ if(!isAdmin){
     document.getElementById("adminMenu").style.display = "none";
 }
 
-function loadPage(page){
+async function loadPage(page){
 
     document.body.classList.remove("no-scroll");
 
@@ -638,43 +638,43 @@ function loadPage(page){
     return;
 }
 
-    if(page === "benutzerVerwaltung"){
-        let users = JSON.parse(localStorage.getItem("users")) || [];
+if(page === "benutzerVerwaltung"){
 
-        let html = `
-        <h2>Benutzer verwalten</h2>
+let response = await fetch("/users");
+let users = await response.json();
 
-        <input id="newUser" placeholder="Benutzername">
-        <input id="newEmail" placeholder="E-Mail">
-        <input id="newPw" placeholder="Passwort">
-        <button onclick="addUser()">Benutzer erstellen</button>
+let html = `
+<h2>Benutzer verwalten</h2>
 
-        <table>
-            <tr>
-                <th>Name</th>
-                <th>E-Mail</th>
-                <th>Admin</th>
-                <th>Aktionen</th>
-            </tr>
-        `;
+<input id="newUser" placeholder="Benutzername">
+<input id="newEmail" placeholder="E-Mail">
+<input id="newPw" placeholder="Passwort">
+<button onclick="addUser()">Benutzer erstellen</button>
 
-        users.forEach((u, i) => {
-            html += `
-            <tr>
-                <td>${u.name}</td>
-                <td>${u.email || "-"}</td>
-                <td>${u.admin ? "✔" : "❌"}</td>
-                <td>
-                    <button onclick="editUser(${i})">✏️ Bearbeiten</button>
-                    <button onclick="deleteUser(${i})">❌ Löschen</button>
-                </td>
-            </tr>`;
-        });
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Aktionen</th>
+    </tr>
+`;
 
-        html += "</table>";
-        content.innerHTML = html;
-        return;
-    }
+users.forEach((u, i) => {
+
+    html += `
+    <tr>
+        <td>${u.username}</td>
+        <td>
+            <button onclick="deleteUser('${u.username}')">❌ Löschen</button>
+        </td>
+    </tr>
+    `;
+});
+
+html += "</table>";
+
+content.innerHTML = html;
+
+return;
 }
 
 function sendMessage(){
@@ -1448,6 +1448,16 @@ function getRunningTime(){
     return times.find(t =>
         t.user === currentUser && !t.stop
     );
+}
+
+function toggleAdminMenu(){
+    let menu = document.querySelector(".dropdown-content");
+
+    if(menu.style.display === "block"){
+        menu.style.display = "none";
+    } else {
+        menu.style.display = "block";
+    }
 }
 
 loadPage("start");
