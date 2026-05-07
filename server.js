@@ -26,6 +26,21 @@ async function initDatabase(){
     `);
 
     await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false
+    `);
+    
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS last_change TEXT DEFAULT ''
+    `);
+
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS projects (
             id SERIAL PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
