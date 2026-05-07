@@ -113,13 +113,14 @@ app.post("/login", async (req, res) => {
     });
 });
 
-/* USERS */
 app.get("/users", async (req, res) => {
+
     const result = await pool.query(
-        "SELECT username, email, is_admin, last_change FROM users ORDER BY username"
+        "SELECT username FROM users ORDER BY username"
     );
 
     res.json(result.rows);
+
 });
 
 app.post("/create-user", async (req, res) => {
