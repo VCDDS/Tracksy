@@ -1029,34 +1029,41 @@ function archiveTask(projectIndex){
     loadPage("projekt");
 }
 
-function addUser(){
-    let users = JSON.parse(localStorage.getItem("users")) || [];
+async function addUser(){
 
-    let name = document.getElementById("newUser").value;
-    let email = document.getElementById("newEmail").value;
-    let pw = document.getElementById("newPw").value;
+let name = document.getElementById("newUser").value;
+let email = document.getElementById("newEmail").value;
+let pw = document.getElementById("newPw").value;
 
-    if(!name || !pw){
-        alert("Bitte alles ausfüllen");
-        return;
-    }
+if(!name || !pw){
+    alert("Bitte alles ausfüllen");
+    return;
+}
 
-    let admin = false;
+let admin = false;
 
-    if(confirm("Admin Benutzer erstellen?\n\nOK = JA\nAbbrechen = NEIN")){
-        admin = true;
-    }
+if(confirm("Admin Benutzer erstellen?\n\nOK = JA\nAbbrechen = NEIN")){
+    admin = true;
+}
 
-    users.push({
+let response = await fetch("/create-user", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
         name,
         email,
         pw,
-        admin,
-        lastChange: new Date().toLocaleString()
-    });
+        admin
+    })
+});
 
-    localStorage.setItem("users", JSON.stringify(users));
-    loadPage("benutzerVerwaltung");
+let data = await response.text();
+
+alert(data);
+
+loadPage("benutzerVerwaltung");
 }
 
 function editUser(index){

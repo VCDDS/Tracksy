@@ -34,6 +34,29 @@ app.get("/dashboard.html", (req, res) => {
     res.sendFile(path.join(__dirname, "views", "dashboard.html"));
 });
 
+app.post("/create-user", express.json(), async (req, res) => {
+
+    const { name, pw } = req.body;
+
+    if(!name || !pw){
+        return res.send("Daten fehlen");
+    }
+
+    try {
+
+        await pool.query(
+            "INSERT INTO users (username, password) VALUES ($1, $2)",
+            [name, pw]
+        );
+
+        res.send("Benutzer erstellt");
+
+    } catch(err){
+
+        res.send("Benutzer existiert bereits");
+    }
+});
+
 app.listen(process.env.PORT || 3000, () => {
     console.log("http://localhost:3000");
 });
