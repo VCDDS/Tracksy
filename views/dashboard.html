@@ -668,14 +668,26 @@ let html = `
 
 users.forEach((u, i) => {
 
-    html += `
-    <tr>
-        <td>${u.username}</td>
-        <td>
-            <button onclick="deleteUser('${u.username}')">❌ Löschen</button>
-        </td>
-    </tr>
-    `;
+html += `
+<tr>
+
+    <td>${u.username}</td>
+
+    <td>
+
+        <button onclick="editUser('${u.username}')">
+            ✏️ Bearbeiten
+        </button>
+
+        <button onclick="deleteUser('${u.username}')">
+            ❌ Löschen
+        </button>
+
+    </td>
+
+</tr>
+`;
+
 });
 
 html += "</table>";
@@ -1076,87 +1088,30 @@ alert(data);
 loadPage("benutzerVerwaltung");
 }
 
-function editUser(index){
-    let users = JSON.parse(localStorage.getItem("users")) || [];
+async function editUser(username){
 
-    let name = prompt("Name:", users[index].name);
-    if(name === null) return;
+let newName = prompt("Neuer Name:", username);
+if(newName === null) return;
 
-    let pw = prompt("Passwort:", users[index].pw);
-    if(pw === null) return;
+let pw = prompt("Neues Passwort:");
+if(pw === null) return;
 
-    let admin = confirm("Admin?");
+let response = await fetch("/edit-user", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        oldName: username,
+        newName: newName,
+        pw: pw
+    })
+});
 
-    users[index].name = name;
-    users[index].pw = pw;
-    users[index].admin = admin;
-    users[index].lastChange = new Date().toLocaleString();
+let data = await response.text();
+alert(data);
 
-    localStorage.setItem("users", JSON.stringify(users));
-    loadPage("benutzerVerwaltung");
-}
-
-function deleteUser(index){
-    if(!confirm("Wirklich Benutzer löschen?")) return;
-
-    let users = JSON.parse(localStorage.getItem("users")) || [];
-
-    users.splice(index, 1);
-    localStorage.setItem("users", JSON.stringify(users));
-
-    loadPage("benutzerVerwaltung");
-}
-
-function changeOwnUser(){
-    let users = JSON.parse(localStorage.getItem("users")) || [];
-
-    let user = users.find(u => u.name === currentUser);
-
-    if(!user){
-        alert("Benutzer nicht gefunden");
-        return;
-    }
-
-    let newName = document.getElementById("ownName").value;
-    let email = document.getElementById("ownEmail").value;
-
-    let oldPw = document.getElementById("oldPw").value;
-    let newPw1 = document.getElementById("newPw1").value;
-    let newPw2 = document.getElementById("newPw2").value;
-
-    if(!newName){
-        alert("Name fehlt");
-        return;
-    }
-
-    if(oldPw !== user.pw){
-        alert("Altes Passwort falsch");
-        return;
-    }
-
-    if(!newPw1 || !newPw2){
-        alert("Neues Passwort ausfüllen");
-        return;
-    }
-
-    if(newPw1 !== newPw2){
-        alert("Passwörter stimmen nicht überein");
-        return;
-    }
-
-    user.name = newName;
-    user.email = email;
-    user.pw = newPw1;
-    user.lastChange = new Date().toLocaleString();
-
-    localStorage.setItem("users", JSON.stringify(users));
-    localStorage.setItem("username", newName);
-
-    currentUser = newName;
-    document.getElementById("user").textContent = newName;
-
-    alert("Eigene Daten geändert");
-    loadPage("benutzer");
+loadPage("benutzerVerwaltung");
 }
 
 function deleteMessage(index){

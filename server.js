@@ -66,6 +66,26 @@ app.get("/users", async (req, res) => {
     res.json(result.rows);
 });
 
+app.post("/edit-user", express.json(), async (req, res) => {
+
+    const { oldName, newName, pw } = req.body;
+
+    if(!oldName || !newName || !pw){
+        return res.send("Daten fehlen");
+    }
+
+    try{
+        await pool.query(
+            "UPDATE users SET username = $1, password = $2 WHERE username = $3",
+            [newName, pw, oldName]
+        );
+
+        res.send("Benutzer geändert");
+    }catch(err){
+        res.send("Fehler beim Ändern");
+    }
+});
+
 app.listen(process.env.PORT || 3000, () => {
     console.log("http://localhost:3000");
 });
