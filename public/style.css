@@ -537,3 +537,44 @@ canvas {
         white-space: nowrap;
     }
 }
+
+@media (max-width: 768px){
+
+    .topbar{
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .nav-left{
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+    }
+
+    .nav-right{
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        margin-top: 6px !important;
+    }
+
+    #datetime,
+    .user,
+    .logout-btn{
+        display: inline-flex !important;
+        font-size: 10px !important;
+        padding: 4px 6px !important;
+        height: auto !important;
+        min-width: auto !important;
+    }
+
+    .logout-btn{
+        background: red !important;
+        color: white !important;
+    }
+}
