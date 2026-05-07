@@ -9,22 +9,25 @@ const pool = new Pool({
     }
 });
 
-pool.query(`
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
-)
-`);
+async function startDatabase(){
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    `);
 
-pool.query(`
-INSERT INTO users (username, password)
-VALUES ('admin', 'admin123')
-ON CONFLICT (username) DO NOTHING
-`);
+    await pool.query(`
+        INSERT INTO users (username, password)
+        VALUES ('admin', 'admin123')
+        ON CONFLICT (username) DO NOTHING
+    `);
+}
+
+startDatabase();
 
 router.post("/login", express.urlencoded({ extended: true }), async (req, res) => {
-
     const username = req.body.username;
     const password = req.body.password;
 
@@ -33,7 +36,7 @@ router.post("/login", express.urlencoded({ extended: true }), async (req, res) =
         [username, password]
     );
 
-    if (result.rows.length > 0) {
+    if(result.rows.length > 0){
         res.redirect("/dashboard");
     } else {
         res.send("Falsche Anmeldedaten");
