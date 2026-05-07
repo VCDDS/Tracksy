@@ -33,75 +33,42 @@
 </div>
 
 <script>
-function ensureAdminExists(){
-    let users = JSON.parse(localStorage.getItem("users")) || [];
-
-    if(!users.some(u => u.admin === true)){
-        users.push({
-            name: "admin",
-            pw: "admin",
-            admin: true
+    document.getElementById("loginForm").addEventListener("submit", async function(e){
+        e.preventDefault();
+    
+        let username = document.getElementById("username").value;
+        let password = document.getElementById("password").value;
+    
+        let response = await fetch("/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: "username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password)
         });
-
-        localStorage.setItem("users", JSON.stringify(users));
-    }
-}
-ensureAdminExists();
-
-document.getElementById("loginForm").addEventListener("submit", function(e){
-    e.preventDefault();
-
-    let username = document.getElementById("username").value;
-    let password = document.getElementById("password").value;
-
-    let users = JSON.parse(localStorage.getItem("users")) || [];
-
-    let foundUser = users.find(u => u.name === username && u.pw === password);
-
-    if(!foundUser){
-        alert("Benutzername oder Passwort falsch");
-        return;
-    }
-
-    localStorage.setItem("username", foundUser.name);
-    localStorage.setItem("isAdmin", foundUser.admin === true ? "true" : "false");
-
-    window.location.href = "/dashboard";
-});
-
-function openForgot(){
-    document.getElementById("forgotModal").style.display = "flex";
-}
-
-function closeForgot(){
-    document.getElementById("forgotModal").style.display = "none";
-}
-
-function sendForgot(){
-    let name = document.getElementById("forgotName").value;
-    let email = document.getElementById("forgotEmail").value;
-
-    if(!name || !email){
-        alert("Bitte alles ausfüllen");
-        return;
-    }
-
-    let messages = JSON.parse(localStorage.getItem("messages")) || [];
-
-    messages.push({
-        from: name,
-        to: "admin",
-        text: "Passwort vergessen: " + email,
-        comment: "Passwort vergessen",
-        date: new Date().toLocaleString()
+    
+        if(response.redirected){
+            localStorage.setItem("username", username);
+            localStorage.setItem("isAdmin", username === "admin" ? "true" : "false");
+            window.location.href = response.url;
+        } else {
+            alert("Benutzername oder Passwort falsch");
+        }
     });
-
-    localStorage.setItem("messages", JSON.stringify(messages));
-
-    alert("Nachricht gesendet");
-    closeForgot();
-}
-</script>
+    
+    function openForgot(){
+        document.getElementById("forgotModal").style.display = "flex";
+    }
+    
+    function closeForgot(){
+        document.getElementById("forgotModal").style.display = "none";
+    }
+    
+    function sendForgot(){
+        alert("Passwort vergessen Funktion folgt mit Datenbank");
+        closeForgot();
+    }
+    </script>
 
 </body>
 </html>
