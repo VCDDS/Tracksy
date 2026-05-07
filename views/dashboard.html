@@ -38,9 +38,17 @@
     </div>
 
     <div class="nav-right">
+
         <span id="datetime"></span>
-        <span class="user"><span id="user"></span> ✅</span>
-        <button class="logout-btn" onclick="logout()">🔒Abmelden</button>
+    
+        <span class="user">
+            👤 <span id="user"></span>
+        </span>
+    
+        <button class="logout-btn" onclick="logout()">
+            🔒 Abmelden
+        </button>
+    
     </div>
 </nav>
 
@@ -1453,13 +1461,14 @@ function getRunningTime(){
 }
 
 function toggleAdminMenu(){
-    let menu = document.querySelector(".dropdown-content");
 
-    if(menu.style.display === "block"){
-        menu.style.display = "none";
-    } else {
-        menu.style.display = "block";
-    }
+let menu = document.querySelector(".dropdown-content");
+
+if(menu.style.display === "block"){
+    menu.style.display = "none";
+}else{
+    menu.style.display = "block";
+}
 }
 
 loadPage("start");

@@ -57,6 +57,15 @@ app.post("/create-user", express.json(), async (req, res) => {
     }
 });
 
+app.get("/users", async (req, res) => {
+
+    const result = await pool.query(
+        "SELECT username FROM users ORDER BY username"
+    );
+
+    res.json(result.rows);
+});
+
 app.listen(process.env.PORT || 3000, () => {
     console.log("http://localhost:3000");
 });
