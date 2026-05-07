@@ -30,7 +30,7 @@ async function initDatabase(){
             id SERIAL PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
             description TEXT DEFAULT '',
-            current_user TEXT DEFAULT '',
+            current_user_name TEXT DEFAULT '',
             current_task TEXT DEFAULT ''
         )
     `);
