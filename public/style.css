@@ -1,580 +1,422 @@
-/* =========================
-   ROOT
-========================= */
-:root {
-    --color-bg-dark: rgba(0,0,0,0.7);
-    --color-title: cyan;
+:root{
+    --bg-dark:rgba(0,0,0,0.75);
+    --cyan:cyan;
 }
 
-/* =========================
-   BODY
-========================= */
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: url("/logo.png") no-repeat center center fixed;
-    background-size: cover;
-    color: white;
+*{
+    box-sizing:border-box;
 }
 
-/* =========================
-   TOPBAR / NAV
-========================= */
-.topbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
 
-    height: 58px;
-    box-sizing: border-box;
+    background:url("/logo.png") no-repeat center center fixed;
+    background-size:cover;
 
-    display: flex;
-    align-items: center;
+    color:white;
+}
 
-    padding: 0 18px;
+/* TOPBAR */
 
-    background: linear-gradient(
+.topbar{
+
+    position:fixed;
+
+    top:0;
+    left:0;
+    right:0;
+
+    z-index:99999;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+
+    padding:10px 14px;
+
+    background:linear-gradient(
         90deg,
-        rgba(0,0,0,0.85),
-        rgba(15,23,42,0.85),
-        rgba(0,0,0,0.85)
+        rgba(0,0,0,0.9),
+        rgba(15,23,42,0.9),
+        rgba(0,0,0,0.9)
     );
 
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(0,255,255,0.25);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.45);
-    z-index: 999;
+    backdrop-filter:blur(10px);
+
+    border-bottom:1px solid rgba(0,255,255,0.2);
 }
 
-.nav-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: nowrap;
-}
-
-.logo {
-    color: cyan;
-    font-weight: bold;
-    font-size: 17px;
-    margin-right: 10px;
-}
-
-.nav-left button,
-.admin-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    height: 36px;
-    padding: 6px 10px;
-
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
-
-    color: white;
-    font-size: 13px;
-    cursor: pointer;
-
-    white-space: nowrap;
-    transition: all 0.2s ease;
-}
-
-.nav-left button:hover,
-.admin-btn:hover {
-    background: rgba(0,255,255,0.10);
-    border-color: rgba(0,255,255,0.5);
-
-    box-shadow: 0 0 8px rgba(0,255,255,0.3);
-
-    color: cyan;
-}
-
-.nav-left button:active,
-.admin-btn:active {
-    transform: scale(0.95);
-}
-
+.nav-left,
 .nav-right{
-    display: flex;
-    align-items: center;
-    gap: 20px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
 }
 
-#datetime{
-    font-size: 14px;
-    line-height: 1.2;
-    text-align: center;
-    padding: 6px 12px;
-    border-radius: 8px;
-    background: rgba(0,0,0,0.4);
-    color: white;
-    min-width: 160px;
+.logo{
+    color:var(--cyan);
+    font-size:18px;
+    font-weight:bold;
+    margin-right:6px;
 }
 
-.user {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+/* BUTTONS */
 
-    padding: 7px 10px;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.06);
+button,
+.admin-btn{
+
+    background:#1f2937;
+    color:white;
+
+    border:none;
+    border-radius:8px;
+
+    padding:8px 12px;
+
+    cursor:pointer;
+
+    transition:0.2s;
 }
 
-.logout-btn {
-    height: 38px;
-    padding: 6px 12px;
-
-    border-radius: 10px;
-    background: #ef4444;
-    color: white;
+button:hover,
+.admin-btn:hover{
+    background:#374151;
 }
 
-.logout-btn:hover {
-    background: #dc2626;
+.logout-btn{
+    background:#ef4444;
 }
 
-/* =========================
-   CONTENT
-========================= */
-#content {
-    margin-top: 140px;
-    padding: 20px;
+.logout-btn:hover{
+    background:#dc2626;
 }
 
-/* =========================
-   BUTTONS
-========================= */
-button {
-    background: #1f2937;
-    color: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 6px;
-    cursor: pointer;
+.start-btn{
+    background:#22c55e;
 }
 
-button:hover {
-    background: #374151;
+.stop-btn{
+    background:#ef4444;
 }
 
-.start-btn {
-    background: #22c55e;
+/* CONTENT */
+
+#content{
+    margin-top:95px;
+    padding:20px;
 }
 
-.stop-btn {
-    background: #ef4444;
+/* DROPDOWN */
+
+.dropdown{
+    position:relative;
 }
 
-/* =========================
-   DROPDOWN FIX
-========================= */
-.dropdown {
-    position: relative;
-    display: flex;
-    align-items: center;
+.dropdown-content{
+
+    display:none;
+
+    position:absolute;
+
+    top:100%;
+    left:0;
+
+    min-width:240px;
+
+    background:rgba(0,0,0,0.95);
+
+    border-radius:10px;
+
+    overflow:hidden;
+
+    z-index:999999;
 }
 
-.dropdown-content {
-    display: none;
-    position: absolute;
+.dropdown-content a{
 
-    top: 100%;
-    left: 0;
+    display:block;
 
-    min-width: 230px;
-    background: rgba(0, 0, 0, 0.92);
+    padding:12px 14px;
 
-    border-radius: 0 0 10px 10px;
-    z-index: 99999;
-    overflow: hidden;
-
-    padding-top: 6px;
+    color:cyan;
+    text-decoration:none;
 }
 
-.dropdown:hover .dropdown-content {
-    display: block;
+.dropdown-content a:hover{
+    background:rgba(0,255,255,0.15);
 }
 
-.dropdown-content a {
-    display: block;
-    padding: 10px 14px;
+/* BOXES */
 
-    color: cyan;
-    text-decoration: none;
-    white-space: nowrap;
+.center-box{
 
-    background: rgba(255,255,255,0.04);
-}
+    width:100%;
+    max-width:420px;
 
-.dropdown-content a:hover {
-    background: rgba(0, 255, 255, 0.2);
-    color: white;
-}
+    margin:30px auto;
 
-/* =========================
-   INPUT / SELECT / TEXTAREA
-========================= */
-input, select, textarea {
-    padding: 8px;
-    border-radius: 6px;
-    border: none;
-    margin-bottom: 10px;
-}
+    background:var(--bg-dark);
 
-/* =========================
-   START BOX
-========================= */
-.center-box {
-    max-width: 400px;
-    margin: 50px auto;
-    padding: 20px;
+    padding:20px;
 
-    background: var(--color-bg-dark);
-    border-radius: 10px;
-    text-align: center;
-}
+    border-radius:14px;
 
-/* =========================
-   MODAL
-========================= */
-.modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-
-    background: rgba(0,0,0,0.8);
-    justify-content: center;
-    align-items: center;
-
-    z-index: 99999;
-}
-
-.modal-box {
-    background: #0f172a;
-    padding: 20px;
-    border-radius: 10px;
-    width: 450px;
-}
-
-#reportText {
-    width: 100%;
-    height: 180px;
-    resize: vertical;
-    box-sizing: border-box;
-}
-
-/* =========================
-   HEADINGS
-========================= */
-h2, h3 {
-    color: var(--color-title);
-}
-
-/* =========================
-   LOGIN BAR
-========================= */
-.login-bar {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    gap: 10px;
-    padding: 0;
-}
-
-.login-bar form {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.login-bar input {
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: 0;
-
-    background: rgba(0, 183, 255, 0.14);
-    color: white;
-    outline: none;
-}
-
-.login-bar button {
-    padding: 10px 16px;
-    border-radius: 8px;
-    border: none;
-
-    background: linear-gradient(
-        135deg,
-        rgba(0, 68, 255, 0.72),
-        rgba(0, 240, 248, 0.72)
-    );
-
-    color: white;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.login-bar button:hover {
-    transform: scale(1.05);
-}
-
-.forgot-btn {
-    margin-left: 10px;
-    background: none !important;
-    border: none;
-
-    color: cyan;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.forgot-btn:hover {
-    color: white;
-    text-decoration: underline;
-}
-
-/* =========================
-   TABLE
-========================= */
-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-
-    margin-top: 15px;
-
-    background: rgba(15, 23, 42, 0.88);
-    border-radius: 12px;
-    overflow: hidden;
-
-    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
-}
-
-th {
-    padding: 12px 14px;
-
-    background: rgba(0, 255, 255, 0.12);
-    color: cyan;
-
-    text-align: left;
-    font-weight: bold;
-
-    border-bottom: 1px solid rgba(0,255,255,0.25);
-}
-
-td {
-    padding: 11px 14px;
-
-    color: white;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-
-tr:hover td {
-    background: rgba(0,255,255,0.08);
-}
-
-tr:last-child td {
-    border-bottom: none;
-}
-
-/* =========================
-   DIAGRAMM KLEINER
-========================= */
-canvas {
-    max-width: 600px !important;
-    max-height: 400px !important;
-    margin: 20px auto;
-    display: block;
-}
-
-.chart-box {
-    max-width: 650px;
-    margin: 25px auto;
-    padding: 18px;
-
-    background: rgba(0,0,0,0.65);
-    border-radius: 14px;
-}
-
-.chart-box canvas {
-    max-height: 320px;
-}
-
-@media print {
-    nav,
-    .topbar,
-    .dropdown,
-    button {
-        display: none !important;
-    }
-
-    body {
-        background: white !important;
-        color: black !important;
-    }
-
-    #content {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    table {
-        background: white !important;
-        color: black !important;
-    }
-
-    th, td {
-        color: black !important;
-        border: 1px solid black !important;
-    }
-
-    .chart-box {
-        page-break-inside: avoid;
-    }
-}
-
-.badge {
-    background: red;
-    color: white;
-    border-radius: 50%;
-    padding: 2px 6px;
-    font-size: 10px;
-    margin-left: 5px;
-    display: none;
+    text-align:center;
 }
 
 .running-box{
-    margin-bottom: 12px;
-    padding: 10px;
-    border-radius: 8px;
-    background: rgba(0,0,0,0.45);
-    color: white;
+
+    background:rgba(255,255,255,0.08);
+
+    padding:10px;
+    border-radius:10px;
+
+    margin-bottom:14px;
 }
+
+/* INPUTS */
+
+input,
+select,
+textarea{
+
+    width:100%;
+
+    margin-bottom:12px;
+
+    padding:12px;
+
+    border:none;
+    border-radius:10px;
+
+    background:#111827;
+    color:white;
+}
+
+textarea{
+    min-height:140px;
+}
+
+/* TABLE */
+
+table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    background:rgba(15,23,42,0.92);
+
+    border-radius:12px;
+
+    overflow:hidden;
+}
+
+th{
+
+    background:rgba(0,255,255,0.12);
+
+    color:cyan;
+
+    padding:12px;
+
+    text-align:left;
+}
+
+td{
+
+    padding:12px;
+
+    border-top:1px solid rgba(255,255,255,0.08);
+}
+
+tr:hover td{
+    background:rgba(255,255,255,0.04);
+}
+
+/* HEADINGS */
+
+h2,h3{
+    color:cyan;
+}
+
+/* MODAL */
+
+.modal{
+
+    display:none;
+
+    position:fixed;
+    inset:0;
+
+    justify-content:center;
+    align-items:center;
+
+    background:rgba(0,0,0,0.8);
+
+    z-index:999999;
+}
+
+.modal-box{
+
+    width:90%;
+    max-width:500px;
+
+    background:#0f172a;
+
+    padding:20px;
+
+    border-radius:14px;
+}
+
+/* USER */
+
+.user{
+
+    background:rgba(255,255,255,0.08);
+
+    padding:8px 12px;
+
+    border-radius:10px;
+}
+
+/* DATETIME */
+
+#datetime{
+
+    background:rgba(255,255,255,0.08);
+
+    padding:8px 12px;
+
+    border-radius:10px;
+
+    text-align:center;
+
+    font-size:13px;
+}
+
+/* CHART */
+
+.chart-box{
+
+    max-width:700px;
+
+    margin:25px auto;
+
+    padding:20px;
+
+    background:rgba(0,0,0,0.65);
+
+    border-radius:14px;
+}
+
+canvas{
+    max-width:100%;
+}
+
+/* MOBILE */
 
 @media (max-width: 768px){
 
     body{
-        overflow-x: hidden;
+        overflow-x:hidden;
     }
 
     .topbar{
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
 
-        height: auto;
-        padding: 10px;
+        position:relative;
+
+        flex-direction:column;
+
+        align-items:center;
+
+        gap:10px;
+
+        padding:10px;
     }
 
-    .nav-left{
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 6px;
-
-        width: 100%;
-    }
-
+    .nav-left,
     .nav-right{
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
 
-        width: 100%;
+        width:100%;
+
+        justify-content:center;
     }
 
     .nav-left button,
     .admin-btn,
     .logout-btn{
-        font-size: 12px;
-        padding: 8px 10px;
-        height: auto;
+
+        font-size:12px;
+
+        padding:8px 10px;
     }
 
     .logo{
-        width: 100%;
-        text-align: center;
-    }
 
-    #datetime{
-        font-size: 11px;
-        min-width: auto;
+        width:100%;
+
+        text-align:center;
     }
 
     #content{
-        margin-top: 20px;
-        padding: 10px;
+        margin-top:20px;
+        padding:10px;
     }
 
     .dropdown-content{
-        position: fixed;
-        top: 120px;
-        left: 10px;
-        right: 10px;
 
-        width: auto;
+        position:fixed;
 
-        z-index: 999999;
-    }
+        top:120px;
+        left:10px;
+        right:10px;
 
-    .center-box{
-        width: 95%;
-        max-width: 100%;
+        width:auto;
     }
 
     table{
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-}
 
-@media (max-width: 768px){
+        display:block;
 
-    .topbar{
-        display: flex !important;
-        flex-direction: column !important;
-        height: auto !important;
-        overflow: visible !important;
+        overflow-x:auto;
+
+        white-space:nowrap;
     }
 
-    .nav-left{
-        width: 100% !important;
-        display: flex !important;
-        flex-wrap: wrap !important;
-        justify-content: center !important;
-    }
-
-    .nav-right{
-        width: 100% !important;
-        display: flex !important;
-        flex-wrap: wrap !important;
-        justify-content: center !important;
-        gap: 6px !important;
-        margin-top: 6px !important;
+    .center-box{
+        max-width:100%;
     }
 
     #datetime,
-    .user,
-    .logout-btn{
-        display: inline-flex !important;
-        font-size: 10px !important;
-        padding: 4px 6px !important;
-        height: auto !important;
-        min-width: auto !important;
+    .user{
+        font-size:11px;
+    }
+}
+
+@media print{
+
+    .topbar,
+    button,
+    .dropdown{
+        display:none !important;
     }
 
-    .logout-btn{
-        background: red !important;
-        color: white !important;
+    body{
+        background:white !important;
+        color:black !important;
+    }
+
+    table{
+        background:white !important;
+        color:black !important;
+    }
+
+    th,td{
+        color:black !important;
+        border:1px solid black !important;
     }
 }
