@@ -299,7 +299,7 @@ async function loadPage(page){
 
         projects.forEach(p => {
             let tasks = p.tasks.map(t => t.name).join("<br>");
-            let status = p.current_task ? `👤 ${p.current_user} bearbeitet: ${p.current_task}` : "-";
+            let status = p.current_task ? `👤 ${p.current_user_name} bearbeitet: ${p.current_task}` : "-";
 
             html += `
             <tr>
@@ -338,7 +338,7 @@ async function loadPage(page){
 
         projects.forEach(p => {
             let tasks = p.tasks.map(t => t.name).join("<br>");
-            let status = p.current_task ? `👤 ${p.current_user} bearbeitet: ${p.current_task}` : "-";
+            let status = p.current_task ? `👤 ${p.current_user_name} bearbeitet: ${p.current_task}` : "-";
 
             html += `
             <tr>

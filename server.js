@@ -287,39 +287,39 @@ app.post("/start-time", async (req, res) => {
     );
 
     await pool.query(
-        "UPDATE projects SET current_user = $1, current_task = $2 WHERE name = $3",
+        "UPDATE projects SET current_user_name = $1, current_task = $2 WHERE name = $3",
         [username, task, project]
     );
-
+    
     res.send("Gestartet");
-});
-
-app.post("/stop-time", async (req, res) => {
-    const { username, report, adminOnly } = req.body;
-
-    const running = await pool.query(
-        "SELECT * FROM times WHERE username = $1 AND stop_time = '' ORDER BY id DESC LIMIT 1",
-        [username]
-    );
-
-    if(running.rows.length === 0){
-        return res.send("Keine laufende Zeit");
-    }
-
-    const time = running.rows[0];
-
-    await pool.query(
-        "UPDATE times SET stop_time = $1, report = $2, admin_only = $3 WHERE id = $4",
-        [new Date().toLocaleString("de-DE"), report, adminOnly === true, time.id]
-    );
-
-    await pool.query(
-        "UPDATE projects SET current_user = '', current_task = '' WHERE name = $1",
-        [time.project]
-    );
-
-    res.send("Gestoppt");
-});
+    });
+    
+    app.post("/stop-time", async (req, res) => {
+        const { username, report, adminOnly } = req.body;
+    
+        const running = await pool.query(
+            "SELECT * FROM times WHERE username = $1 AND stop_time = '' ORDER BY id DESC LIMIT 1",
+            [username]
+        );
+    
+        if(running.rows.length === 0){
+            return res.send("Keine laufende Zeit");
+        }
+    
+        const time = running.rows[0];
+    
+        await pool.query(
+            "UPDATE times SET stop_time = $1, report = $2, admin_only = $3 WHERE id = $4",
+            [new Date().toLocaleString("de-DE"), report, adminOnly === true, time.id]
+        );
+    
+        await pool.query(
+            "UPDATE projects SET current_user_name = '', current_task = '' WHERE name = $1",
+            [time.project]
+        );
+    
+        res.send("Gestoppt");
+    });
 
 app.post("/delete-time", async (req, res) => {
     const { id } = req.body;
