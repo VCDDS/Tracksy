@@ -25,20 +25,9 @@ async function initDatabase(){
         )
     `);
 
-    await pool.query(`
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''
-    `);
-    
-    await pool.query(`
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false
-    `);
-    
-    await pool.query(`
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS last_change TEXT DEFAULT ''
-    `);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_change TEXT DEFAULT ''`);
 
     await pool.query(`
         CREATE TABLE IF NOT EXISTS projects (
@@ -68,9 +57,14 @@ async function initDatabase(){
             start_time TEXT NOT NULL,
             stop_time TEXT DEFAULT '',
             report TEXT DEFAULT '',
-            admin_only BOOLEAN DEFAULT false
+            admin_only BOOLEAN DEFAULT false,
+            pause_time TEXT DEFAULT '',
+            is_paused BOOLEAN DEFAULT false
         )
     `);
+
+    await pool.query(`ALTER TABLE times ADD COLUMN IF NOT EXISTS pause_time TEXT DEFAULT ''`);
+    await pool.query(`ALTER TABLE times ADD COLUMN IF NOT EXISTS is_paused BOOLEAN DEFAULT false`);
 
     await pool.query(`
         CREATE TABLE IF NOT EXISTS messages (
@@ -128,6 +122,7 @@ app.post("/login", async (req, res) => {
     });
 });
 
+/* USERS */
 app.get("/users", async (req, res) => {
     const result = await pool.query(
         "SELECT username, email, is_admin, last_change FROM users ORDER BY username"
@@ -135,6 +130,7 @@ app.get("/users", async (req, res) => {
 
     res.json(result.rows);
 });
+
 app.post("/create-user", async (req, res) => {
     const { name, email, pw, admin } = req.body;
 
@@ -302,36 +298,58 @@ app.post("/start-time", async (req, res) => {
         "UPDATE projects SET current_user_name = $1, current_task = $2 WHERE name = $3",
         [username, task, project]
     );
-    
+
     res.send("Gestartet");
-    });
-    
-    app.post("/stop-time", async (req, res) => {
-        const { username, report, adminOnly } = req.body;
-    
-        const running = await pool.query(
-            "SELECT * FROM times WHERE username = $1 AND stop_time = '' ORDER BY id DESC LIMIT 1",
-            [username]
-        );
-    
-        if(running.rows.length === 0){
-            return res.send("Keine laufende Zeit");
-        }
-    
-        const time = running.rows[0];
-    
-        await pool.query(
-            "UPDATE times SET stop_time = $1, report = $2, admin_only = $3 WHERE id = $4",
-            [new Date().toLocaleString("de-DE"), report, adminOnly === true, time.id]
-        );
-    
-        await pool.query(
-            "UPDATE projects SET current_user_name = '', current_task = '' WHERE name = $1",
-            [time.project]
-        );
-    
-        res.send("Gestoppt");
-    });
+});
+
+app.post("/pause-time", async (req, res) => {
+    const { username } = req.body;
+
+    await pool.query(
+        "UPDATE times SET is_paused = true, pause_time = $1 WHERE username = $2 AND stop_time = ''",
+        [new Date().toLocaleString("de-DE"), username]
+    );
+
+    res.send("Pausiert");
+});
+
+app.post("/resume-time", async (req, res) => {
+    const { username } = req.body;
+
+    await pool.query(
+        "UPDATE times SET is_paused = false WHERE username = $1 AND stop_time = ''",
+        [username]
+    );
+
+    res.send("Fortgesetzt");
+});
+
+app.post("/stop-time", async (req, res) => {
+    const { username, report, adminOnly } = req.body;
+
+    const running = await pool.query(
+        "SELECT * FROM times WHERE username = $1 AND stop_time = '' ORDER BY id DESC LIMIT 1",
+        [username]
+    );
+
+    if(running.rows.length === 0){
+        return res.send("Keine laufende Zeit");
+    }
+
+    const time = running.rows[0];
+
+    await pool.query(
+        "UPDATE times SET stop_time = $1, report = $2, admin_only = $3, is_paused = false WHERE id = $4",
+        [new Date().toLocaleString("de-DE"), report, adminOnly === true, time.id]
+    );
+
+    await pool.query(
+        "UPDATE projects SET current_user_name = '', current_task = '' WHERE name = $1",
+        [time.project]
+    );
+
+    res.send("Gestoppt");
+});
 
 app.post("/delete-time", async (req, res) => {
     const { id } = req.body;
@@ -353,6 +371,32 @@ app.post("/edit-time", async (req, res) => {
     );
 
     res.send("Zeit geändert");
+});
+
+app.post("/manual-time", async (req, res) => {
+    const { username, project, task, start_time, stop_time, report } = req.body;
+
+    await pool.query(
+        "INSERT INTO times (username, project, task, start_time, stop_time, report) VALUES ($1, $2, $3, $4, $5, $6)",
+        [username, project, task, start_time, stop_time, report]
+    );
+
+    res.send("Zeit nachgetragen");
+});
+
+app.post("/delete-all-times", async (req, res) => {
+    await pool.query("DELETE FROM times");
+    res.send("Alle Zeiten gelöscht");
+});
+
+app.post("/delete-all-reports", async (req, res) => {
+    await pool.query("UPDATE times SET report = ''");
+    res.send("Alle Reports gelöscht");
+});
+
+app.post("/delete-all-auswertung", async (req, res) => {
+    await pool.query("DELETE FROM times");
+    res.send("Alle Auswertungen gelöscht");
 });
 
 /* MESSAGES */
@@ -383,48 +427,6 @@ app.post("/delete-message", async (req, res) => {
 
     await pool.query("DELETE FROM messages WHERE id = $1", [id]);
     res.send("Nachricht gelöscht");
-});
-
-app.post("/manual-time", async (req, res) => {
-
-    const {
-        username,
-        project,
-        task,
-        start_time,
-        stop_time,
-        report
-    } = req.body;
-
-    await pool.query(
-        "INSERT INTO times (username, project, task, start_time, stop_time, report) VALUES ($1, $2, $3, $4, $5, $6)",
-        [username, project, task, start_time, stop_time, report]
-    );
-
-    res.send("Zeit nachgetragen");
-});
-
-app.post("/delete-all-times", async (req, res) => {
-
-    await pool.query("DELETE FROM times");
-
-    res.send("Alle Zeiten gelöscht");
-});
-
-app.post("/delete-all-reports", async (req, res) => {
-
-    await pool.query(
-        "UPDATE times SET report = ''"
-    );
-
-    res.send("Alle Reports gelöscht");
-});
-
-app.post("/delete-all-auswertung", async (req, res) => {
-
-    await pool.query("DELETE FROM times");
-
-    res.send("Alle Auswertungen gelöscht");
 });
 
 app.listen(process.env.PORT || 3000, () => {

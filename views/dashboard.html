@@ -112,6 +112,8 @@ async function loadPage(page){
             </select>
 
             <button class="start-btn" onclick="startTime()">Start</button>
+            <button onclick="pauseTime()">Pause</button>
+            <button onclick="resumeTime()">Weiter</button>
             <button class="stop-btn" onclick="stopTime()">Stop</button>
         </div>
         `;
@@ -946,6 +948,26 @@ let msg = await apiPost("/delete-all-auswertung", {});
 alert(msg);
 
 loadPage("adminDaten");
+}
+
+async function pauseTime(){
+
+let msg = await apiPost("/pause-time", {
+    username: currentUser
+});
+
+alert(msg);
+loadPage("start");
+}
+
+async function resumeTime(){
+
+let msg = await apiPost("/resume-time", {
+    username: currentUser
+});
+
+alert(msg);
+loadPage("start");
 }
 
 setInterval(() => {
