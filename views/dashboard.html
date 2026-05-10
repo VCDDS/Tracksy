@@ -547,6 +547,7 @@ async function loadPage(page){
         return;
     }
 
+
     if(page === "adminDaten"){
         let times = await apiGet("/times");
 
@@ -569,6 +570,9 @@ async function loadPage(page){
 
 content.innerHTML = html;
 return;
+}
+
+}
 
 async function startTime(){
     let project = document.getElementById("startProject").value;
