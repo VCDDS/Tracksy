@@ -129,15 +129,12 @@ app.post("/login", async (req, res) => {
 });
 
 app.get("/users", async (req, res) => {
-
     const result = await pool.query(
-        "SELECT username FROM users ORDER BY username"
+        "SELECT username, email, is_admin, last_change FROM users ORDER BY username"
     );
 
     res.json(result.rows);
-
 });
-
 app.post("/create-user", async (req, res) => {
     const { name, email, pw, admin } = req.body;
 
@@ -341,6 +338,21 @@ app.post("/delete-time", async (req, res) => {
 
     await pool.query("DELETE FROM times WHERE id = $1", [id]);
     res.send("Zeit gelöscht");
+});
+
+app.post("/edit-time", async (req, res) => {
+    const { id, username, project, task, start_time, stop_time, report } = req.body;
+
+    if(!id){
+        return res.send("Zeit ID fehlt");
+    }
+
+    await pool.query(
+        "UPDATE times SET username = $1, project = $2, task = $3, start_time = $4, stop_time = $5, report = $6 WHERE id = $7",
+        [username, project, task, start_time, stop_time, report, id]
+    );
+
+    res.send("Zeit geändert");
 });
 
 /* MESSAGES */

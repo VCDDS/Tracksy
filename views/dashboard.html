@@ -19,12 +19,12 @@
             <button type="button" class="admin-btn" onclick="toggleAdminMenu()">🚩 Admin</button>
 
             <div class="dropdown-content" id="adminDropdown">
-                <a href="#" onclick="loadPage('projekt'); return false;">🗂️ Projekt erstellen</a>
-                <a href="#" onclick="loadPage('archiv'); return false;">📦 Archiv</a>
-                <a href="#" onclick="loadPage('adminDaten'); return false;">🧹 Daten bereinigen</a>
-                <a href="#" onclick="loadPage('zeitenKorrigieren'); return false;">🛠️ Zeiten korrigieren</a>
-                <a href="#" onclick="loadPage('benutzerVerwaltung'); return false;">👤 Benutzer verwalten</a>
-                <a href="#" onclick="printOrPDF(); return false;">🖨️ Drucken/PDF speichern</a>
+                <a href="#" onclick="loadPage('projekt'); closeAdminDropdown(); return false;">🗂️ Projekt erstellen</a>
+                <a href="#" onclick="loadPage('archiv'); closeAdminDropdown(); return false;">📦 Archiv</a>
+                <a href="#" onclick="loadPage('adminDaten'); closeAdminDropdown(); return false;">🧹 Daten bereinigen</a>
+                <a href="#" onclick="loadPage('zeitenKorrigieren'); closeAdminDropdown(); return false;">🛠️ Zeiten korrigieren</a>
+                <a href="#" onclick="loadPage('benutzerVerwaltung'); closeAdminDropdown(); return false;">👤 Benutzer verwalten</a>
+                <a href="#" onclick="printOrPDF(); closeAdminDropdown(); return false;">🖨️ Drucken/PDF speichern</a>
             </div>
         </div>
 
@@ -84,6 +84,8 @@ async function apiPost(url, data){
 }
 
 async function loadPage(page){
+
+    currentPage = page;
 
     if(page === "start"){
         let projects = await apiGet("/projects");
@@ -148,6 +150,7 @@ async function loadPage(page){
                 <th>Start</th>
                 <th>Stop</th>
                 <th>Bericht</th>
+                <th>Aktion</th>
             </tr>
         `;
 
@@ -159,7 +162,8 @@ async function loadPage(page){
                 <td>${t.task || "-"}</td>
                 <td>${t.start_time || "-"}</td>
                 <td>${t.stop_time || "-"}</td>
-                <td>${t.report || "-"}</td>
+                <td>${t.report}</td>
+                <td><button onclick="editTime(${t.id})">✏️ Bearbeiten</button></td>
             </tr>`;
         });
 
@@ -445,22 +449,31 @@ async function loadPage(page){
     }
 
     if(page === "benutzer"){
-        let users = await apiGet("/users");
-        let ownUser = users.find(u => u.username === currentUser);
+    let users = await apiGet("/users");
+    let ownUser = users.find(u => u.username === currentUser);
 
-        content.innerHTML = `
-        <h2>Benutzer</h2>
+    content.innerHTML = `
+    <h2>Benutzer</h2>
 
-        <table>
-            <tr><th>Feld</th><th>Deine Daten</th></tr>
-            <tr><td>Name</td><td>${ownUser ? ownUser.username : currentUser}</td></tr>
-            <tr><td>Email</td><td>${ownUser && ownUser.email ? ownUser.email : "-"}</td></tr>
-            <tr><td>Rolle</td><td>${ownUser && ownUser.is_admin ? "Admin" : "Benutzer"}</td></tr>
-            <tr><td>Letzte Änderung</td><td>${ownUser && ownUser.last_change ? ownUser.last_change : "-"}</td></tr>
-        </table>
-        `;
-        return;
-    }
+    <table>
+        <tr><th>Feld</th><th>Deine Daten</th></tr>
+        <tr><td>Name</td><td>${ownUser ? ownUser.username : currentUser}</td></tr>
+        <tr><td>Email</td><td>${ownUser && ownUser.email ? ownUser.email : "-"}</td></tr>
+        <tr><td>Rolle</td><td>${ownUser && ownUser.is_admin ? "Admin" : "Benutzer"}</td></tr>
+        <tr><td>Letzte Änderung</td><td>${ownUser && ownUser.last_change ? ownUser.last_change : "-"}</td></tr>
+    </table>
+
+    <h3>Eigene Daten ändern</h3>
+
+    <input id="ownName" value="${ownUser ? ownUser.username : currentUser}" placeholder="Name">
+    <input id="ownEmail" value="${ownUser && ownUser.email ? ownUser.email : ""}" placeholder="Email">
+    <input id="ownPw" type="password" placeholder="Neues Passwort">
+
+    <button onclick="changeOwnUser()">Speichern</button>
+    `;
+
+    return;
+}
 
     if(page === "benutzerVerwaltung"){
         let users = await apiGet("/users");
@@ -782,8 +795,52 @@ async function deleteTime(id){
     loadPage("adminDaten");
 }
 
-async function printOrPDF(){
-    window.print();
+async function editTime(id){
+    let times = await apiGet("/times");
+    let t = times.find(x => x.id === id);
+
+    if(!t){
+        alert("Zeit nicht gefunden");
+        return;
+    }
+
+    let username = prompt("User:", t.username);
+    if(username === null) return;
+
+    let project = prompt("Projekt:", t.project);
+    if(project === null) return;
+
+    let task = prompt("Aufgabe:", t.task);
+    if(task === null) return;
+
+    let start_time = prompt("Start:", t.start_time);
+    if(start_time === null) return;
+
+    let stop_time = prompt("Stop:", t.stop_time);
+    if(stop_time === null) return;
+
+    let report = prompt("Bericht:", t.report);
+    if(report === null) return;
+
+    let msg = await apiPost("/edit-time", {
+        id,
+        username,
+        project,
+        task,
+        start_time,
+        stop_time,
+        report
+    });
+
+    alert(msg);
+    loadPage("zeitenKorrigieren");
+}
+
+function closeAdminDropdown(){
+    let menu = document.getElementById("adminDropdown");
+    if(menu){
+        menu.style.display = "none";
+    }
 }
 
 function logout(){
@@ -802,21 +859,42 @@ function toggleAdminMenu(){
     }
 }
 
-setInterval(() => {
-    let now = new Date();
+function printOrPDF(){
+    window.print();
+}
 
-    let datum = now.toLocaleDateString("de-DE", {
-        weekday: "short",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
+let currentPage = "start";
+
+async function changeOwnUser(){
+    let newName = document.getElementById("ownName").value;
+    let email = document.getElementById("ownEmail").value;
+    let pw = document.getElementById("ownPw").value;
+
+    if(!newName || !pw){
+        alert("Name und Passwort ausfüllen");
+        return;
+    }
+
+    let msg = await apiPost("/edit-user", {
+        oldName: currentUser,
+        newName,
+        email,
+        pw,
+        admin: isAdmin
     });
 
-    let zeit = now.toLocaleTimeString("de-DE");
+    alert(msg);
 
-    document.getElementById("datetime").innerHTML =
-        "📅 " + datum + "<br>⏰ " + zeit;
-}, 1000);
+    localStorage.setItem("username", newName);
+    currentUser = newName;
+    document.getElementById("user").textContent = newName;
+
+    loadPage("benutzer");
+}
+
+setInterval(() => {
+    loadPage(currentPage);
+}, 10000);
 
 loadPage("start");
 </script>

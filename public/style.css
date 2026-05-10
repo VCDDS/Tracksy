@@ -1,41 +1,90 @@
+/* =========================================================
+   ROOT VARIABLEN
+========================================================= */
+
 :root{
+
+    /* Dunkler Hintergrund */
     --bg-dark:rgba(0,0,0,0.75);
+
+    /* Cyan Hauptfarbe */
     --cyan:cyan;
+
+    /* Standard Weiß */
+    --white:white;
+
+    /* Rot */
+    --red:#ef4444;
+
+    /* Grün */
+    --green:#22c55e;
 }
 
+/* =========================================================
+   ALLE ELEMENTE
+========================================================= */
+
 *{
+
+    /* Padding und Border korrekt berechnen */
     box-sizing:border-box;
 }
 
+/* =========================================================
+   BODY / HINTERGRUND
+========================================================= */
+
 body{
+
+    /* Außenabstand entfernen */
     margin:0;
+
+    /* Schriftart */
     font-family:Arial,sans-serif;
 
+    /* Hintergrundbild */
     background:url("/logo.png") no-repeat center center fixed;
+
+    /* Hintergrund immer komplett */
     background-size:cover;
 
+    /* Schriftfarbe */
     color:white;
+
+    /* Kein horizontales Scrollen */
+    overflow-x:hidden;
 }
 
-/* TOPBAR */
+/* =========================================================
+   TOPBAR
+========================================================= */
 
 .topbar{
 
+    /* Immer oben fest */
     position:fixed;
 
+    /* Position */
     top:0;
     left:0;
     right:0;
 
+    /* Immer vorne */
     z-index:99999;
 
+    /* Flexbox */
     display:flex;
+
     justify-content:space-between;
     align-items:center;
+
+    /* Abstand zwischen Elementen */
     gap:10px;
 
+    /* Innenabstand */
     padding:10px 14px;
 
+    /* Verlauf */
     background:linear-gradient(
         90deg,
         rgba(0,0,0,0.9),
@@ -43,97 +92,171 @@ body{
         rgba(0,0,0,0.9)
     );
 
+    /* Glas Effekt */
     backdrop-filter:blur(10px);
 
+    /* Untere Linie */
     border-bottom:1px solid rgba(0,255,255,0.2);
 }
 
+/* =========================================================
+   NAVIGATION LINKS / RECHTS
+========================================================= */
+
 .nav-left,
 .nav-right{
+
     display:flex;
+
     align-items:center;
+
     gap:8px;
+
     flex-wrap:wrap;
 }
 
+/* =========================================================
+   LOGO
+========================================================= */
+
 .logo{
+
     color:var(--cyan);
+
     font-size:18px;
+
     font-weight:bold;
+
     margin-right:6px;
 }
 
-/* BUTTONS */
+/* =========================================================
+   STANDARD BUTTONS
+========================================================= */
 
 button,
 .admin-btn{
 
+    /* Hintergrund */
     background:#1f2937;
+
+    /* Schrift */
     color:white;
 
+    /* Kein Rahmen */
     border:none;
+
+    /* Runde Ecken */
     border-radius:8px;
 
+    /* Innenabstand */
     padding:8px 12px;
 
+    /* Mauszeiger */
     cursor:pointer;
 
+    /* Hover Animation */
     transition:0.2s;
 }
 
+/* =========================================================
+   BUTTON HOVER
+========================================================= */
+
 button:hover,
 .admin-btn:hover{
+
     background:#374151;
 }
 
+/* =========================================================
+   LOGOUT BUTTON
+========================================================= */
+
 .logout-btn{
+
     background:#ef4444;
 }
 
 .logout-btn:hover{
+
     background:#dc2626;
 }
 
+/* =========================================================
+   START BUTTON
+========================================================= */
+
 .start-btn{
+
     background:#22c55e;
 }
 
+/* =========================================================
+   STOP BUTTON
+========================================================= */
+
 .stop-btn{
+
     background:#ef4444;
 }
 
-/* CONTENT */
+/* =========================================================
+   CONTENT BEREICH
+========================================================= */
 
 #content{
+
+    /* Abstand wegen fixer Topbar */
     margin-top:95px;
+
+    /* Innenabstand */
     padding:20px;
 }
 
-/* DROPDOWN */
+/* =========================================================
+   DROPDOWN
+========================================================= */
 
 .dropdown{
+
     position:relative;
 }
 
+/* =========================================================
+   DROPDOWN INHALT
+========================================================= */
+
 .dropdown-content{
 
+    /* Standard versteckt */
     display:none;
 
+    /* Position */
     position:absolute;
 
     top:100%;
     left:0;
 
+    /* Mindestbreite */
     min-width:240px;
 
+    /* Hintergrund */
     background:rgba(0,0,0,0.95);
 
+    /* Runde Ecken */
     border-radius:10px;
 
+    /* Inhalt abschneiden */
     overflow:hidden;
 
+    /* Ganz vorne */
     z-index:999999;
 }
+
+/* =========================================================
+   DROPDOWN LINKS
+========================================================= */
 
 .dropdown-content a{
 
@@ -142,42 +265,65 @@ button:hover,
     padding:12px 14px;
 
     color:cyan;
+
     text-decoration:none;
 }
 
+/* =========================================================
+   DROPDOWN HOVER
+========================================================= */
+
 .dropdown-content a:hover{
+
     background:rgba(0,255,255,0.15);
 }
 
-/* BOXES */
+/* =========================================================
+   CENTER BOX
+========================================================= */
 
 .center-box{
 
+    /* Breite */
     width:100%;
+
+    /* Maximalbreite */
     max-width:420px;
 
+    /* Zentrieren */
     margin:30px auto;
 
+    /* Hintergrund */
     background:var(--bg-dark);
 
+    /* Innenabstand */
     padding:20px;
 
+    /* Runde Ecken */
     border-radius:14px;
 
+    /* Zentrierter Text */
     text-align:center;
 }
+
+/* =========================================================
+   RUNNING BOX
+========================================================= */
 
 .running-box{
 
     background:rgba(255,255,255,0.08);
 
     padding:10px;
+
     border-radius:10px;
 
     margin-bottom:14px;
 }
 
-/* INPUTS */
+/* =========================================================
+   INPUTS / SELECT / TEXTAREA
+========================================================= */
 
 input,
 select,
@@ -190,17 +336,30 @@ textarea{
     padding:12px;
 
     border:none;
+
     border-radius:10px;
 
     background:#111827;
+
     color:white;
+
+    font-size:14px;
 }
+
+/* =========================================================
+   TEXTAREA
+========================================================= */
 
 textarea{
+
     min-height:140px;
+
+    resize:vertical;
 }
 
-/* TABLE */
+/* =========================================================
+   TABELLEN
+========================================================= */
 
 table{
 
@@ -215,6 +374,10 @@ table{
     overflow:hidden;
 }
 
+/* =========================================================
+   TABELLEN HEADER
+========================================================= */
+
 th{
 
     background:rgba(0,255,255,0.12);
@@ -226,6 +389,10 @@ th{
     text-align:left;
 }
 
+/* =========================================================
+   TABELLEN DATEN
+========================================================= */
+
 td{
 
     padding:12px;
@@ -233,26 +400,39 @@ td{
     border-top:1px solid rgba(255,255,255,0.08);
 }
 
+/* =========================================================
+   TABELLEN HOVER
+========================================================= */
+
 tr:hover td{
+
     background:rgba(255,255,255,0.04);
 }
 
-/* HEADINGS */
+/* =========================================================
+   ÜBERSCHRIFTEN
+========================================================= */
 
-h2,h3{
+h2,
+h3{
+
     color:cyan;
 }
 
-/* MODAL */
+/* =========================================================
+   MODAL HINTERGRUND
+========================================================= */
 
 .modal{
 
     display:none;
 
     position:fixed;
+
     inset:0;
 
     justify-content:center;
+
     align-items:center;
 
     background:rgba(0,0,0,0.8);
@@ -260,9 +440,14 @@ h2,h3{
     z-index:999999;
 }
 
+/* =========================================================
+   MODAL BOX
+========================================================= */
+
 .modal-box{
 
     width:90%;
+
     max-width:500px;
 
     background:#0f172a;
@@ -272,7 +457,9 @@ h2,h3{
     border-radius:14px;
 }
 
-/* USER */
+/* =========================================================
+   USER BOX
+========================================================= */
 
 .user{
 
@@ -283,7 +470,9 @@ h2,h3{
     border-radius:10px;
 }
 
-/* DATETIME */
+/* =========================================================
+   DATUM / UHRZEIT
+========================================================= */
 
 #datetime{
 
@@ -298,7 +487,9 @@ h2,h3{
     font-size:13px;
 }
 
-/* CHART */
+/* =========================================================
+   CHART BOX
+========================================================= */
 
 .chart-box{
 
@@ -313,15 +504,23 @@ h2,h3{
     border-radius:14px;
 }
 
+/* =========================================================
+   CANVAS
+========================================================= */
+
 canvas{
+
     max-width:100%;
 }
 
-/* MOBILE */
+/* =========================================================
+   MOBILE ANPASSUNG
+========================================================= */
 
-@media (max-width: 768px){
+@media (max-width:768px){
 
     body{
+
         overflow-x:hidden;
     }
 
@@ -363,7 +562,9 @@ canvas{
     }
 
     #content{
+
         margin-top:20px;
+
         padding:10px;
     }
 
@@ -372,7 +573,9 @@ canvas{
         position:fixed;
 
         top:120px;
+
         left:10px;
+
         right:10px;
 
         width:auto;
@@ -388,35 +591,49 @@ canvas{
     }
 
     .center-box{
+
         max-width:100%;
     }
 
     #datetime,
     .user{
+
         font-size:11px;
     }
 }
+
+/* =========================================================
+   DRUCKEN / PDF
+========================================================= */
 
 @media print{
 
     .topbar,
     button,
     .dropdown{
+
         display:none !important;
     }
 
     body{
+
         background:white !important;
+
         color:black !important;
     }
 
     table{
+
         background:white !important;
+
         color:black !important;
     }
 
-    th,td{
+    th,
+    td{
+
         color:black !important;
+
         border:1px solid black !important;
     }
 }
