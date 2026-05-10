@@ -63,6 +63,20 @@ let currentUser = localStorage.getItem("username") || "Gast";
 let isAdmin = localStorage.getItem("isAdmin") === "true";
 
 document.getElementById("user").textContent = currentUser;
+function updateDateTime(){
+
+let now = new Date();
+
+let date = now.toLocaleDateString("de-DE");
+let time = now.toLocaleTimeString("de-DE");
+
+document.getElementById("datetime").textContent =
+    "📅 " + date + " 🕒 " + time;
+}
+
+updateDateTime();
+
+setInterval(updateDateTime, 1000);
 
 if(!isAdmin){
     document.getElementById("adminMenu").style.display = "none";
