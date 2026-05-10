@@ -151,6 +151,8 @@ async function loadPage(page){
                 <th>Aufgabe</th>
                 <th>Start</th>
                 <th>Stop</th>
+                <th>Pause</th>
+                <th>Status</th>
             </tr>
         `;
 
@@ -162,6 +164,8 @@ async function loadPage(page){
                 <td>${t.task || "-"}</td>
                 <td>${t.start_time || "-"}</td>
                 <td>${t.stop_time || "-"}</td>
+                <td>${t.pause_time || "-"}</td>
+                <td>${t.is_paused ? "⏸️ Pause" : "▶️ Aktiv"}</td>
             </tr>`;
         });
 
