@@ -149,7 +149,6 @@ async function loadPage(page){
                 <th>Aufgabe</th>
                 <th>Start</th>
                 <th>Stop</th>
-                <th>Aktion</th>
             </tr>
         `;
 
@@ -161,7 +160,6 @@ async function loadPage(page){
                 <td>${t.task || "-"}</td>
                 <td>${t.start_time || "-"}</td>
                 <td>${t.stop_time || "-"}</td>
-                <td>${t.report}</td>
             </tr>`;
         });
 
@@ -553,35 +551,24 @@ async function loadPage(page){
         let times = await apiGet("/times");
 
         let html = `
-        <h2>Daten bereinigen</h2>
+<h2>Daten bereinigen</h2>
 
-        <h3>Zeiten</h3>
-        <table>
-            <tr>
-                <th>#</th>
-                <th>User</th>
-                <th>Projekt</th>
-                <th>Aufgabe</th>
-                <th>Aktion</th>
-            </tr>
-        `;
+<div class="center-box">
 
-        times.forEach(t => {
-            html += `
-            <tr>
-                <td>${t.id}</td>
-                <td>${t.username}</td>
-                <td>${t.project}</td>
-                <td>${t.task}</td>
-                <td><button onclick="deleteTime(${t.id})">🗑️ Löschen</button></td>
-            </tr>`;
-        });
+    <h3>Zeiten</h3>
+    <button onclick="deleteAllTimes()">🗑️ Alle Zeiten löschen</button>
 
-        html += "</table>";
-        content.innerHTML = html;
-        return;
-    }
-}
+    <h3>Reports</h3>
+    <button onclick="deleteAllReports()">🗑️ Alle Reports löschen</button>
+
+    <h3>Auswertungen</h3>
+    <button onclick="deleteAllAuswertung()">🗑️ Alle Auswertungen löschen</button>
+
+</div>
+`;
+
+content.innerHTML = html;
+return;
 
 async function startTime(){
     let project = document.getElementById("startProject").value;
@@ -925,6 +912,36 @@ let msg = await apiPost("/manual-time", {
 alert(msg);
 
 loadPage("zeitenKorrigieren");
+}
+
+async function deleteAllTimes(){
+
+if(!confirm("Wirklich alle Zeiten löschen?")) return;
+
+let msg = await apiPost("/delete-all-times", {});
+alert(msg);
+
+loadPage("adminDaten");
+}
+
+async function deleteAllReports(){
+
+if(!confirm("Wirklich alle Reports löschen?")) return;
+
+let msg = await apiPost("/delete-all-reports", {});
+alert(msg);
+
+loadPage("adminDaten");
+}
+
+async function deleteAllAuswertung(){
+
+if(!confirm("Wirklich alle Auswertungen löschen?")) return;
+
+let msg = await apiPost("/delete-all-auswertung", {});
+alert(msg);
+
+loadPage("adminDaten");
 }
 
 setInterval(() => {

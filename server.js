@@ -404,6 +404,29 @@ app.post("/manual-time", async (req, res) => {
     res.send("Zeit nachgetragen");
 });
 
+app.post("/delete-all-times", async (req, res) => {
+
+    await pool.query("DELETE FROM times");
+
+    res.send("Alle Zeiten gelöscht");
+});
+
+app.post("/delete-all-reports", async (req, res) => {
+
+    await pool.query(
+        "UPDATE times SET report = ''"
+    );
+
+    res.send("Alle Reports gelöscht");
+});
+
+app.post("/delete-all-auswertung", async (req, res) => {
+
+    await pool.query("DELETE FROM times");
+
+    res.send("Alle Auswertungen gelöscht");
+});
+
 app.listen(process.env.PORT || 3000, () => {
     console.log("Server läuft");
 });
