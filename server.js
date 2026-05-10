@@ -385,6 +385,25 @@ app.post("/delete-message", async (req, res) => {
     res.send("Nachricht gelöscht");
 });
 
+app.post("/manual-time", async (req, res) => {
+
+    const {
+        username,
+        project,
+        task,
+        start_time,
+        stop_time,
+        report
+    } = req.body;
+
+    await pool.query(
+        "INSERT INTO times (username, project, task, start_time, stop_time, report) VALUES ($1, $2, $3, $4, $5, $6)",
+        [username, project, task, start_time, stop_time, report]
+    );
+
+    res.send("Zeit nachgetragen");
+});
+
 app.listen(process.env.PORT || 3000, () => {
     console.log("Server läuft");
 });

@@ -149,7 +149,6 @@ async function loadPage(page){
                 <th>Aufgabe</th>
                 <th>Start</th>
                 <th>Stop</th>
-                <th>Bericht</th>
                 <th>Aktion</th>
             </tr>
         `;
@@ -163,7 +162,6 @@ async function loadPage(page){
                 <td>${t.start_time || "-"}</td>
                 <td>${t.stop_time || "-"}</td>
                 <td>${t.report}</td>
-                <td><button onclick="editTime(${t.id})">✏️ Bearbeiten</button></td>
             </tr>`;
         });
 
@@ -518,6 +516,7 @@ async function loadPage(page){
 
         let html = `
         <h2>Zeiten korrigieren</h2>
+        <button onclick="manualTime()">➕ Zeit nachtragen</button>
         <table>
             <tr>
                 <th>#</th>
@@ -527,6 +526,7 @@ async function loadPage(page){
                 <th>Start</th>
                 <th>Stop</th>
                 <th>Bericht</th>
+                <th>Aktion</th>
             </tr>
         `;
 
@@ -540,6 +540,7 @@ async function loadPage(page){
                 <td>${t.start_time}</td>
                 <td>${t.stop_time}</td>
                 <td>${t.report}</td>
+                <td><button onclick="editTime(${t.id})">✏️ Bearbeiten</button></td>
             </tr>`;
         });
 
@@ -890,6 +891,40 @@ async function changeOwnUser(){
     document.getElementById("user").textContent = newName;
 
     loadPage("benutzer");
+}
+
+async function manualTime(){
+
+let username = prompt("User:");
+if(username === null) return;
+
+let project = prompt("Projekt:");
+if(project === null) return;
+
+let task = prompt("Aufgabe:");
+if(task === null) return;
+
+let start_time = prompt("Start:");
+if(start_time === null) return;
+
+let stop_time = prompt("Stop:");
+if(stop_time === null) return;
+
+let report = prompt("Bericht:");
+if(report === null) return;
+
+let msg = await apiPost("/manual-time", {
+    username,
+    project,
+    task,
+    start_time,
+    stop_time,
+    report
+});
+
+alert(msg);
+
+loadPage("zeitenKorrigieren");
 }
 
 setInterval(() => {
