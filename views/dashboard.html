@@ -94,8 +94,12 @@ async function loadPage(page){
         let running = times.find(t => t.username === currentUser && !t.stop_time);
 
         let runningText = running
-            ? "🟢 Läuft: " + running.project + " / " + running.task + "<br>Seit: " + running.start_time
-            : "⚪ Keine laufende Zeit";
+    ? (
+        running.is_paused
+        ? "⏸️ Pause: " + running.project + " / " + running.task + "<br>Seit: " + running.start_time + "<br>Pause seit: " + running.pause_time
+        : "🟢 Läuft: " + running.project + " / " + running.task + "<br>Seit: " + running.start_time
+    )
+        : "⚪ Keine laufende Zeit";
 
         content.innerHTML = `
         <div class="center-box">
@@ -165,7 +169,15 @@ async function loadPage(page){
                 <td>${t.start_time || "-"}</td>
                 <td>${t.stop_time || "-"}</td>
                 <td>${t.pause_time || "-"}</td>
-                <td>${t.is_paused ? "⏸️ Pause" : "▶️ Aktiv"}</td>
+                <td>
+                ${
+                t.stop_time
+                ? "⏹️ Gestoppt"
+                : t.is_paused
+                ? "⏸️ Pause"
+                : "▶️ Aktiv"
+                }
+                </td>
             </tr>`;
         });
 
