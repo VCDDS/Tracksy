@@ -529,28 +529,32 @@ html += `
         <th>Datei</th>
         <th>Von</th>
         <th>Datum</th>
+        <th>Sicherheit</th>
         <th>Aktion</th>
     </tr>
 `;
 
 docs.forEach(d => {
 
-    html += `
-    <tr>
-        <td>${d.originalname}</td>
-        <td>${d.uploaded_by}</td>
-        <td>${d.upload_date}</td>
-        <td>
-            <button class="doc-btn" onclick="openDocument(${d.id})">📄 Öffnen </button>
-        </a>
-            ${
-                isAdmin
-                ? `<button onclick="deleteDocument(${d.id})">❌ Löschen</button>`
-                : ""
-            }
-        </td>
-    </tr>
-    `;
+html += `
+<tr>
+    <td>
+        ${d.originalname}
+        ${isAdmin ? `<br>Passwort: ${d.doc_password || "-"}` : ""}
+    </td>
+    <td>${d.uploaded_by}</td>
+    <td>${d.upload_date}</td>
+    <td>${d.doc_password ? "🔒 Passwort gesichert" : "🔓 Ohne Passwort"}</td>
+    <td>
+        <button class="doc-btn" onclick="openDocument(${d.id})">📄 Öffnen</button>
+        ${
+            isAdmin
+            ? `<button onclick="deleteDocument(${d.id})">❌ Löschen</button>`
+            : ""
+        }
+    </td>
+</tr>
+`;
 });
 
 html += `</table>`;
