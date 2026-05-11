@@ -76,3 +76,12 @@ async function initDatabase(){
             is_read BOOLEAN DEFAULT false
         )
     `);
+
+    await pool.query(`
+        INSERT INTO users (username, password, email, is_admin, last_change)
+        VALUES ('admin', 'admin123', '', true, '')
+        ON CONFLICT (username) DO NOTHING
+    `);
+}
+
+initDatabase();
