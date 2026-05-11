@@ -85,3 +85,19 @@ async function initDatabase(){
 }
 
 initDatabase();
+
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "views", "login.html"));
+});
+
+app.get("/login", (req, res) => {
+    res.sendFile(path.join(__dirname, "views", "login.html"));
+});
+
+app.get("/dashboard", (req, res) => {
+    res.sendFile(path.join(__dirname, "views", "dashboard.html"));
+});
+
+app.listen(process.env.PORT || 3000, () => {
+    console.log("Server läuft");
+});
