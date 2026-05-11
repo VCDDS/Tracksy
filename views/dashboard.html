@@ -76,7 +76,9 @@ document.getElementById("datetime").textContent =
 
 updateDateTime();
 
-setInterval(updateDateTime, 1000);
+setInterval(() => {
+    // Auto-Reload aus, damit keine Eingaben verschwinden
+}, 10000);
 
 if(!isAdmin){
     document.getElementById("adminMenu").style.display = "none";
