@@ -517,6 +517,7 @@ let html = `
 if(isAdmin){
     html += `
     <input type="file" id="pdfFile" accept=".pdf">
+    <input id="pdfPassword" placeholder="Optional Passwort">
     <button onclick="uploadPDF()">PDF hochladen</button>
     <br><br>
     `;
@@ -540,7 +541,8 @@ docs.forEach(d => {
         <td>${d.uploaded_by}</td>
         <td>${d.upload_date}</td>
         <td>
-            <a href="/uploads/${d.filename}" target="_blank">📄 Öffnen</a>
+            <button class="doc-btn" onclick="openDocument(${d.id})">📄 Öffnen </button>
+        </a>
             ${
                 isAdmin
                 ? `<button onclick="deleteDocument(${d.id})">❌ Löschen</button>`
@@ -658,6 +660,35 @@ content.innerHTML = html;
 return;
 }
 
+}
+
+async function openDocument(id){
+
+let password = prompt("Passwort eingeben:");
+
+if(password === null){
+    password = "";
+}
+
+let res = await fetch("/open-document", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        id,
+        password
+    })
+});
+
+let data = await res.json();
+
+if(!data.success){
+    alert(data.message || "Fehler");
+    return;
+}
+
+window.open(data.url, "_blank");
 }
 
 async function startTime(){
@@ -1057,6 +1088,7 @@ loadPage("start");
 async function uploadPDF(){
 
 let file = document.getElementById("pdfFile").files[0];
+let password = document.getElementById("pdfPassword").value;
 
 if(!file){
     alert("PDF wählen");
@@ -1067,6 +1099,7 @@ let formData = new FormData();
 
 formData.append("pdf", file);
 formData.append("username", currentUser);
+formData.append("password", password);
 
 let res = await fetch("/upload-document", {
     method: "POST",

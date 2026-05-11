@@ -96,8 +96,14 @@ async function initDatabase(){
             filename TEXT NOT NULL,
             originalname TEXT NOT NULL,
             uploaded_by TEXT NOT NULL,
-            upload_date TEXT NOT NULL
+            upload_date TEXT NOT NULL,
+            doc_password TEXT DEFAULT ''
         )
+    `);
+
+    await pool.query(`
+        ALTER TABLE documents
+        ADD COLUMN IF NOT EXISTS doc_password TEXT DEFAULT ''
     `);
 
     await pool.query(`
@@ -456,6 +462,36 @@ app.get("/documents", async (req, res) => {
     res.json(result.rows);
 });
 
+app.post("/open-document", async (req, res) => {
+
+    const { id, password } = req.body;
+
+    const result = await pool.query(
+        "SELECT * FROM documents WHERE id = $1",
+        [id]
+    );
+
+    if(result.rows.length === 0){
+        return res.json({
+            success: false
+        });
+    }
+
+    const doc = result.rows[0];
+
+    if(doc.doc_password && doc.doc_password !== password){
+        return res.json({
+            success: false,
+            message: "Falsches Passwort"
+        });
+    }
+
+    res.json({
+        success: true,
+        url: "/uploads/" + doc.filename
+    });
+});
+
 app.post("/upload-document", upload.single("pdf"), async (req, res) => {
 
     if(!req.file){
@@ -463,12 +499,15 @@ app.post("/upload-document", upload.single("pdf"), async (req, res) => {
     }
 
     await pool.query(
-        "INSERT INTO documents (filename, originalname, uploaded_by, upload_date) VALUES ($1, $2, $3, $4)",
+        `INSERT INTO documents
+        (filename, originalname, uploaded_by, upload_date, doc_password)
+        VALUES ($1, $2, $3, $4, $5)`,
         [
             req.file.filename,
             req.file.originalname,
             req.body.username,
-            new Date().toLocaleString("de-DE")
+            new Date().toLocaleString("de-DE"),
+            req.body.password || ""
         ]
     );
 
