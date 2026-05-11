@@ -33,9 +33,12 @@
         <button onclick="loadPage('auswertung')">📊 <span>Auswertung</span></button>
         <button onclick="loadPage('report')">💻 <span>Report</span></button>
         <button onclick="loadPage('projekte')">📁 <span>Projekte</span></button>
+        <button onclick="loadPage('dokumente')">📄 <span>Dokumente</span></button>
         <button onclick="loadPage('nachrichten')">📩 <span>Nachrichten</span></button>
         <button onclick="loadPage('benutzer')">👤 <span>Benutzer</span></button>
-    </div>
+    
+        </div>
+
 
     <div class="nav-right">
         <span id="datetime"></span>
@@ -501,6 +504,57 @@ async function loadPage(page){
     `;
 
     return;
+}
+
+if(page === "dokumente"){
+
+let docs = await apiGet("/documents");
+
+let html = `
+<h2>Dokumente</h2>
+`;
+
+if(isAdmin){
+    html += `
+    <input type="file" id="pdfFile" accept=".pdf">
+    <button onclick="uploadPDF()">PDF hochladen</button>
+    <br><br>
+    `;
+}
+
+html += `
+<table>
+    <tr>
+        <th>Datei</th>
+        <th>Von</th>
+        <th>Datum</th>
+        <th>Aktion</th>
+    </tr>
+`;
+
+docs.forEach(d => {
+
+    html += `
+    <tr>
+        <td>${d.originalname}</td>
+        <td>${d.uploaded_by}</td>
+        <td>${d.upload_date}</td>
+        <td>
+            <a href="/uploads/${d.filename}" target="_blank">📄 Öffnen</a>
+            ${
+                isAdmin
+                ? `<button onclick="deleteDocument(${d.id})">❌ Löschen</button>`
+                : ""
+            }
+        </td>
+    </tr>
+    `;
+});
+
+html += `</table>`;
+
+content.innerHTML = html;
+return;
 }
 
     if(page === "benutzerVerwaltung"){
@@ -998,6 +1052,43 @@ let msg = await apiPost("/resume-time", {
 
 alert(msg);
 loadPage("start");
+}
+
+async function uploadPDF(){
+
+let file = document.getElementById("pdfFile").files[0];
+
+if(!file){
+    alert("PDF wählen");
+    return;
+}
+
+let formData = new FormData();
+
+formData.append("pdf", file);
+formData.append("username", currentUser);
+
+let res = await fetch("/upload-document", {
+    method: "POST",
+    body: formData
+});
+
+let msg = await res.text();
+
+alert(msg);
+
+loadPage("dokumente");
+}
+
+async function deleteDocument(id){
+
+if(!confirm("Dokument löschen?")) return;
+
+let msg = await apiPost("/delete-document", { id });
+
+alert(msg);
+
+loadPage("dokumente");
 }
 
 setInterval(async () => {

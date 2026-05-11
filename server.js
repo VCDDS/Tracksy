@@ -1,12 +1,31 @@
 const express = require("express");
 const path = require("path");
 const { Pool } = require("pg");
+const fs = require("fs");
+const multer = require("multer");
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
+
+if (!fs.existsSync("uploads")) {
+    fs.mkdirSync("uploads");
+}
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+const storage = multer.diskStorage({
+    destination: function(req, file, cb){
+        cb(null, "uploads/");
+    },
+    filename: function(req, file, cb){
+        cb(null, Date.now() + "-" + file.originalname);
+    }
+});
+
+const upload = multer({ storage });
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -68,6 +87,16 @@ async function initDatabase(){
             text TEXT NOT NULL,
             date TEXT NOT NULL,
             is_read BOOLEAN DEFAULT false
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS documents (
+            id SERIAL PRIMARY KEY,
+            filename TEXT NOT NULL,
+            originalname TEXT NOT NULL,
+            uploaded_by TEXT NOT NULL,
+            upload_date TEXT NOT NULL
         )
     `);
 
@@ -414,6 +443,65 @@ app.post("/delete-time", async (req, res) => {
     );
 
     res.send("Zeit gelöscht");
+});
+
+/* DOCUMENTS */
+
+app.get("/documents", async (req, res) => {
+
+    const result = await pool.query(
+        "SELECT * FROM documents ORDER BY id DESC"
+    );
+
+    res.json(result.rows);
+});
+
+app.post("/upload-document", upload.single("pdf"), async (req, res) => {
+
+    if(!req.file){
+        return res.send("Keine Datei");
+    }
+
+    await pool.query(
+        "INSERT INTO documents (filename, originalname, uploaded_by, upload_date) VALUES ($1, $2, $3, $4)",
+        [
+            req.file.filename,
+            req.file.originalname,
+            req.body.username,
+            new Date().toLocaleString("de-DE")
+        ]
+    );
+
+    res.send("PDF hochgeladen");
+});
+
+app.post("/delete-document", async (req, res) => {
+
+    const { id } = req.body;
+
+    const result = await pool.query(
+        "SELECT * FROM documents WHERE id = $1",
+        [id]
+    );
+
+    if(result.rows.length === 0){
+        return res.send("Datei nicht gefunden");
+    }
+
+    const doc = result.rows[0];
+
+    const filePath = path.join(__dirname, "uploads", doc.filename);
+
+    if(fs.existsSync(filePath)){
+        fs.unlinkSync(filePath);
+    }
+
+    await pool.query(
+        "DELETE FROM documents WHERE id = $1",
+        [id]
+    );
+
+    res.send("Dokument gelöscht");
 });
 
 app.listen(process.env.PORT || 3000, () => {
