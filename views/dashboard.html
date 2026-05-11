@@ -74,11 +74,9 @@ document.getElementById("datetime").textContent =
     "📅 " + date + " 🕒 " + time;
 }
 
-updateDateTime();
+setInterval(updateDateTime, 1000);
 
-setInterval(() => {
-    // Auto-Reload aus, damit keine Eingaben verschwinden
-}, 10000);
+updateDateTime();
 
 if(!isAdmin){
     document.getElementById("adminMenu").style.display = "none";
@@ -1002,8 +1000,32 @@ alert(msg);
 loadPage("start");
 }
 
-setInterval(() => {
-    // Auto-Reload aus
+setInterval(async () => {
+
+if(currentPage !== "start") return;
+
+let times = await apiGet("/times");
+
+let running = times.find(t =>
+    t.username === currentUser &&
+    !t.stop_time
+);
+
+let runningBox = document.querySelector(".running-box");
+
+if(runningBox){
+    runningBox.innerHTML = running
+        ? (
+            running.is_paused
+            ? "⏸️ Pause: " + running.project + " / " + running.task +
+              "<br>Seit: " + running.start_time +
+              "<br>Pause seit: " + running.pause_time
+            : "🟢 Läuft: " + running.project + " / " + running.task +
+              "<br>Seit: " + running.start_time
+        )
+        : "⚪ Keine laufende Zeit";
+}
+
 }, 10000);
 
 loadPage("start");
