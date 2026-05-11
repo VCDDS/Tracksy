@@ -63,4 +63,16 @@ async function initDatabase(){
         )
     `);
 
-    await pool.q
+    await pool.query(`ALTER TABLE times ADD COLUMN IF NOT EXISTS pause_time TEXT DEFAULT ''`);
+    await pool.query(`ALTER TABLE times ADD COLUMN IF NOT EXISTS is_paused BOOLEAN DEFAULT false`);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            sender TEXT NOT NULL,
+            receiver TEXT NOT NULL,
+            text TEXT NOT NULL,
+            date TEXT NOT NULL,
+            is_read BOOLEAN DEFAULT false
+        )
+    `);
