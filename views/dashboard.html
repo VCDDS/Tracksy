@@ -284,6 +284,7 @@ async function loadPage(page){
                 <th>Datum</th>
                 <th>Gesamtzeit</th>
                 <th>Status</th>
+                <th>Aktion</th>
             </tr>
         `;
 
@@ -311,6 +312,14 @@ async function loadPage(page){
                 <td>${t.stop_time || "-"}</td>
                 <td>${duration}</td>
                 <td>${t.admin_only ? "❌ kein Stop" : "-"}</td>
+
+<td>
+    ${
+        t.username === currentUser
+        ? `<button onclick="editOwnReport(${t.id}, \`${t.report || ""}\`)">✏️ Bearbeiten</button>`
+        : "-"
+    }
+</td>
             </tr>`;
         });
 
@@ -649,15 +658,38 @@ return;
 <div class="center-box">
 
     <h3>Zeiten</h3>
-    <button onclick="deleteAllTimes()">🗑️ Alle Zeiten löschen</button>
+<table>
+${times.map(t => `
+<tr>
+<td>${t.username}</td>
+<td>${t.project}</td>
+<td><button onclick="deleteTime(${t.id})">🗑️ Löschen</button></td>
+</tr>
+`).join("")}
+</table>
 
-    <h3>Reports</h3>
-    <button onclick="deleteAllReports()">🗑️ Alle Reports löschen</button>
+<h3>Reports</h3>
+<table>
+${times.map(t => `
+<tr>
+<td>${t.report || "-"}</td>
+<td><button onclick="deleteSingleReport(${t.id})">🗑️ Löschen</button></td>
+</tr>
+`).join("")}
+</table>
 
-    <h3>Auswertungen</h3>
-    <button onclick="deleteAllAuswertung()">🗑️ Alle Auswertungen löschen</button>
+<h3>Auswertungen</h3>
+<table>
+${times.map(t => `
+<tr>
+<td>${t.username}</td>
+<td>${t.project}</td>
+<td><button onclick="deleteSingleAuswertung(${t.id})">🗑️ Löschen</button></td>
+</tr>
+`).join("")}
+</table>
 
-</div>
+    </div>
 `;
 
 content.innerHTML = html;
@@ -1180,6 +1212,45 @@ if(runningBox){
 }
 
 }, 10000);
+
+async function editOwnReport(id, oldReport){
+
+let report = prompt("Bericht bearbeiten:", oldReport);
+
+if(report === null) return;
+
+let msg = await apiPost("/edit-own-report", {
+    id,
+    username: currentUser,
+    report
+});
+
+alert(msg);
+
+loadPage("report");
+}
+
+async function deleteSingleReport(id){
+
+if(!confirm("Report löschen?")) return;
+
+let msg = await apiPost("/delete-single-report", { id });
+
+alert(msg);
+
+loadPage("adminDaten");
+}
+
+async function deleteSingleAuswertung(id){
+
+if(!confirm("Auswertung löschen?")) return;
+
+let msg = await apiPost("/delete-single-auswertung", { id });
+
+alert(msg);
+
+loadPage("adminDaten");
+}
 
 loadPage("start");
 </script>

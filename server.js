@@ -451,6 +451,42 @@ app.post("/delete-time", async (req, res) => {
     res.send("Zeit gelöscht");
 });
 
+app.post("/edit-own-report", async (req, res) => {
+
+    const { id, username, report } = req.body;
+
+    await pool.query(
+        "UPDATE times SET report = $1 WHERE id = $2 AND username = $3",
+        [report, id, username]
+    );
+
+    res.send("Bericht gespeichert");
+});
+
+app.post("/delete-single-report", async (req, res) => {
+
+    const { id } = req.body;
+
+    await pool.query(
+        "UPDATE times SET report = '' WHERE id = $1",
+        [id]
+    );
+
+    res.send("Report gelöscht");
+});
+
+app.post("/delete-single-auswertung", async (req, res) => {
+
+    const { id } = req.body;
+
+    await pool.query(
+        "DELETE FROM times WHERE id = $1",
+        [id]
+    );
+
+    res.send("Auswertung gelöscht");
+});
+
 /* DOCUMENTS */
 
 app.get("/documents", async (req, res) => {
