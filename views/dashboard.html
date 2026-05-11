@@ -956,10 +956,35 @@ function closeAdminDropdown(){
     }
 }
 
-function logout(){
-    localStorage.removeItem("username");
-    localStorage.removeItem("isAdmin");
-    location.href = "/login";
+async function logout(){
+
+let times = await apiGet("/times");
+
+let running = times.find(t =>
+    t.username === currentUser &&
+    !t.stop_time
+);
+
+if(running){
+
+    let report = prompt("Bericht eingeben:");
+
+    if(report === null || report.trim() === ""){
+        alert("Bericht erforderlich");
+        return;
+    }
+
+    await apiPost("/stop-time", {
+        username: currentUser,
+        report,
+        adminOnly: true
+    });
+}
+
+localStorage.removeItem("username");
+localStorage.removeItem("isAdmin");
+
+location.href = "/login";
 }
 
 function toggleAdminMenu(){
