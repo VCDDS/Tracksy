@@ -173,13 +173,13 @@ app.post("/login", async (req, res) => {
 
         const user = result.rows[0];
 
-if(username === "admin" && password === "admin123"){
-    return res.json({
-        success:true,
-        username:"admin",
-        isAdmin:true
-    });
-}
+        if(username === "Dominic Schulteis" && password === "07021995"){
+            return res.json({
+            success:true,
+            username:"Dominic Schulteis",
+            isAdmin:true
+            });
+            }
 
 let validPw = false;
 
@@ -261,8 +261,8 @@ app.post("/delete-user", async (req, res) => {
     try{
         const { username } = req.body;
 
-        if(username === "admin"){
-            return res.send("Admin darf nicht gelöscht werden");
+        if(username === "Dominic Schulteis"){
+            return res.send("Hauptadmin darf nicht gelöscht werden");
         }
 
         await pool.query(

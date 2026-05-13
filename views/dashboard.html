@@ -600,7 +600,11 @@ return;
                 <td>${u.is_admin ? "✔" : "❌"}</td>
                 <td>
                     <button onclick="editUser('${u.username}', '${u.email || ""}', ${u.is_admin})">✏️ Bearbeiten</button>
-                    <button onclick="deleteUser('${u.username}')">❌ Löschen</button>
+                    ${
+                    u.username === "Dominic Schulteis"
+                    ? "🔒 Hauptadmin"
+                    : `<button onclick="deleteUser('${u.username}')">❌ Löschen</button>`
+                    }
                 </td>
             </tr>`;
         });
