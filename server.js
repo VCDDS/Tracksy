@@ -788,6 +788,16 @@ app.post("/upload-document", upload.single("pdf"), async (req, res) => {
             return res.send("Keine Datei");
         }
 
+        const existing = await pool.query(
+        "SELECT * FROM documents WHERE originalname = $1",
+        [req.file.originalname]
+    );
+
+        if(existing.rows.length > 0){
+        fs.unlinkSync(req.file.path);
+        return res.send("Dateiname existiert bereits");
+    }
+
         const fileBuffer = fs.readFileSync(req.file.path);
         const fileName = Date.now() + "-" + req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
 
