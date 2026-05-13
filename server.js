@@ -172,7 +172,14 @@ app.post("/login", async (req, res) => {
         }
 
         const user = result.rows[0];
-        const validPw = await bcrypt.compare(password, user.password);
+
+        let validPw = false;
+        
+        if(user.password && user.password.startsWith("$2")){
+            validPw = await bcrypt.compare(password, user.password);
+        }else{
+            validPw = password === user.password;
+        }
 
         if(!validPw){
             return res.json({ success:false });
