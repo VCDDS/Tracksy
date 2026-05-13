@@ -35,6 +35,7 @@
         <button onclick="loadPage('report')">💻 <span>Report</span></button>
         <button onclick="loadPage('projekte')">📁 <span>Projekte</span></button>
         <button onclick="loadPage('dokumente')">📄 <span>Dokumente</span></button>
+        <button onclick="loadPage('kalender')">📅 <span>Kalender</span></button>
         <button onclick="loadPage('nachrichten')">📩 <span>Nachrichten</span></button>
         <button onclick="loadPage('benutzer')">👤 <span>Benutzer</span></button>
     
@@ -514,6 +515,49 @@ async function loadPage(page){
     `;
 
     return;
+}
+
+if(page === "kalender"){
+
+let entries = await apiGet("/calendar/" + currentUser);
+
+let html = `
+<h2>Mein Kalender</h2>
+
+<div class="center-box">
+    <input id="calTitle" placeholder="Titel">
+    <input id="calDate" type="date">
+    <input id="calTime" type="time">
+    <textarea id="calNote" placeholder="Notiz"></textarea>
+    <button onclick="addCalendarEntry()">Eintrag speichern</button>
+</div>
+
+<table>
+    <tr>
+        <th>Datum</th>
+        <th>Uhrzeit</th>
+        <th>Titel</th>
+        <th>Notiz</th>
+        <th>Aktion</th>
+    </tr>
+`;
+
+entries.forEach(e => {
+    html += `
+    <tr>
+        <td>${e.entry_date}</td>
+        <td>${e.entry_time || "-"}</td>
+        <td>${e.title}</td>
+        <td>${e.note || "-"}</td>
+        <td><button onclick="deleteCalendarEntry(${e.id})">❌ Löschen</button></td>
+    </tr>
+    `;
+});
+
+html += `</table>`;
+
+content.innerHTML = html;
+return;
 }
 
 if(page === "dokumente"){
@@ -1287,6 +1331,43 @@ let msg = await apiPost("/delete-single-auswertung", { id });
 alert(msg);
 
 loadPage("adminDaten");
+}
+
+async function addCalendarEntry(){
+
+let title = document.getElementById("calTitle").value;
+let entry_date = document.getElementById("calDate").value;
+let entry_time = document.getElementById("calTime").value;
+let note = document.getElementById("calNote").value;
+
+if(!title || !entry_date){
+    alert("Titel und Datum ausfüllen");
+    return;
+}
+
+let msg = await apiPost("/create-calendar-entry", {
+    username: currentUser,
+    title,
+    note,
+    entry_date,
+    entry_time
+});
+
+alert(msg);
+loadPage("kalender");
+}
+
+async function deleteCalendarEntry(id){
+
+if(!confirm("Kalendereintrag löschen?")) return;
+
+let msg = await apiPost("/delete-calendar-entry", {
+    id,
+    username: currentUser
+});
+
+alert(msg);
+loadPage("kalender");
 }
 
 loadPage("start");

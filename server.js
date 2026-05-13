@@ -138,7 +138,19 @@ async function initDatabase(){
         "UPDATE users SET password = $1 WHERE username = $2 AND password = $3",
         [adminHash, "admin", "admin123"]
     );
-    }
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS calendar_entries (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL,
+            title TEXT NOT NULL,
+            note TEXT DEFAULT '',
+            entry_date TEXT NOT NULL,
+            entry_time TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+    `);
+}
 
 initDatabase().catch(err => {
     console.log("Datenbank Fehler:", err);
@@ -712,6 +724,63 @@ app.post("/delete-all-auswertung", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Auswertung löschen fehlgeschlagen");
+    }
+});
+
+/* PERSONAL CALENDAR */
+
+app.get("/calendar/:username", async (req, res) => {
+    try{
+        const username = req.params.username;
+
+        const result = await pool.query(
+            "SELECT * FROM calendar_entries WHERE username = $1 ORDER BY entry_date ASC, entry_time ASC",
+            [username]
+        );
+
+        res.json(result.rows);
+
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
+});
+
+app.post("/create-calendar-entry", async (req, res) => {
+    try{
+        const { username, title, note, entry_date, entry_time } = req.body;
+
+        if(!username || !title || !entry_date){
+            return res.send("Daten fehlen");
+        }
+
+        await pool.query(
+            "INSERT INTO calendar_entries (username, title, note, entry_date, entry_time, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+            [username, title.trim(), note || "", entry_date, entry_time || "", new Date().toLocaleString("de-DE")]
+        );
+
+        res.send("Kalendereintrag gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Kalender Fehler");
+    }
+});
+
+app.post("/delete-calendar-entry", async (req, res) => {
+    try{
+        const { id, username } = req.body;
+
+        await pool.query(
+            "DELETE FROM calendar_entries WHERE id = $1 AND username = $2",
+            [id, username]
+        );
+
+        res.send("Kalendereintrag gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Löschen fehlgeschlagen");
     }
 });
 
