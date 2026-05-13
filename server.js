@@ -175,9 +175,9 @@ app.post("/login", async (req, res) => {
 
         let validPw = false;
         
-        if(user.password && user.password.startsWith("$2")){
+        try{
             validPw = await bcrypt.compare(password, user.password);
-        }else{
+        }catch{
             validPw = password === user.password;
         }
 
