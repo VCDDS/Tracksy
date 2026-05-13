@@ -525,9 +525,10 @@ let html = `
 
 if(isAdmin){
     html += `
-    <input type="file" id="pdfFile" accept=".pdf">
+    <input type="file" id="pdfFile" accept=".pdf" multiple>
     <input id="pdfPassword" placeholder="Optional Passwort">
     <button onclick="uploadPDF()">PDF hochladen</button>
+    <button onclick="deleteSelectedDocuments()">Ausgewählte löschen</button>
     <br><br>
     `;
 }
@@ -535,6 +536,7 @@ if(isAdmin){
 html += `
 <table>
     <tr>
+        ${isAdmin ? "<th>Auswahl</th>" : ""}
         <th>Datei</th>
         <th>Von</th>
         <th>Datum</th>
@@ -547,6 +549,7 @@ docs.forEach(d => {
 
 html += `
 <tr>
+    ${isAdmin ? `<td><input type="checkbox" class="docCheck" value="${d.id}"></td>` : ""}
     <td>
         ${d.originalname}
         ${isAdmin ? `<br>Passwort: ${d.doc_password || "-"}` : ""}
@@ -555,7 +558,7 @@ html += `
     <td>${d.upload_date}</td>
     <td>${d.doc_password ? "🔒 Passwort gesichert" : "🔓 Ohne Passwort"}</td>
     <td>
-        <button class="doc-btn" onclick="openDocument(${d.id})">📄 Öffnen</button>
+        <button class="doc-btn" onclick="openDocument(${d.id}, ${d.doc_password ? "true" : "false"})">📄 Öffnen</button>
         ${
             isAdmin
             ? `<button onclick="deleteDocument(${d.id})">❌ Löschen</button>`
@@ -702,12 +705,16 @@ return;
 
 }
 
-async function openDocument(id){
+async function openDocument(id, hasPassword){
 
-let password = prompt("Passwort eingeben:");
+let password = "";
 
-if(password === null){
-    password = "";
+if(hasPassword){
+    password = prompt("Passwort eingeben:");
+
+    if(password === null){
+        password = "";
+    }
 }
 
 let res = await fetch("/open-document", {
@@ -1152,39 +1159,54 @@ loadPage("start");
 
 async function uploadPDF(){
 
-let file = document.getElementById("pdfFile").files[0];
+let files = document.getElementById("pdfFile").files;
 let password = document.getElementById("pdfPassword").value;
 
-if(!file){
+if(!files || files.length === 0){
     alert("PDF wählen");
     return;
 }
 
-let formData = new FormData();
+for(let file of files){
 
-formData.append("pdf", file);
-formData.append("username", currentUser);
-formData.append("password", password);
+    let formData = new FormData();
 
-let res = await fetch("/upload-document", {
-    method: "POST",
-    body: formData
-});
+    formData.append("pdf", file);
+    formData.append("username", currentUser);
+    formData.append("password", password);
 
-let msg = await res.text();
+    let res = await fetch("/upload-document", {
+        method: "POST",
+        body: formData
+    });
 
-alert(msg);
+    await res.text();
+}
+
+alert("PDF hochgeladen");
 
 loadPage("dokumente");
 }
 
-async function deleteDocument(id){
+async function deleteSelectedDocuments(){
 
-if(!confirm("Dokument löschen?")) return;
+let checks = document.querySelectorAll(".docCheck:checked");
 
-let msg = await apiPost("/delete-document", { id });
+if(checks.length === 0){
+    alert("Nichts ausgewählt");
+    return;
+}
 
-alert(msg);
+if(!confirm("Ausgewählte Dokumente löschen?")) return;
+
+for(let c of checks){
+
+    await apiPost("/delete-document", {
+        id: c.value
+    });
+}
+
+alert("Dokumente gelöscht");
 
 loadPage("dokumente");
 }
