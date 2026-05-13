@@ -1,31 +1,50 @@
+require("dotenv").config();
+
 const express = require("express");
 const path = require("path");
 const { Pool } = require("pg");
 const fs = require("fs");
 const multer = require("multer");
+const { createClient } = require("@supabase/supabase-js");
+const bcrypt = require("bcrypt");
 
 const app = express();
+
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
-if (!fs.existsSync("uploads")) {
-    fs.mkdirSync("uploads");
-}
+const uploadPath = path.join(__dirname, "uploads");
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+if (!fs.existsSync(uploadPath)) {
+    fs.mkdirSync(uploadPath, { recursive: true });
+}
 
 const storage = multer.diskStorage({
     destination: function(req, file, cb){
-        cb(null, "uploads/");
+        cb(null, uploadPath);
     },
     filename: function(req, file, cb){
-        cb(null, Date.now() + "-" + file.originalname);
+        const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+        cb(null, Date.now() + "-" + safeName);
     }
 });
 
-const upload = multer({ storage });
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: function(req, file, cb){
+        if(file.mimetype !== "application/pdf"){
+            return cb(new Error("Nur PDF Dateien erlaubt"));
+        }
+        cb(null, true);
+    }
+});
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -106,14 +125,19 @@ async function initDatabase(){
         ADD COLUMN IF NOT EXISTS doc_password TEXT DEFAULT ''
     `);
 
-    await pool.query(`
-        INSERT INTO users (username, password, email, is_admin, last_change)
-        VALUES ('admin', 'admin123', '', true, '')
-        ON CONFLICT (username) DO NOTHING
-    `);
+    const adminHash = await bcrypt.hash("admin123", 10);
+
+    await pool.query(
+        `INSERT INTO users (username, password, email, is_admin, last_change)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (username) DO NOTHING`,
+        ["admin", adminHash, "", true, ""]
+    );
 }
 
-initDatabase();
+initDatabase().catch(err => {
+    console.log("Datenbank Fehler:", err);
+});
 
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "views", "login.html"));
@@ -130,453 +154,692 @@ app.get("/dashboard", (req, res) => {
 /* LOGIN */
 
 app.post("/login", async (req, res) => {
+    try{
+        const { username, password } = req.body;
 
-    const { username, password } = req.body;
+        const result = await pool.query(
+            "SELECT * FROM users WHERE username = $1",
+            [username]
+        );
 
-    const result = await pool.query(
-        "SELECT username, is_admin FROM users WHERE username = $1 AND password = $2",
-        [username, password]
-    );
+        if(result.rows.length === 0){
+            return res.json({ success:false });
+        }
 
-    if(result.rows.length === 0){
-        return res.json({ success: false });
+        const user = result.rows[0];
+        const validPw = await bcrypt.compare(password, user.password);
+
+        if(!validPw){
+            return res.json({ success:false });
+        }
+
+        res.json({
+            success:true,
+            username:user.username,
+            isAdmin:user.is_admin
+        });
+
+    }catch(err){
+        console.log(err);
+        res.json({ success:false });
     }
-
-    res.json({
-        success: true,
-        username: result.rows[0].username,
-        isAdmin: result.rows[0].is_admin
-    });
 });
 
 /* USERS */
 
 app.get("/users", async (req, res) => {
-
-    const result = await pool.query(
-        "SELECT username, email, is_admin, last_change FROM users ORDER BY username"
-    );
-
-    res.json(result.rows);
+    try{
+        const result = await pool.query(
+            "SELECT username, email, is_admin, last_change FROM users ORDER BY username"
+        );
+        res.json(result.rows);
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
 });
 
 app.post("/create-user", async (req, res) => {
-
-    const { name, email, pw, admin } = req.body;
-
     try{
+        const { name, email, pw, admin } = req.body;
+
+        const hashedPw = await bcrypt.hash(pw, 10);
 
         await pool.query(
             "INSERT INTO users (username, password, email, is_admin, last_change) VALUES ($1, $2, $3, $4, $5)",
-            [name, pw, email || "", admin === true, new Date().toLocaleString("de-DE")]
+            [name.trim(), hashedPw, email || "", admin === true, new Date().toLocaleString("de-DE")]
         );
 
         res.send("Benutzer erstellt");
 
-    }catch{
+    }catch(err){
+        console.log(err);
         res.send("Benutzer existiert bereits");
     }
 });
 
 app.post("/edit-user", async (req, res) => {
+    try{
+        const { oldName, newName, email, pw, admin } = req.body;
 
-    const { oldName, newName, email, pw, admin } = req.body;
+        const hashedPw = await bcrypt.hash(pw, 10);
 
-    await pool.query(
-        "UPDATE users SET username = $1, password = $2, email = $3, is_admin = $4, last_change = $5 WHERE username = $6",
-        [newName, pw, email || "", admin === true, new Date().toLocaleString("de-DE"), oldName]
-    );
+        await pool.query(
+            "UPDATE users SET username = $1, password = $2, email = $3, is_admin = $4, last_change = $5 WHERE username = $6",
+            [newName.trim(), hashedPw, email || "", admin === true, new Date().toLocaleString("de-DE"), oldName]
+        );
 
-    res.send("Benutzer geändert");
+        res.send("Benutzer geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Benutzer konnte nicht geändert werden");
+    }
 });
 
 app.post("/delete-user", async (req, res) => {
+    try{
+        const { username } = req.body;
 
-    const { username } = req.body;
+        if(username === "admin"){
+            return res.send("Admin darf nicht gelöscht werden");
+        }
 
-    if(username === "admin"){
-        return res.send("Admin darf nicht gelöscht werden");
+        await pool.query(
+            "DELETE FROM users WHERE username = $1",
+            [username]
+        );
+
+        res.send("Benutzer gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Benutzer konnte nicht gelöscht werden");
     }
-
-    await pool.query(
-        "DELETE FROM users WHERE username = $1",
-        [username]
-    );
-
-    res.send("Benutzer gelöscht");
 });
 
 /* PROJECTS */
 
 app.get("/projects", async (req, res) => {
+    try{
+        const projects = await pool.query("SELECT * FROM projects ORDER BY name");
+        const tasks = await pool.query("SELECT * FROM tasks ORDER BY name");
 
-    const projects = await pool.query("SELECT * FROM projects ORDER BY name");
-    const tasks = await pool.query("SELECT * FROM tasks ORDER BY name");
+        const data = projects.rows.map(p => ({
+            ...p,
+            tasks: tasks.rows.filter(t => t.project_id === p.id && !t.archived),
+            archiveTasks: tasks.rows.filter(t => t.project_id === p.id && t.archived)
+        }));
 
-    const data = projects.rows.map(p => ({
-        ...p,
-        tasks: tasks.rows.filter(t => t.project_id === p.id && !t.archived),
-        archiveTasks: tasks.rows.filter(t => t.project_id === p.id && t.archived)
-    }));
+        res.json(data);
 
-    res.json(data);
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
 });
 
 app.post("/create-project", async (req, res) => {
-
-    const { name, desc } = req.body;
-
     try{
+        const { name, desc } = req.body;
 
         await pool.query(
             "INSERT INTO projects (name, description) VALUES ($1, $2)",
-            [name, desc || ""]
+            [name.trim(), desc || ""]
         );
 
         res.send("Projekt erstellt");
 
-    }catch{
+    }catch(err){
+        console.log(err);
         res.send("Projekt existiert bereits");
     }
 });
 
 app.post("/delete-project", async (req, res) => {
+    try{
+        const { id } = req.body;
 
-    const { id } = req.body;
+        await pool.query(
+            "DELETE FROM projects WHERE id = $1",
+            [id]
+        );
 
-    await pool.query(
-        "DELETE FROM projects WHERE id = $1",
-        [id]
-    );
+        res.send("Projekt gelöscht");
 
-    res.send("Projekt gelöscht");
+    }catch(err){
+        console.log(err);
+        res.send("Projekt konnte nicht gelöscht werden");
+    }
 });
 
 app.post("/create-task", async (req, res) => {
+    try{
+        const { projectId, name } = req.body;
 
-    const { projectId, name } = req.body;
+        await pool.query(
+            "INSERT INTO tasks (project_id, name) VALUES ($1, $2)",
+            [projectId, name.trim()]
+        );
 
-    await pool.query(
-        "INSERT INTO tasks (project_id, name) VALUES ($1, $2)",
-        [projectId, name]
-    );
+        res.send("Aufgabe erstellt");
 
-    res.send("Aufgabe erstellt");
+    }catch(err){
+        console.log(err);
+        res.send("Aufgabe konnte nicht erstellt werden");
+    }
 });
 
 app.post("/edit-task", async (req, res) => {
+    try{
+        const { taskId, name } = req.body;
 
-    const { taskId, name } = req.body;
+        await pool.query(
+            "UPDATE tasks SET name = $1 WHERE id = $2",
+            [name.trim(), taskId]
+        );
 
-    await pool.query(
-        "UPDATE tasks SET name = $1 WHERE id = $2",
-        [name, taskId]
-    );
+        res.send("Aufgabe geändert");
 
-    res.send("Aufgabe geändert");
+    }catch(err){
+        console.log(err);
+        res.send("Aufgabe konnte nicht geändert werden");
+    }
 });
 
 app.post("/archive-task", async (req, res) => {
+    try{
+        const { taskId } = req.body;
 
-    const { taskId } = req.body;
+        await pool.query(
+            "UPDATE tasks SET archived = true WHERE id = $1",
+            [taskId]
+        );
 
-    await pool.query(
-        "UPDATE tasks SET archived = true WHERE id = $1",
-        [taskId]
-    );
+        res.send("Aufgabe archiviert");
 
-    res.send("Aufgabe archiviert");
+    }catch(err){
+        console.log(err);
+        res.send("Archiv Fehler");
+    }
 });
 
 app.post("/restore-task", async (req, res) => {
+    try{
+        const { taskId } = req.body;
 
-    const { taskId } = req.body;
+        await pool.query(
+            "UPDATE tasks SET archived = false WHERE id = $1",
+            [taskId]
+        );
 
-    await pool.query(
-        "UPDATE tasks SET archived = false WHERE id = $1",
-        [taskId]
-    );
+        res.send("Aufgabe wiederhergestellt");
 
-    res.send("Aufgabe wiederhergestellt");
+    }catch(err){
+        console.log(err);
+        res.send("Wiederherstellen Fehler");
+    }
 });
 
 app.post("/delete-task", async (req, res) => {
+    try{
+        const { taskId } = req.body;
 
-    const { taskId } = req.body;
+        await pool.query(
+            "DELETE FROM tasks WHERE id = $1",
+            [taskId]
+        );
 
-    await pool.query(
-        "DELETE FROM tasks WHERE id = $1",
-        [taskId]
-    );
+        res.send("Aufgabe gelöscht");
 
-    res.send("Aufgabe gelöscht");
+    }catch(err){
+        console.log(err);
+        res.send("Aufgabe konnte nicht gelöscht werden");
+    }
 });
 
 /* TIMES */
 
 app.get("/times", async (req, res) => {
-
-    const result = await pool.query(
-        "SELECT * FROM times ORDER BY id DESC"
-    );
-
-    res.json(result.rows);
+    try{
+        const result = await pool.query("SELECT * FROM times ORDER BY id DESC");
+        res.json(result.rows);
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
 });
 
 app.post("/start-time", async (req, res) => {
+    try{
+        const { username, project, task } = req.body;
 
-    const { username, project, task } = req.body;
+        const running = await pool.query(
+            "SELECT * FROM times WHERE username = $1 AND stop_time = ''",
+            [username]
+        );
 
-    const running = await pool.query(
-        "SELECT * FROM times WHERE username = $1 AND stop_time = ''",
-        [username]
-    );
+        if(running.rows.length > 0){
+            return res.send("Es läuft bereits eine Zeit");
+        }
 
-    if(running.rows.length > 0){
-        return res.send("Es läuft bereits eine Zeit");
+        await pool.query(
+            "INSERT INTO times (username, project, task, start_time) VALUES ($1, $2, $3, $4)",
+            [username, project, task, new Date().toLocaleString("de-DE")]
+        );
+
+        await pool.query(
+            "UPDATE projects SET current_user_name = $1, current_task = $2 WHERE name = $3",
+            [username, task, project]
+        );
+
+        res.send("Gestartet");
+
+    }catch(err){
+        console.log(err);
+        res.send("Start Fehler");
     }
-
-    await pool.query(
-        "INSERT INTO times (username, project, task, start_time) VALUES ($1, $2, $3, $4)",
-        [username, project, task, new Date().toLocaleString("de-DE")]
-    );
-
-    await pool.query(
-        "UPDATE projects SET current_user_name = $1, current_task = $2 WHERE name = $3",
-        [username, task, project]
-    );
-
-    res.send("Gestartet");
 });
 
 app.post("/pause-time", async (req, res) => {
+    try{
+        const { username } = req.body;
 
-    const { username } = req.body;
+        await pool.query(
+            "UPDATE times SET is_paused = true, pause_time = $1 WHERE username = $2 AND stop_time = ''",
+            [new Date().toLocaleString("de-DE"), username]
+        );
 
-    await pool.query(
-        "UPDATE times SET is_paused = true, pause_time = $1 WHERE username = $2 AND stop_time = ''",
-        [new Date().toLocaleString("de-DE"), username]
-    );
+        res.send("Pausiert");
 
-    res.send("Pausiert");
+    }catch(err){
+        console.log(err);
+        res.send("Pause Fehler");
+    }
 });
 
 app.post("/resume-time", async (req, res) => {
+    try{
+        const { username } = req.body;
 
-    const { username } = req.body;
+        await pool.query(
+            "UPDATE times SET is_paused = false WHERE username = $1 AND stop_time = ''",
+            [username]
+        );
 
-    await pool.query(
-        "UPDATE times SET is_paused = false WHERE username = $1 AND stop_time = ''",
-        [username]
-    );
+        res.send("Fortgesetzt");
 
-    res.send("Fortgesetzt");
+    }catch(err){
+        console.log(err);
+        res.send("Weiter Fehler");
+    }
 });
 
 app.post("/stop-time", async (req, res) => {
+    try{
+        const { username, report, adminOnly } = req.body;
 
-    const { username, report, adminOnly } = req.body;
+        const running = await pool.query(
+            "SELECT * FROM times WHERE username = $1 AND stop_time = '' ORDER BY id DESC LIMIT 1",
+            [username]
+        );
 
-    const running = await pool.query(
-        "SELECT * FROM times WHERE username = $1 AND stop_time = '' ORDER BY id DESC LIMIT 1",
-        [username]
-    );
+        if(running.rows.length === 0){
+            return res.send("Keine laufende Zeit");
+        }
 
-    if(running.rows.length === 0){
-        return res.send("Keine laufende Zeit");
+        const time = running.rows[0];
+
+        await pool.query(
+            "UPDATE times SET stop_time = $1, report = $2, admin_only = $3, is_paused = false WHERE id = $4",
+            [new Date().toLocaleString("de-DE"), report, adminOnly === true, time.id]
+        );
+
+        await pool.query(
+            "UPDATE projects SET current_user_name = '', current_task = '' WHERE name = $1",
+            [time.project]
+        );
+
+        res.send("Gestoppt");
+
+    }catch(err){
+        console.log(err);
+        res.send("Stop Fehler");
     }
-
-    const time = running.rows[0];
-
-    await pool.query(
-        "UPDATE times SET stop_time = $1, report = $2, admin_only = $3, is_paused = false WHERE id = $4",
-        [new Date().toLocaleString("de-DE"), report, adminOnly === true, time.id]
-    );
-
-    await pool.query(
-        "UPDATE projects SET current_user_name = '', current_task = '' WHERE name = $1",
-        [time.project]
-    );
-
-    res.send("Gestoppt");
 });
 
 /* MESSAGES */
 
 app.get("/messages/:username", async (req, res) => {
+    try{
+        const username = req.params.username;
 
-    const username = req.params.username;
+        const result = await pool.query(
+            "SELECT * FROM messages WHERE receiver = $1 OR receiver = 'admin' ORDER BY id DESC",
+            [username]
+        );
 
-    const result = await pool.query(
-        "SELECT * FROM messages WHERE receiver = $1 OR receiver = 'admin' ORDER BY id DESC",
-        [username]
-    );
+        res.json(result.rows);
 
-    res.json(result.rows);
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
 });
 
 app.post("/send-message", async (req, res) => {
+    try{
+        const { from, to, text } = req.body;
 
-    const { from, to, text } = req.body;
+        await pool.query(
+            "INSERT INTO messages (sender, receiver, text, date) VALUES ($1, $2, $3, $4)",
+            [from, to, text, new Date().toLocaleString("de-DE")]
+        );
 
-    await pool.query(
-        "INSERT INTO messages (sender, receiver, text, date) VALUES ($1, $2, $3, $4)",
-        [from, to, text, new Date().toLocaleString("de-DE")]
-    );
+        res.send("Nachricht gesendet");
 
-    res.send("Nachricht gesendet");
+    }catch(err){
+        console.log(err);
+        res.send("Nachricht Fehler");
+    }
 });
 
 app.post("/delete-message", async (req, res) => {
+    try{
+        const { id } = req.body;
 
-    const { id } = req.body;
+        await pool.query(
+            "DELETE FROM messages WHERE id = $1",
+            [id]
+        );
 
-    await pool.query(
-        "DELETE FROM messages WHERE id = $1",
-        [id]
-    );
+        res.send("Nachricht gelöscht");
 
-    res.send("Nachricht gelöscht");
+    }catch(err){
+        console.log(err);
+        res.send("Nachricht konnte nicht gelöscht werden");
+    }
 });
 
+/* ADMIN TIMES */
+
 app.post("/delete-time", async (req, res) => {
+    try{
+        const { id } = req.body;
 
-    const { id } = req.body;
+        await pool.query(
+            "DELETE FROM times WHERE id = $1",
+            [id]
+        );
 
-    await pool.query(
-        "DELETE FROM times WHERE id = $1",
-        [id]
-    );
+        res.send("Zeit gelöscht");
 
-    res.send("Zeit gelöscht");
+    }catch(err){
+        console.log(err);
+        res.send("Zeit konnte nicht gelöscht werden");
+    }
 });
 
 app.post("/edit-own-report", async (req, res) => {
+    try{
+        const { id, username, report } = req.body;
 
-    const { id, username, report } = req.body;
+        await pool.query(
+            "UPDATE times SET report = $1 WHERE id = $2 AND username = $3",
+            [report || "", id, username]
+        );
 
-    await pool.query(
-        "UPDATE times SET report = $1 WHERE id = $2 AND username = $3",
-        [report, id, username]
-    );
+        res.send("Bericht gespeichert");
 
-    res.send("Bericht gespeichert");
+    }catch(err){
+        console.log(err);
+        res.send("Bericht konnte nicht gespeichert werden");
+    }
 });
 
 app.post("/delete-single-report", async (req, res) => {
+    try{
+        const { id } = req.body;
 
-    const { id } = req.body;
+        await pool.query(
+            "UPDATE times SET report = '' WHERE id = $1",
+            [id]
+        );
 
-    await pool.query(
-        "UPDATE times SET report = '' WHERE id = $1",
-        [id]
-    );
+        res.send("Report gelöscht");
 
-    res.send("Report gelöscht");
+    }catch(err){
+        console.log(err);
+        res.send("Report konnte nicht gelöscht werden");
+    }
 });
 
 app.post("/delete-single-auswertung", async (req, res) => {
+    try{
+        const { id } = req.body;
 
-    const { id } = req.body;
+        await pool.query(
+            "DELETE FROM times WHERE id = $1",
+            [id]
+        );
 
-    await pool.query(
-        "DELETE FROM times WHERE id = $1",
-        [id]
-    );
+        res.send("Auswertung gelöscht");
 
-    res.send("Auswertung gelöscht");
+    }catch(err){
+        console.log(err);
+        res.send("Auswertung konnte nicht gelöscht werden");
+    }
+});
+
+app.post("/edit-time", async (req, res) => {
+    try{
+        const { id, username, project, task, start_time, stop_time, report } = req.body;
+
+        await pool.query(
+            "UPDATE times SET username = $1, project = $2, task = $3, start_time = $4, stop_time = $5, report = $6 WHERE id = $7",
+            [username, project, task, start_time || "", stop_time || "", report || "", id]
+        );
+
+        res.send("Zeit geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Zeit ändern fehlgeschlagen");
+    }
+});
+
+app.post("/manual-time", async (req, res) => {
+    try{
+        const { username, project, task, start_time, stop_time, report } = req.body;
+
+        await pool.query(
+            "INSERT INTO times (username, project, task, start_time, stop_time, report) VALUES ($1, $2, $3, $4, $5, $6)",
+            [username, project, task, start_time, stop_time, report || ""]
+        );
+
+        res.send("Zeit nachgetragen");
+
+    }catch(err){
+        console.log(err);
+        res.send("Nachtragen fehlgeschlagen");
+    }
+});
+
+app.post("/delete-all-times", async (req, res) => {
+    try{
+        await pool.query("DELETE FROM times");
+        res.send("Alle Zeiten gelöscht");
+    }catch(err){
+        console.log(err);
+        res.send("Zeiten löschen fehlgeschlagen");
+    }
+});
+
+app.post("/delete-all-reports", async (req, res) => {
+    try{
+        await pool.query("UPDATE times SET report = ''");
+        res.send("Alle Reports gelöscht");
+    }catch(err){
+        console.log(err);
+        res.send("Reports löschen fehlgeschlagen");
+    }
+});
+
+app.post("/delete-all-auswertung", async (req, res) => {
+    try{
+        await pool.query("DELETE FROM times");
+        res.send("Auswertung gelöscht");
+    }catch(err){
+        console.log(err);
+        res.send("Auswertung löschen fehlgeschlagen");
+    }
 });
 
 /* DOCUMENTS */
 
 app.get("/documents", async (req, res) => {
+    try{
+        const result = await pool.query(
+            "SELECT * FROM documents ORDER BY id DESC"
+        );
 
-    const result = await pool.query(
-        "SELECT * FROM documents ORDER BY id DESC"
-    );
+        res.json(result.rows);
 
-    res.json(result.rows);
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
 });
 
 app.post("/open-document", async (req, res) => {
+    try{
+        const { id, password } = req.body;
 
-    const { id, password } = req.body;
+        const result = await pool.query(
+            "SELECT * FROM documents WHERE id = $1",
+            [id]
+        );
 
-    const result = await pool.query(
-        "SELECT * FROM documents WHERE id = $1",
-        [id]
-    );
+        if(result.rows.length === 0){
+            return res.json({
+                success:false,
+                message:"Datei nicht gefunden"
+            });
+        }
 
-    if(result.rows.length === 0){
-        return res.json({
-            success: false
+        const doc = result.rows[0];
+
+        if(doc.doc_password && doc.doc_password !== password){
+            return res.json({
+                success:false,
+                message:"Falsches Passwort"
+            });
+        }
+
+        const { data, error } = await supabase.storage
+            .from("tracksy-pdfs")
+            .createSignedUrl(doc.filename, 60);
+
+        if(error){
+            console.log(error);
+            return res.json({
+                success:false,
+                message:"PDF konnte nicht geöffnet werden"
+            });
+        }
+
+        res.json({
+            success:true,
+            url:data.signedUrl
+        });
+
+    }catch(err){
+        console.log(err);
+        res.json({
+            success:false,
+            message:"Serverfehler"
         });
     }
-
-    const doc = result.rows[0];
-
-    if(doc.doc_password && doc.doc_password !== password){
-        return res.json({
-            success: false,
-            message: "Falsches Passwort"
-        });
-    }
-
-    res.json({
-        success: true,
-        url: "/uploads/" + doc.filename
-    });
 });
 
 app.post("/upload-document", upload.single("pdf"), async (req, res) => {
+    try{
+        if(!req.file){
+            return res.send("Keine Datei");
+        }
 
-    if(!req.file){
-        return res.send("Keine Datei");
+        const fileBuffer = fs.readFileSync(req.file.path);
+        const fileName = Date.now() + "-" + req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+        const { error } = await supabase.storage
+            .from("tracksy-pdfs")
+            .upload(fileName, fileBuffer, {
+                contentType: "application/pdf"
+            });
+
+        fs.unlinkSync(req.file.path);
+
+        if(error){
+            console.log(error);
+            return res.send("Supabase Upload Fehler");
+        }
+
+        await pool.query(
+            `INSERT INTO documents
+            (filename, originalname, uploaded_by, upload_date, doc_password)
+            VALUES ($1, $2, $3, $4, $5)`,
+            [
+                fileName,
+                req.file.originalname,
+                req.body.username,
+                new Date().toLocaleString("de-DE"),
+                req.body.password || ""
+            ]
+        );
+
+        res.send("PDF hochgeladen");
+
+    }catch(err){
+        console.log(err);
+        res.send("Upload Fehler");
     }
-
-    await pool.query(
-        `INSERT INTO documents
-        (filename, originalname, uploaded_by, upload_date, doc_password)
-        VALUES ($1, $2, $3, $4, $5)`,
-        [
-            req.file.filename,
-            req.file.originalname,
-            req.body.username,
-            new Date().toLocaleString("de-DE"),
-            req.body.password || ""
-        ]
-    );
-
-    res.send("PDF hochgeladen");
 });
 
 app.post("/delete-document", async (req, res) => {
+    try{
+        const { id } = req.body;
 
-    const { id } = req.body;
+        const result = await pool.query(
+            "SELECT * FROM documents WHERE id = $1",
+            [id]
+        );
 
-    const result = await pool.query(
-        "SELECT * FROM documents WHERE id = $1",
-        [id]
-    );
+        if(result.rows.length === 0){
+            return res.send("Datei nicht gefunden");
+        }
 
-    if(result.rows.length === 0){
-        return res.send("Datei nicht gefunden");
+        const doc = result.rows[0];
+
+        await supabase.storage
+            .from("tracksy-pdfs")
+            .remove([doc.filename]);
+
+        await pool.query(
+            "DELETE FROM documents WHERE id = $1",
+            [id]
+        );
+
+        res.send("Dokument gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Löschen fehlgeschlagen");
     }
+});
 
-    const doc = result.rows[0];
-
-    const filePath = path.join(__dirname, "uploads", doc.filename);
-
-    if(fs.existsSync(filePath)){
-        fs.unlinkSync(filePath);
-    }
-
-    await pool.query(
-        "DELETE FROM documents WHERE id = $1",
-        [id]
-    );
-
-    res.send("Dokument gelöscht");
+app.use((err, req, res, next) => {
+    console.log(err);
+    res.status(500).send("Server Fehler");
 });
 
 app.listen(process.env.PORT || 3000, () => {
