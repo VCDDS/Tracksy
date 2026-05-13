@@ -133,7 +133,12 @@ async function initDatabase(){
         ON CONFLICT (username) DO NOTHING`,
         ["admin", adminHash, "", true, ""]
     );
-}
+    
+    await pool.query(
+        "UPDATE users SET password = $1 WHERE username = $2 AND password = $3",
+        [adminHash, "admin", "admin123"]
+    );
+    }
 
 initDatabase().catch(err => {
     console.log("Datenbank Fehler:", err);
