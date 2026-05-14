@@ -66,10 +66,22 @@
 <div id="calendarModal" class="modal">
     <div class="modal-box">
         <h2>Kalendereintrag</h2>
+
+        <label>Von Datum</label>
         <input id="calPopupDate" type="date">
+
+        <label>Bis Datum</label>
+        <input id="calPopupDateEnd" type="date">
+
+        <label>Von Uhrzeit</label>
         <input id="calPopupTime" type="time">
+
+        <label>Bis Uhrzeit</label>
+        <input id="calPopupTimeEnd" type="time">
+
         <input id="calPopupTitle" placeholder="Titel">
         <textarea id="calPopupNote" placeholder="Notiz"></textarea>
+
         <button onclick="saveCalendarPopup()">Speichern</button>
         <button onclick="closeCalendarPopup()">Abbrechen</button>
     </div>
@@ -536,17 +548,47 @@ if(page === "kalender"){
 let entries = await apiGet("/calendar/" + currentUser);
 
 let now = new Date();
-let year = now.getFullYear();
-let month = now.getMonth();
+
+let selectedMonth = window.selectedMonth ?? now.getMonth();
+let selectedYear = window.selectedYear ?? now.getFullYear();
+
+window.selectedMonth = selectedMonth;
+window.selectedYear = selectedYear;
+
+let year = selectedYear;
+let month = selectedMonth;
 
 let firstDay = new Date(year, month, 1);
 let lastDay = new Date(year, month + 1, 0);
 
-let monthName = now.toLocaleString("de-DE", { month: "long", year: "numeric" });
+let shownDate = new Date(year, month, 1);
+let monthName = shownDate.toLocaleString("de-DE", { month: "long", year: "numeric" });
 
 let html = `
+<h2>Mein Kalender</h2>
 
-<h2>Mein Kalender - ${monthName}</h2>
+<div class="calendar-topbar">
+    <button onclick="changeCalendarMonth(-1)">⬅️</button>
+
+    <select id="calendarMonth" onchange="updateCalendarSelect()">
+        ${[
+            "Januar","Februar","März","April","Mai","Juni",
+            "Juli","August","September","Oktober","November","Dezember"
+        ].map((m,i)=>`
+            <option value="${i}" ${i===month ? "selected" : ""}>${m}</option>
+        `).join("")}
+    </select>
+
+    <select id="calendarYear" onchange="updateCalendarSelect()">
+        ${Array.from({length:10},(_,i)=>year-5+i).map(y=>`
+            <option value="${y}" ${y===year ? "selected" : ""}>${y}</option>
+        `).join("")}
+    </select>
+
+    <button onclick="changeCalendarMonth(1)">➡️</button>
+</div>
+
+<h3>${monthName}</h3>
 
 <table>
 <tr>
@@ -1414,7 +1456,9 @@ loadPage("kalender");
 function openCalendarPopup(date){
 
 document.getElementById("calPopupDate").value = date;
+document.getElementById("calPopupDateEnd").value = date;
 document.getElementById("calPopupTime").value = "";
+document.getElementById("calPopupTimeEnd").value = "";
 document.getElementById("calPopupTitle").value = "";
 document.getElementById("calPopupNote").value = "";
 
@@ -1429,7 +1473,7 @@ async function saveCalendarPopup(){
 
 let title = document.getElementById("calPopupTitle").value;
 let entry_date = document.getElementById("calPopupDate").value;
-let entry_time = document.getElementById("calPopupTime").value;
+let entry_time = document.getElementById("calPopupTime").value + " - " + document.getElementById("calPopupTimeEnd").value;
 let note = document.getElementById("calPopupNote").value;
 
 if(!title || !entry_date){
@@ -1447,6 +1491,31 @@ let msg = await apiPost("/create-calendar-entry", {
 
 alert(msg);
 closeCalendarPopup();
+loadPage("kalender");
+}
+
+function updateCalendarSelect(){
+
+window.selectedMonth = parseInt(document.getElementById("calendarMonth").value);
+window.selectedYear = parseInt(document.getElementById("calendarYear").value);
+
+loadPage("kalender");
+}
+
+function changeCalendarMonth(direction){
+
+window.selectedMonth += direction;
+
+if(window.selectedMonth < 0){
+    window.selectedMonth = 11;
+    window.selectedYear--;
+}
+
+if(window.selectedMonth > 11){
+    window.selectedMonth = 0;
+    window.selectedYear++;
+}
+
 loadPage("kalender");
 }
 
