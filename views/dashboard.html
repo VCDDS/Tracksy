@@ -48,6 +48,8 @@
         <button class="logout-btn" onclick="logout()">🔒 Abmelden</button>
     </div>
 
+
+
 </nav>
 
 <div id="content"></div>
@@ -58,6 +60,18 @@
         <textarea id="reportText" placeholder="Bericht eingeben"></textarea>
         <button onclick="saveReportPopup()">Speichern</button>
         <button onclick="closeReportPopup()">Abbrechen</button>
+    </div>
+</div>
+
+<div id="calendarModal" class="modal">
+    <div class="modal-box">
+        <h2>Kalendereintrag</h2>
+        <input id="calPopupDate" type="date">
+        <input id="calPopupTime" type="time">
+        <input id="calPopupTitle" placeholder="Titel">
+        <textarea id="calPopupNote" placeholder="Notiz"></textarea>
+        <button onclick="saveCalendarPopup()">Speichern</button>
+        <button onclick="closeCalendarPopup()">Abbrechen</button>
     </div>
 </div>
 
@@ -521,40 +535,67 @@ if(page === "kalender"){
 
 let entries = await apiGet("/calendar/" + currentUser);
 
-let html = `
-<h2>Mein Kalender</h2>
+let now = new Date();
+let year = now.getFullYear();
+let month = now.getMonth();
 
-<div class="center-box">
-    <input id="calTitle" placeholder="Titel">
-    <input id="calDate" type="date">
-    <input id="calTime" type="time">
-    <textarea id="calNote" placeholder="Notiz"></textarea>
-    <button onclick="addCalendarEntry()">Eintrag speichern</button>
-</div>
+let firstDay = new Date(year, month, 1);
+let lastDay = new Date(year, month + 1, 0);
+
+let monthName = now.toLocaleString("de-DE", { month: "long", year: "numeric" });
+
+let html = `
+
+<h2>Mein Kalender - ${monthName}</h2>
 
 <table>
-    <tr>
-        <th>Datum</th>
-        <th>Uhrzeit</th>
-        <th>Titel</th>
-        <th>Notiz</th>
-        <th>Aktion</th>
-    </tr>
+<tr>
+    <th>Mo</th>
+    <th>Di</th>
+    <th>Mi</th>
+    <th>Do</th>
+    <th>Fr</th>
+    <th>Sa</th>
+    <th>So</th>
+</tr>
+<tr>
 `;
 
-entries.forEach(e => {
-    html += `
-    <tr>
-        <td>${e.entry_date}</td>
-        <td>${e.entry_time || "-"}</td>
-        <td>${e.title}</td>
-        <td>${e.note || "-"}</td>
-        <td><button onclick="deleteCalendarEntry(${e.id})">❌ Löschen</button></td>
-    </tr>
-    `;
-});
+let startDay = firstDay.getDay();
+if(startDay === 0) startDay = 7;
 
-html += `</table>`;
+for(let i = 1; i < startDay; i++){
+    html += `<td></td>`;
+}
+
+for(let day = 1; day <= lastDay.getDate(); day++){
+
+    let dateString =
+        year + "-" +
+        String(month + 1).padStart(2, "0") + "-" +
+        String(day).padStart(2, "0");
+
+    let dayEntries = entries.filter(e => e.entry_date === dateString);
+
+    html += `
+    <td onclick="openCalendarPopup('${dateString}')" style="cursor:pointer;vertical-align:top;min-height:90px;">
+        <b>${day}</b>
+        ${dayEntries.map(e => `
+            <div>
+                ${e.entry_time || ""} ${e.title}
+                <button onclick="event.stopPropagation(); deleteCalendarEntry(${e.id})">❌</button>
+            </div>
+        `).join("")}
+    </td>
+    `;
+
+    let checkDay = new Date(year, month, day).getDay();
+    if(checkDay === 0 && day !== lastDay.getDate()){
+        html += `</tr><tr>`;
+    }
+}
+
+html += `</tr></table>`;
 
 content.innerHTML = html;
 return;
@@ -1367,6 +1408,45 @@ let msg = await apiPost("/delete-calendar-entry", {
 });
 
 alert(msg);
+loadPage("kalender");
+}
+
+function openCalendarPopup(date){
+
+document.getElementById("calPopupDate").value = date;
+document.getElementById("calPopupTime").value = "";
+document.getElementById("calPopupTitle").value = "";
+document.getElementById("calPopupNote").value = "";
+
+document.getElementById("calendarModal").style.display = "flex";
+}
+
+function closeCalendarPopup(){
+document.getElementById("calendarModal").style.display = "none";
+}
+
+async function saveCalendarPopup(){
+
+let title = document.getElementById("calPopupTitle").value;
+let entry_date = document.getElementById("calPopupDate").value;
+let entry_time = document.getElementById("calPopupTime").value;
+let note = document.getElementById("calPopupNote").value;
+
+if(!title || !entry_date){
+    alert("Titel und Datum ausfüllen");
+    return;
+}
+
+let msg = await apiPost("/create-calendar-entry", {
+    username: currentUser,
+    title,
+    note,
+    entry_date,
+    entry_time
+});
+
+alert(msg);
+closeCalendarPopup();
 loadPage("kalender");
 }
 
