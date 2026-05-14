@@ -668,6 +668,7 @@ ${entries.map(e => `
 <td>${e.title}</td>
 <td>${e.note || "-"}</td>
 <td>
+<button onclick="editCalendarEntry(${e.id}, '${e.entry_date}', '${e.entry_time || ""}', '${e.title}', '${e.note || ""}')">✏️ Bearbeiten</button>
 <button onclick="deleteCalendarEntry(${e.id})">❌ Löschen</button>
 </td>
 </tr>
@@ -1624,6 +1625,34 @@ let msg = await apiPost("/delete-note", {
 alert(msg);
 
 loadPage("notizen");
+}
+
+async function editCalendarEntry(id, oldDate, oldTime, oldTitle, oldNote){
+
+let title = prompt("Titel:", oldTitle);
+if(title === null) return;
+
+let entry_date = prompt("Datum:", oldDate);
+if(entry_date === null) return;
+
+let entry_time = prompt("Zeit:", oldTime);
+if(entry_time === null) return;
+
+let note = prompt("Notiz:", oldNote);
+if(note === null) return;
+
+let msg = await apiPost("/edit-calendar-entry", {
+    id,
+    username: currentUser,
+    title,
+    note,
+    entry_date,
+    entry_time
+});
+
+alert(msg);
+
+loadPage("kalender");
 }
 
 loadPage("start");

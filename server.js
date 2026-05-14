@@ -777,6 +777,23 @@ app.post("/create-calendar-entry", async (req, res) => {
     }
 });
 
+app.post("/edit-calendar-entry", async (req, res) => {
+    try{
+        const { id, username, title, note, entry_date, entry_time } = req.body;
+
+        await pool.query(
+            "UPDATE calendar_entries SET title = $1, note = $2, entry_date = $3, entry_time = $4 WHERE id = $5 AND username = $6",
+            [title.trim(), note || "", entry_date, entry_time || "", id, username]
+        );
+
+        res.send("Kalendereintrag geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Ändern fehlgeschlagen");
+    }
+});
+
 app.post("/delete-calendar-entry", async (req, res) => {
     try{
         const { id, username } = req.body;
