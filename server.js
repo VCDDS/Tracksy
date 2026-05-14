@@ -239,7 +239,7 @@ app.post("/create-user", async (req, res) => {
 
         await pool.query(
             "INSERT INTO users (username, password, email, is_admin, last_change) VALUES ($1, $2, $3, $4, $5)",
-            [name.trim(), hashedPw, email || "", admin === true, new Date().toLocaleString("de-DE")]
+            [name.trim(), hashedPw, email || "", admin === true, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })]
         );
 
         res.send("Benutzer erstellt");
@@ -258,7 +258,7 @@ app.post("/edit-user", async (req, res) => {
 
         await pool.query(
             "UPDATE users SET username = $1, password = $2, email = $3, is_admin = $4, last_change = $5 WHERE username = $6",
-            [newName.trim(), hashedPw, email || "", admin === true, new Date().toLocaleString("de-DE"), oldName]
+            [newName.trim(), hashedPw, email || "", admin === true, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }), oldName]
         );
 
         res.send("Benutzer geändert");
@@ -457,7 +457,7 @@ app.post("/start-time", async (req, res) => {
 
         await pool.query(
             "INSERT INTO times (username, project, task, start_time) VALUES ($1, $2, $3, $4)",
-            [username, project, task, new Date().toLocaleString("de-DE")]
+            [username, project, task, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })]
         );
 
         await pool.query(
@@ -479,7 +479,7 @@ app.post("/pause-time", async (req, res) => {
 
         await pool.query(
             "UPDATE times SET is_paused = true, pause_time = $1 WHERE username = $2 AND stop_time = ''",
-            [new Date().toLocaleString("de-DE"), username]
+            [new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }), username]
         );
 
         res.send("Pausiert");
@@ -524,7 +524,7 @@ app.post("/stop-time", async (req, res) => {
 
         await pool.query(
             "UPDATE times SET stop_time = $1, report = $2, admin_only = $3, is_paused = false WHERE id = $4",
-            [new Date().toLocaleString("de-DE"), report, adminOnly === true, time.id]
+            [new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }), report, adminOnly === true, time.id]
         );
 
         await pool.query(
@@ -565,7 +565,7 @@ app.post("/send-message", async (req, res) => {
 
         await pool.query(
             "INSERT INTO messages (sender, receiver, text, date) VALUES ($1, $2, $3, $4)",
-            [from, to, text, new Date().toLocaleString("de-DE")]
+            [from, to, text, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })]
         );
 
         res.send("Nachricht gesendet");
@@ -756,7 +756,7 @@ app.post("/create-calendar-entry", async (req, res) => {
 
         await pool.query(
             "INSERT INTO calendar_entries (username, title, note, entry_date, entry_time, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
-            [username, title.trim(), note || "", entry_date, entry_time || "", new Date().toLocaleString("de-DE")]
+            [username, title.trim(), note || "", entry_date, entry_time || "", new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })]
         );
 
         res.send("Kalendereintrag gespeichert");
@@ -891,7 +891,7 @@ app.post("/upload-document", upload.single("pdf"), async (req, res) => {
                 fileName,
                 req.file.originalname,
                 req.body.username,
-                new Date().toLocaleString("de-DE"),
+                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
                 req.body.password || ""
             ]
         );
