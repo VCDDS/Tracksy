@@ -36,6 +36,7 @@
         <button onclick="loadPage('projekte')">📁 <span>Projekte</span></button>
         <button onclick="loadPage('dokumente')">📄 <span>Dokumente</span></button>
         <button onclick="loadPage('kalender')">📅 <span>Kalender</span></button>
+        <button onclick="loadPage('notizen')">✏️ <span>Notizen</span></button>
         <button onclick="loadPage('nachrichten')">📩 <span>Nachrichten</span></button>
         <button onclick="loadPage('benutzer')">👤 <span>Benutzer</span></button>
     
@@ -562,7 +563,11 @@ let firstDay = new Date(year, month, 1);
 let lastDay = new Date(year, month + 1, 0);
 
 let shownDate = new Date(year, month, 1);
-let monthName = shownDate.toLocaleString("de-DE", { month: "long", year: "numeric" });
+
+let monthName = shownDate.toLocaleString("de-DE", {
+    month: "long",
+    year: "numeric"
+});
 
 let html = `
 <h2>Mein Kalender</h2>
@@ -592,19 +597,22 @@ let html = `
 
 <table>
 <tr>
-    <th>Mo</th>
-    <th>Di</th>
-    <th>Mi</th>
-    <th>Do</th>
-    <th>Fr</th>
-    <th>Sa</th>
-    <th>So</th>
+<th>Mo</th>
+<th>Di</th>
+<th>Mi</th>
+<th>Do</th>
+<th>Fr</th>
+<th>Sa</th>
+<th>So</th>
 </tr>
 <tr>
 `;
 
 let startDay = firstDay.getDay();
-if(startDay === 0) startDay = 7;
+
+if(startDay === 0){
+    startDay = 7;
+}
 
 for(let i = 1; i < startDay; i++){
     html += `<td></td>`;
@@ -620,26 +628,95 @@ for(let day = 1; day <= lastDay.getDate(); day++){
     let dayEntries = entries.filter(e => e.entry_date === dateString);
 
     html += `
-    <td onclick="openCalendarPopup('${dateString}')" style="cursor:pointer;vertical-align:top;min-height:90px;">
-        <b>${day}</b>
-        ${dayEntries.map(e => `
-            <div>
-                ${e.entry_time || ""} ${e.title}
-                <button onclick="event.stopPropagation(); deleteCalendarEntry(${e.id})">❌</button>
-            </div>
+<td onclick="openCalendarPopup('${dateString}')" class="calendar-day">
+    <b>${day}</b>
+
+    <div class="calendar-points">
+        ${dayEntries.map(() => `
+            <span class="calendar-dot"></span>
         `).join("")}
-    </td>
-    `;
+    </div>
+</td>
+`;
 
     let checkDay = new Date(year, month, day).getDay();
+
     if(checkDay === 0 && day !== lastDay.getDate()){
         html += `</tr><tr>`;
     }
 }
 
-html += `</tr></table>`;
+html += `
+</tr>
+</table>
+
+<h3>Einträge</h3>
+
+<table>
+<tr>
+<th>Datum</th>
+<th>Zeit</th>
+<th>Titel</th>
+<th>Notiz</th>
+<th>Aktion</th>
+</tr>
+
+${entries.map(e => `
+<tr>
+<td>${e.entry_date}</td>
+<td>${e.entry_time || "-"}</td>
+<td>${e.title}</td>
+<td>${e.note || "-"}</td>
+<td>
+<button onclick="deleteCalendarEntry(${e.id})">❌ Löschen</button>
+</td>
+</tr>
+`).join("")}
+
+</table>
+`;
 
 content.innerHTML = html;
+return;
+}
+
+if(page === "notizen"){
+
+let notes = await apiGet("/notes/" + currentUser);
+
+let html = `
+<h2>Private Notizen</h2>
+
+<input id="noteTitle" placeholder="Titel">
+
+<textarea id="noteText" placeholder="Notiz schreiben"></textarea>
+
+<button onclick="saveNote()">Speichern</button>
+
+<table>
+<tr>
+<th>Titel</th>
+<th>Notiz</th>
+<th>Datum</th>
+<th>Aktion</th>
+</tr>
+
+${notes.map(n => `
+<tr>
+<td>${n.title}</td>
+<td>${n.note}</td>
+<td>${n.created_at}</td>
+<td>
+<button onclick="deleteNote(${n.id})">❌ Löschen</button>
+</td>
+</tr>
+`).join("")}
+
+</table>
+`;
+
+content.innerHTML = html;
+
 return;
 }
 
@@ -1512,6 +1589,41 @@ if(window.selectedMonth > 11){
 }
 
 loadPage("kalender");
+}
+
+async function saveNote(){
+
+let title = document.getElementById("noteTitle").value;
+let note = document.getElementById("noteText").value;
+
+if(!title || !note){
+    alert("Alles ausfüllen");
+    return;
+}
+
+let msg = await apiPost("/create-note", {
+    username: currentUser,
+    title,
+    note
+});
+
+alert(msg);
+
+loadPage("notizen");
+}
+
+async function deleteNote(id){
+
+if(!confirm("Notiz löschen?")) return;
+
+let msg = await apiPost("/delete-note", {
+    id,
+    username: currentUser
+});
+
+alert(msg);
+
+loadPage("notizen");
 }
 
 loadPage("start");

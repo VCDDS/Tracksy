@@ -150,6 +150,16 @@ async function initDatabase(){
             created_at TEXT NOT NULL
         )
     `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS personal_notes (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL,
+            title TEXT NOT NULL,
+            note TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    `);
 }
 
 initDatabase().catch(err => {
@@ -777,6 +787,68 @@ app.post("/delete-calendar-entry", async (req, res) => {
         );
 
         res.send("Kalendereintrag gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Löschen fehlgeschlagen");
+    }
+});
+
+/* PERSONAL NOTES */
+
+app.get("/notes/:username", async (req, res) => {
+    try{
+        const username = req.params.username;
+
+        const result = await pool.query(
+            "SELECT * FROM personal_notes WHERE username = $1 ORDER BY id DESC",
+            [username]
+        );
+
+        res.json(result.rows);
+
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
+});
+
+app.post("/create-note", async (req, res) => {
+    try{
+        const { username, title, note } = req.body;
+
+        if(!username || !title || !note){
+            return res.send("Daten fehlen");
+        }
+
+        await pool.query(
+            "INSERT INTO personal_notes (username, title, note, created_at) VALUES ($1, $2, $3, $4)",
+            [
+                username,
+                title.trim(),
+                note.trim(),
+                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })
+            ]
+        );
+
+        res.send("Notiz gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Notiz Fehler");
+    }
+});
+
+app.post("/delete-note", async (req, res) => {
+    try{
+        const { id, username } = req.body;
+
+        await pool.query(
+            "DELETE FROM personal_notes WHERE id = $1 AND username = $2",
+            [id, username]
+        );
+
+        res.send("Notiz gelöscht");
 
     }catch(err){
         console.log(err);
