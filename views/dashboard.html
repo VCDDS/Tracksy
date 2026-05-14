@@ -687,11 +687,6 @@ html += `
     <td>${d.doc_password ? "🔒 Passwort gesichert" : "🔓 Ohne Passwort"}</td>
     <td>
         <button class="doc-btn" onclick="openDocument(${d.id}, ${d.doc_password ? "true" : "false"})">📄 Öffnen</button>
-        ${
-            isAdmin
-            ? `<button onclick="deleteDocument(${d.id})">❌ Löschen</button>`
-            : ""
-        }
     </td>
 </tr>
 `;
