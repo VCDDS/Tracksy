@@ -685,13 +685,19 @@ return;
 if(page === "vorschlaege"){
 
 let suggestions = await apiGet("/suggestions");
+let projects = await apiGet("/projects");
 
 let html = `
 <h2>💡 Vorschläge</h2>
 
 <div class="center-box">
 
-<input id="suggestionTitle" placeholder="Für was ist der Vorschlag?">
+<select id="suggestionProject">
+<option value="">Projekt wählen</option>
+<option value="Projekt Idee">💡 Projekt Idee</option>
+</select>
+
+<input id="suggestionTitle" placeholder="Titel vom Vorschlag">
 
 <textarea id="suggestionDescription" placeholder="Beschreibung"></textarea>
 
@@ -706,6 +712,8 @@ html += `
 <div class="center-box">
 
 <h3>${s.title}</h3>
+
+<p><b>Projekt:</b> ${s.project || "-"}</p>
 
 <p><b>Von:</b> ${s.username}</p>
 
@@ -760,6 +768,16 @@ Kommentar senden
 });
 
 content.innerHTML = html;
+
+let projectSelect = document.getElementById("suggestionProject");
+
+projects.forEach(p => {
+    projectSelect.innerHTML += `
+    <option value="${p.name}">
+        ${p.name}
+    </option>
+    `;
+});
 
 return;
 }
@@ -1740,16 +1758,18 @@ loadPage("kalender");
 
 async function createSuggestion(){
 
+let project = document.getElementById("suggestionProject").value;
 let title = document.getElementById("suggestionTitle").value;
 let description = document.getElementById("suggestionDescription").value;
 
-if(!title){
+if(!title.trim()){
     alert("Titel fehlt");
     return;
 }
 
 let msg = await apiPost("/create-suggestion", {
     username: currentUser,
+    project,
     title,
     description
 });

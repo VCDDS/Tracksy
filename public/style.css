@@ -687,3 +687,8 @@ canvas{
     margin-bottom:10px;
     border-radius:10px;
 }
+
+.suggestion-card,
+.suggestion-comment{
+    color:white;
+}

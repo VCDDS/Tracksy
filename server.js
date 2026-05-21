@@ -172,6 +172,11 @@ async function initDatabase(){
 `);
 
 await pool.query(`
+    ALTER TABLE suggestions
+    ADD COLUMN IF NOT EXISTS project TEXT DEFAULT ''
+`);
+
+await pool.query(`
     CREATE TABLE IF NOT EXISTS suggestion_votes (
         id SERIAL PRIMARY KEY,
         suggestion_id INTEGER REFERENCES suggestions(id) ON DELETE CASCADE,
@@ -936,16 +941,17 @@ app.get("/suggestions", async (req, res) => {
 
 app.post("/create-suggestion", async (req, res) => {
     try{
-        const { username, title, description } = req.body;
+        const { username, project, title, description } = req.body;
 
         if(!username || !title){
             return res.send("Titel fehlt");
         }
 
         await pool.query(
-            "INSERT INTO suggestions (username, title, description, created_at) VALUES ($1, $2, $3, $4)",
+            "INSERT INTO suggestions (username, project, title, description, created_at) VALUES ($1, $2, $3, $4, $5)",
             [
                 username,
+                project || "",
                 title.trim(),
                 description || "",
                 new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })
