@@ -71,7 +71,7 @@ body{
     align-items:center;
     justify-content:space-between;
     gap:8px;
-    padding:8px 12px;
+    padding:7px 10px;
     background:rgba(15,23,42,0.95);
     border-bottom:1px solid rgba(255,255,255,0.12);
     flex-wrap:wrap;
@@ -90,6 +90,7 @@ body{
     gap:6px;
     margin-left:auto;
     flex-wrap:wrap;
+    font-size:12px;
 }
 
 .logo{
@@ -114,7 +115,7 @@ body{
 
 .dropdown-content{
     position:absolute;
-    top:36px;
+    top:35px;
     left:0;
     z-index:999;
 }
