@@ -608,11 +608,13 @@ let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
             <b>${m.sender}</b>
             <p>${m.text}</p>
             <small>${m.date}</small>
-            ${
-                m.sender !== currentUser
-                ? `<br><button onclick="replyToMessage('${m.sender}')">↩️ Antworten</button>`
-                : ""
-            }
+            <br>
+${
+    m.sender !== currentUser
+    ? `<button onclick="replyToMessage('${m.sender}')">↩️ Antworten</button>`
+    : ""
+}
+<button onclick="deleteMessage(${m.id})">🗑️ Löschen</button>
         </div>
         `;
     });
