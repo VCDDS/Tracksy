@@ -134,6 +134,23 @@ async function apiPost(url, data){
     return await res.text();
 }
 
+function parseGermanDate(str){
+    if(!str) return null;
+
+    let parts = str.split(", ");
+    let dateParts = parts[0].split(".");
+    let timeParts = (parts[1] || "00:00:00").split(":");
+
+    return new Date(
+        parseInt(dateParts[2]),
+        parseInt(dateParts[1]) - 1,
+        parseInt(dateParts[0]),
+        parseInt(timeParts[0] || 0),
+        parseInt(timeParts[1] || 0),
+        parseInt(timeParts[2] || 0)
+    );
+}
+
 async function loadPage(page){
 
     currentPage = page;
@@ -251,75 +268,101 @@ async function loadPage(page){
     }
 
     if(page === "auswertung"){
-        let times = await apiGet("/times");
+    let times = await apiGet("/times");
 
-        let users = {};
-        let colors = ["#22c55e","#3b82f6","#f97316","#a855f7","#ef4444","#14b8a6","#eab308","#ec4899"];
-        let taskColors = {};
+    let users = {};
+    let colors = ["#22c55e","#f97316","#3b82f6","#a855f7","#ef4444","#14b8a6","#eab308","#ec4899"];
 
-        times.forEach(t => {
-            if(t.start_time && t.stop_time){
-                let user = t.username || "Unbekannt";
-                let label = (t.project || "-") + " / " + (t.task || "-");
+    times.forEach(t => {
+        if(t.start_time && t.stop_time){
+            let user = t.username || "Unbekannt";
+            let label = (t.project || "-") + " / " + (t.task || "-");
 
-                let start = new Date(t.start_time);
-                let stop = new Date(t.stop_time);
-                let minutes = Math.floor((stop - start) / 1000 / 60) - (t.pause_total || 0);
+            let start = parseGermanDate(t.start_time);
+            let stop = parseGermanDate(t.stop_time);
 
-                if(minutes < 0){
-                minutes = 0;
-                }
+            if(!start || !stop) return;
 
-                if(!users[user]) users[user] = {};
-                if(!users[user][label]) users[user][label] = 0;
+            let totalMinutes = Math.floor((stop - start) / 1000 / 60);
+            let pauseMinutes = t.pause_total || 0;
+            let workMinutes = totalMinutes - pauseMinutes;
 
-                users[user][label] += minutes;
+            if(workMinutes < 0) workMinutes = 0;
+            if(pauseMinutes < 0) pauseMinutes = 0;
 
-                if(!taskColors[label]){
-                    taskColors[label] = colors[Object.keys(taskColors).length % colors.length];
+            if(!users[user]) users[user] = {};
+            if(!users[user][label]){
+                users[user][label] = {
+                    work: 0,
+                    pause: 0
+                };
+            }
+
+            users[user][label].work += workMinutes;
+            users[user][label].pause += pauseMinutes;
+        }
+    });
+
+    let html = `<h2>Auswertung Zeit</h2>`;
+
+    Object.keys(users).forEach((user, index) => {
+        html += `
+        <div class="chart-box">
+            <h3>👤 ${user}</h3>
+            <canvas id="userChart_${index}"></canvas>
+        </div>`;
+    });
+
+    content.innerHTML = html;
+
+    Object.keys(users).forEach((user, index) => {
+        let labels = Object.keys(users[user]);
+        let workData = labels.map(l => users[user][l].work);
+        let pauseData = labels.map(l => users[user][l].pause);
+
+        new Chart(document.getElementById("userChart_" + index), {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "Arbeitszeit Min.",
+                        data: workData,
+                        backgroundColor: "#22c55e",
+                        borderRadius: 8
+                    },
+                    {
+                        label: "Pause Min.",
+                        data: pauseData,
+                        backgroundColor: "#f97316",
+                        borderRadius: 8
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        stacked: true,
+                        ticks: { color: "white" }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: { color: "white" }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: "white" }
+                    }
                 }
             }
         });
+    });
 
-        let html = `<h2>Auswertung Zeit</h2>`;
-
-        Object.keys(users).forEach((user, index) => {
-            html += `
-            <div class="chart-box">
-                <h3>👤 ${user}</h3>
-                <canvas id="userChart_${index}"></canvas>
-            </div>`;
-        });
-
-        content.innerHTML = html;
-
-        Object.keys(users).forEach((user, index) => {
-            let labels = Object.keys(users[user]);
-            let data = Object.values(users[user]);
-
-            new Chart(document.getElementById("userChart_" + index), {
-                type: "doughnut",
-                data: {
-                    labels,
-                    datasets: [{
-                        data,
-                        backgroundColor: labels.map(l => taskColors[l])
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: "right",
-                            labels: { color: "white" }
-                        }
-                    }
-                }
-            });
-        });
-
-        return;
-    }
+    return;
+}
 
     if(page === "report"){
         let times = await apiGet("/times");
@@ -343,7 +386,12 @@ async function loadPage(page){
             let duration = "-";
 
             if(t.start_time && t.stop_time){
-                let diff = Math.floor((new Date(t.stop_time) - new Date(t.start_time)) / 1000) - ((t.pause_total || 0) * 60);
+                let start = parseGermanDate(t.start_time);
+let stop = parseGermanDate(t.stop_time);
+
+if(!start || !stop) return;
+
+let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
 
             if(diff < 0){
             diff = 0;

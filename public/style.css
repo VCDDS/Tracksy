@@ -67,37 +67,47 @@ body{
 ========================================================= */
 
 .topbar{
-    position:fixed;
+    position:sticky;
     top:0;
-    left:0;
-    right:0;
-    z-index:99999;
+    z-index:9999;
 
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:10px;
     flex-wrap:wrap;
 
-    min-height:70px;
-    padding:10px 14px;
+    gap:14px;
+
+    width:100%;
+    padding:14px 22px;
 
     background:linear-gradient(
         90deg,
-        rgba(0,0,0,0.9),
-        rgba(15,23,42,0.9),
-        rgba(0,0,0,0.9)
+        rgba(8,12,25,0.96),
+        rgba(12,20,35,0.94),
+        rgba(8,12,25,0.96)
     );
 
-    backdrop-filter:blur(10px);
-    border-bottom:1px solid rgba(0,255,255,0.2);
+    backdrop-filter:blur(16px);
+
+    border-bottom:1px solid rgba(0,255,255,0.18);
+
+    box-shadow:
+    0 0 25px rgba(0,255,255,0.08),
+    0 4px 25px rgba(0,0,0,0.45);
 }
 
-.nav-left,
-.nav-right{
+.nav-left{
     display:flex;
     align-items:center;
     gap:8px;
+    flex-wrap:wrap;
+}
+
+.nav-right{
+    display:flex;
+    align-items:center;
+    gap:10px;
     flex-wrap:wrap;
 }
 
@@ -411,11 +421,20 @@ canvas{
         margin-right:0;
     }
 
-    .topbar button,
-    .admin-btn,
-    .logout-btn{
-        font-size:14px;
-        padding:8px 10px;
+    .topbar button{
+        border:none;
+        padding:8px 14px;
+        border-radius:12px;
+        background:rgba(255,255,255,0.08);
+        color:white;
+        cursor:pointer;
+        transition:0.2s;
+        font-size:13px;
+    }
+    
+    .topbar button:hover{
+        background:rgba(0,255,255,0.18);
+        transform:translateY(-2px);
     }
 
     #datetime,
@@ -532,4 +551,13 @@ canvas{
     font-size:14px;
 
     border:1px solid rgba(34,197,94,0.3);
+}
+
+.dev-footer{
+    position: fixed;
+    bottom: 8px;
+    right: 12px;
+    color: rgba(255,255,255,0.45);
+    font-size: 12px;
+    z-index: 999;
 }
