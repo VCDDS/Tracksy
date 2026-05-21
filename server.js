@@ -791,7 +791,11 @@ app.get("/messages/:username", async (req, res) => {
         const username = req.params.username;
 
         const result = await pool.query(
-            "SELECT * FROM messages WHERE receiver = $1 OR receiver = 'admin' ORDER BY id DESC",
+            `SELECT * FROM messages 
+            WHERE receiver = $1 
+            OR sender = $1 
+            OR receiver = 'admin' 
+            ORDER BY id ASC`,
             [username]
         );
 
