@@ -696,3 +696,25 @@ canvas{
     50%{transform:scale(1.15);}
     100%{transform:scale(1);}
 }
+
+.chat-box{
+    max-width:750px;
+    margin:20px auto;
+}
+
+.chat-message{
+    background:rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:12px;
+    margin-bottom:12px;
+}
+
+.chat-own{
+    margin-left:auto;
+    background:rgba(34,197,94,0.18);
+}
+
+.chat-other{
+    margin-right:auto;
+    background:rgba(59,130,246,0.18);
+}

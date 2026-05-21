@@ -576,59 +576,56 @@ let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
     }
 
     if(page === "nachrichten"){
-        markMessagesSeen();
-        let users = await apiGet("/users");
-        let messages = await apiGet("/messages/" + currentUser);
+    markMessagesSeen();
 
-        let html = `
-        <h2>Nachrichten</h2>
+    let users = await apiGet("/users");
+    let messages = await apiGet("/messages/" + currentUser);
 
-        <h3>Nachricht schreiben</h3>
+    let html = `
+    <h2>Nachrichten</h2>
+
+    <div class="center-box">
+        <h3>Nachricht / Antwort schreiben</h3>
 
         <select id="msgTo">
             <option value="">Empfänger wählen</option>
-        `;
-
-        users.forEach(u => {
-            html += `<option value="${u.username}">${u.username}</option>`;
-        });
-
-        html += `
+            ${users.map(u => `<option value="${u.username}">${u.username}</option>`).join("")}
         </select>
 
-        <input id="msgText" placeholder="Nachricht schreiben">
-        <button onclick="sendMessage()">Senden</button>
+        <textarea id="msgText" placeholder="Nachricht schreiben"></textarea>
 
-        <h3>Meine Nachrichten</h3>
+        <button onclick="sendMessage()">📨 Senden</button>
+    </div>
 
-        <table>
-            <tr>
-                <th>Von</th>
-                <th>Nachricht</th>
-                <th>Datum</th>
-                <th>Aktionen</th>
-            </tr>
+    <h3>Chat Verlauf</h3>
+
+    <div class="chat-box">
+    `;
+
+    messages.forEach(m => {
+        html += `
+        <div class="chat-message ${m.sender === currentUser ? "chat-own" : "chat-other"}">
+            <b>${m.sender}</b>
+            <p>${m.text}</p>
+            <small>${m.date}</small>
+            ${
+                m.sender !== currentUser
+                ? `<br><button onclick="replyToMessage('${m.sender}')">↩️ Antworten</button>`
+                : ""
+            }
+        </div>
         `;
+    });
 
-        messages.forEach(m => {
-            html += `
-            <tr>
-                <td>${m.sender}</td>
-                <td>${m.text}</td>
-                <td>${m.date}</td>
-                <td>
-                    <button onclick="printMessage(${m.id})">🖨️ Drucken/PDF</button>
-                    <button onclick="deleteMessage(${m.id})">❌ Löschen</button>
-                </td>
-            </tr>`;
-        });
+    html += `
+    </div>
+    `;
 
-        html += "</table>";
-        content.innerHTML = html;
-        return;
-    }
+    content.innerHTML = html;
+    return;
+}
 
-    if(page === "benutzer"){
+if(page === "benutzer"){
     let users = await apiGet("/users");
     let ownUser = users.find(u => u.username === currentUser);
 
@@ -1460,6 +1457,13 @@ async function sendMessage(){
     loadPage("nachrichten");
 }
 
+function replyToMessage(sender){
+
+document.getElementById("msgTo").value = sender;
+document.getElementById("msgText").focus();
+
+}
+
 async function deleteMessage(id){
     if(!confirm("Nachricht wirklich löschen?")) return;
 
@@ -2161,7 +2165,14 @@ let suggestions = await apiGet("/suggestions");
 let lastSeen = localStorage.getItem("lastSuggestionSeen") || "0";
 
 let hasNew = suggestions.some(s => {
-    return getDateValue(s.created_at) > parseInt(lastSeen);
+
+    let suggestionNew = getDateValue(s.created_at) > parseInt(lastSeen);
+
+    let commentNew = (s.comments || []).some(c =>
+        getDateValue(c.created_at) > parseInt(lastSeen)
+    );
+
+    return suggestionNew || commentNew;
 });
 
 let badge = document.getElementById("suggestionBadge");
@@ -2175,12 +2186,18 @@ async function markSuggestionsSeen(){
 
 let suggestions = await apiGet("/suggestions");
 
-if(suggestions.length > 0){
+let allDates = [];
 
-    let newest = suggestions
-    .map(s => getDateValue(s.created_at))
-        .sort((a,b) => b-a)[0];
+suggestions.forEach(s => {
+    allDates.push(getDateValue(s.created_at));
 
+    (s.comments || []).forEach(c => {
+        allDates.push(getDateValue(c.created_at));
+    });
+});
+
+if(allDates.length > 0){
+    let newest = allDates.sort((a,b) => b-a)[0];
     localStorage.setItem("lastSuggestionSeen", newest);
 }
 
