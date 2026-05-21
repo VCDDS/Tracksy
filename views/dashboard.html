@@ -1089,86 +1089,57 @@ let html = `
 <div class="admin-clean-grid">
 
 <div class="clean-card">
-
 <h3>⏱️ Zeiten löschen</h3>
-
-<p>Einzelne Zeiteinträge entfernen.</p>
+<p>Hier siehst du genau welche Zeit gelöscht wird.</p>
 
 <table>
+<tr>
+<th>User</th>
+<th>Projekt</th>
+<th>Aufgabe</th>
+<th>Start</th>
+<th>Stop</th>
+<th>Aktion</th>
+</tr>
+
 ${times.map(t => `
 <tr>
-<td>${t.username}</td>
-<td>${t.project}</td>
-<td>
-<button onclick="deleteTime(${t.id})">
-🗑️ Löschen
-</button>
-</td>
+<td>${t.username || "-"}</td>
+<td>${t.project || "-"}</td>
+<td>${t.task || "-"}</td>
+<td>${t.start_time || "-"}</td>
+<td>${t.stop_time || "-"}</td>
+<td><button onclick="deleteTime(${t.id})">🗑️ Löschen</button></td>
 </tr>
 `).join("")}
 </table>
-
-<br>
-
-<button class="danger-btn" onclick="deleteAllTimes()">
-🚨 ALLE Zeiten löschen
-</button>
-
 </div>
 
 <div class="clean-card">
-
-<h3>💻 Reports löschen</h3>
-
-<p>Berichte einzeln oder komplett entfernen.</p>
+<h3>📊 Auswertung löschen</h3>
+<p>Hier siehst du genau welche Auswertung gelöscht wird.</p>
 
 <table>
+<tr>
+<th>User</th>
+<th>Projekt</th>
+<th>Aufgabe</th>
+<th>Start</th>
+<th>Stop</th>
+<th>Aktion</th>
+</tr>
+
 ${times.map(t => `
 <tr>
-<td>${t.report || "-"}</td>
-<td>
-<button onclick="deleteSingleReport(${t.id})">
-🗑️ Löschen
-</button>
-</td>
+<td>${t.username || "-"}</td>
+<td>${t.project || "-"}</td>
+<td>${t.task || "-"}</td>
+<td>${t.start_time || "-"}</td>
+<td>${t.stop_time || "-"}</td>
+<td><button onclick="deleteSingleAuswertung(${t.id})">🗑️ Löschen</button></td>
 </tr>
 `).join("")}
 </table>
-
-<br>
-
-<button class="danger-btn" onclick="deleteAllReports()">
-🚨 ALLE Reports löschen
-</button>
-
-</div>
-
-<div class="clean-card">
-
-<h3>📊 Auswertungen löschen</h3>
-
-<p>Auswertungen einzeln oder komplett entfernen.</p>
-
-<table>
-${times.map(t => `
-<tr>
-<td>${t.username}</td>
-<td>${t.project}</td>
-<td>
-<button onclick="deleteSingleAuswertung(${t.id})">
-🗑️ Löschen
-</button>
-</td>
-</tr>
-`).join("")}
-</table>
-
-<br>
-
-<button class="danger-btn" onclick="deleteAllAuswertung()">
-🚨 ALLE Auswertungen löschen
-</button>
-
 </div>
 
 </div>

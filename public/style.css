@@ -70,8 +70,8 @@ body{
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap:15px;
-    padding:12px 18px;
+    gap:8px;
+    padding:8px 12px;
     background:rgba(15,23,42,0.95);
     border-bottom:1px solid rgba(255,255,255,0.12);
     flex-wrap:wrap;
@@ -80,30 +80,31 @@ body{
 .nav-left{
     display:flex;
     align-items:center;
-    gap:8px;
+    gap:5px;
     flex-wrap:wrap;
 }
 
 .nav-right{
     display:flex;
     align-items:center;
-    gap:10px;
+    gap:6px;
     margin-left:auto;
     flex-wrap:wrap;
 }
 
 .logo{
     font-weight:bold;
-    font-size:20px;
-    margin-right:12px;
+    font-size:16px;
+    margin-right:6px;
     white-space:nowrap;
 }
 
 .topbar button,
 .admin-btn{
-    height:38px;
-    padding:0 12px;
-    border-radius:10px;
+    height:30px;
+    padding:0 8px;
+    border-radius:8px;
+    font-size:12px;
     white-space:nowrap;
 }
 
@@ -113,7 +114,7 @@ body{
 
 .dropdown-content{
     position:absolute;
-    top:45px;
+    top:36px;
     left:0;
     z-index:999;
 }
