@@ -678,3 +678,21 @@ canvas{
         border:1px solid black !important;
     }
 }
+
+.suggestion-badge{
+    display:inline-block;
+    margin-left:6px;
+    padding:2px 6px;
+    background:#ef4444;
+    color:white;
+    border-radius:999px;
+    font-size:10px;
+    font-weight:bold;
+    animation:pulseBadge 1.2s infinite;
+}
+
+@keyframes pulseBadge{
+    0%{transform:scale(1);}
+    50%{transform:scale(1.15);}
+    100%{transform:scale(1);}
+}

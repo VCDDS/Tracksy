@@ -33,12 +33,24 @@
         <button onclick="loadPage('zeiten')">⌛ <span>Zeiten</span></button>
         <button onclick="loadPage('auswertung')">📊 <span>Auswertung</span></button>
         <button onclick="loadPage('report')">💻 <span>Report</span></button>
-        <button onclick="loadPage('projekte')">📁 <span>Projekte</span></button>
-        <button onclick="loadPage('dokumente')">📄 <span>Dokumente</span></button>
+        <button onclick="loadPage('projekte')">
+            📁 <span>Projekte</span>
+            <span id="projectBadge" class="suggestion-badge" style="display:none;">NEW</span>
+            </button>
+        <button onclick="loadPage('dokumente')">
+            📄 <span>Dokumente</span>
+            <span id="documentBadge" class="suggestion-badge" style="display:none;">NEW</span>
+            </button>
         <button onclick="loadPage('kalender')">📅 <span>Kalender</span></button>
         <button onclick="loadPage('notizen')">✏️ <span>Notizen</span></button>
-        <button onclick="loadPage('vorschlaege')">💡 <span>Vorschläge</span></button>
-        <button onclick="loadPage('nachrichten')">📩 <span>Nachrichten</span></button>
+        <button onclick="loadPage('vorschlaege')">
+            💡 <span>Vorschläge</span>
+            <span id="suggestionBadge" class="suggestion-badge" style="display:none;">NEW</span>
+            </button>
+            <button onclick="loadPage('nachrichten')">
+                📩 <span>Nachrichten</span>
+                <span id="messageBadge" class="suggestion-badge" style="display:none;">NEW</span>
+                </button>
         <button onclick="loadPage('benutzer')">👤 <span>Benutzer</span></button>
     
         </div>
@@ -149,6 +161,11 @@ function parseGermanDate(str){
         parseInt(timeParts[1] || 0),
         parseInt(timeParts[2] || 0)
     );
+}
+
+function getDateValue(str){
+    let d = parseGermanDate(str);
+    return d ? d.getTime() : 0;
 }
 
 async function loadPage(page){
@@ -395,7 +412,7 @@ async function loadPage(page){
 
             if(t.start_time && t.stop_time){
                 let start = parseGermanDate(t.start_time);
-let stop = parseGermanDate(t.stop_time);
+                let stop = parseGermanDate(t.stop_time);
 
 if(!start || !stop) return;
 
@@ -440,6 +457,8 @@ let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
     }
 
     if(page === "projekte"){
+        markProjectsSeen();
+
         let projects = await apiGet("/projects");
 
         let html = `
@@ -557,6 +576,7 @@ let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
     }
 
     if(page === "nachrichten"){
+        markMessagesSeen();
         let users = await apiGet("/users");
         let messages = await apiGet("/messages/" + currentUser);
 
@@ -773,6 +793,7 @@ return;
 }
 
 if(page === "vorschlaege"){
+    markSuggestionsSeen();
 
 let suggestions = await apiGet("/suggestions");
 let projects = await apiGet("/projects");
@@ -952,6 +973,7 @@ return;
 }
 
 if(page === "dokumente"){
+    markDocumentsSeen();
 
 let docs = await apiGet("/documents");
 
@@ -2131,6 +2153,157 @@ box.innerHTML = users
 }
 
 setInterval(loadOnlineUsers, 5000);
+
+async function checkNewSuggestions(){
+
+let suggestions = await apiGet("/suggestions");
+
+let lastSeen = localStorage.getItem("lastSuggestionSeen") || "0";
+
+let hasNew = suggestions.some(s => {
+    return getDateValue(s.created_at) > parseInt(lastSeen);
+});
+
+let badge = document.getElementById("suggestionBadge");
+
+if(badge){
+    badge.style.display = hasNew ? "inline-block" : "none";
+}
+}
+
+async function markSuggestionsSeen(){
+
+let suggestions = await apiGet("/suggestions");
+
+if(suggestions.length > 0){
+
+    let newest = suggestions
+    .map(s => getDateValue(s.created_at))
+        .sort((a,b) => b-a)[0];
+
+    localStorage.setItem("lastSuggestionSeen", newest);
+}
+
+let badge = document.getElementById("suggestionBadge");
+
+if(badge){
+    badge.style.display = "none";
+}
+}
+
+async function checkNewMessages(){
+
+let messages = await apiGet("/messages/" + currentUser);
+
+let lastSeen = localStorage.getItem("lastMessageSeen") || "0";
+
+let hasNew = messages.some(m => {
+    return getDateValue(m.date) > parseInt(lastSeen);
+});
+
+let badge = document.getElementById("messageBadge");
+
+if(badge){
+    badge.style.display = hasNew ? "inline-block" : "none";
+}
+}
+
+async function markMessagesSeen(){
+
+let messages = await apiGet("/messages/" + currentUser);
+
+if(messages.length > 0){
+
+    let newest = messages
+    .map(m => getDateValue(m.date))
+        .sort((a,b) => b-a)[0];
+
+    localStorage.setItem("lastMessageSeen", newest);
+}
+
+let badge = document.getElementById("messageBadge");
+
+if(badge){
+    badge.style.display = "none";
+}
+}
+
+async function checkNewDocuments(){
+
+let docs = await apiGet("/documents");
+
+let lastSeen = localStorage.getItem("lastDocumentSeen") || "0";
+
+let hasNew = docs.some(d => {
+    return getDateValue(d.upload_date) > parseInt(lastSeen);
+});
+
+let badge = document.getElementById("documentBadge");
+
+if(badge){
+    badge.style.display = hasNew ? "inline-block" : "none";
+}
+}
+
+async function markDocumentsSeen(){
+
+let docs = await apiGet("/documents");
+
+if(docs.length > 0){
+
+    let newest = docs
+    .map(d => getDateValue(d.upload_date))
+        .sort((a,b) => b-a)[0];
+
+    localStorage.setItem("lastDocumentSeen", newest);
+}
+
+let badge = document.getElementById("documentBadge");
+
+if(badge){
+    badge.style.display = "none";
+}
+}
+
+async function checkNewProjects(){
+
+let projects = await apiGet("/projects");
+
+let currentCount = projects.length;
+
+let oldCount = parseInt(localStorage.getItem("projectCount") || "0");
+
+let badge = document.getElementById("projectBadge");
+
+if(badge){
+    badge.style.display = currentCount > oldCount ? "inline-block" : "none";
+}
+}
+
+async function markProjectsSeen(){
+
+let projects = await apiGet("/projects");
+
+localStorage.setItem("projectCount", projects.length);
+
+let badge = document.getElementById("projectBadge");
+
+if(badge){
+    badge.style.display = "none";
+}
+}
+
+
+
+checkNewSuggestions();
+checkNewMessages();
+checkNewDocuments();
+checkNewProjects();
+
+setInterval(checkNewSuggestions, 10000);
+setInterval(checkNewMessages, 10000);
+setInterval(checkNewDocuments, 10000);
+setInterval(checkNewProjects, 10000);
 
 loadPage("start");
 </script>
