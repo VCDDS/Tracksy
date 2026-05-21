@@ -673,3 +673,20 @@ canvas{
         box-sizing:border-box;
     }
 }
+
+.user{
+    display:block;
+    text-align:center;
+}
+
+#datetime{
+    display:block;
+    text-align:center;
+    font-size:11px;
+}
+
+.online-box{
+    font-size:13px;
+    line-height:1.5;
+    word-break:break-word;
+}
