@@ -56,6 +56,10 @@
 
 <div id="content"></div>
 
+<footer class="dev-footer">
+    D.Schulteis - visualcode.dev © 2026
+</footer>
+
 <div id="reportModal" class="modal">
     <div class="modal-box">
         <h2>Bericht schreiben</h2>
@@ -143,13 +147,21 @@ async function loadPage(page){
         let runningText = running
     ? (
         running.is_paused
-        ? "⏸️ Pause: " + running.project + " / " + running.task + "<br>Seit: " + running.start_time + "<br>Pause seit: " + running.pause_time
+        ? "⏸️ Pause: " + running.project + " / " + running.task +
+        "<br>Seit: " + running.start_time +
+        "<br>Pause seit: " + running.pause_time +
+        "<br>Pause gesamt: " + (running.pause_total || 0) + " Min."
         : "🟢 Läuft: " + running.project + " / " + running.task + "<br>Seit: " + running.start_time
     )
         : "⚪ Keine laufende Zeit";
 
         content.innerHTML = `
         <div class="center-box">
+
+            <div id="onlineUsersBox" class="online-box">
+            🟢 Online:
+            <span id="onlineUsersList">Lade...</span>
+            </div>
             <h2>Start</h2>
 
             <div class="running-box">${runningText}</div>
@@ -187,6 +199,7 @@ async function loadPage(page){
             }
         };
 
+        loadOnlineUsers();
         return;
     }
 
@@ -202,7 +215,9 @@ async function loadPage(page){
                 <th>Aufgabe</th>
                 <th>Start</th>
                 <th>Stop</th>
-                <th>Pause</th>
+                <th>Pause Start</th>
+                <th>Pause Ende</th>
+                <th>Pause Gesamt</th>
                 <th>Status</th>
             </tr>
         `;
@@ -216,6 +231,8 @@ async function loadPage(page){
                 <td>${t.start_time || "-"}</td>
                 <td>${t.stop_time || "-"}</td>
                 <td>${t.pause_time || "-"}</td>
+                <td>${t.pause_end || "-"}</td>
+                <td>${t.pause_total ? t.pause_total + " Min." : "-"}</td>
                 <td>
                 ${
                 t.stop_time
@@ -247,7 +264,11 @@ async function loadPage(page){
 
                 let start = new Date(t.start_time);
                 let stop = new Date(t.stop_time);
-                let minutes = Math.floor((stop - start) / 1000 / 60);
+                let minutes = Math.floor((stop - start) / 1000 / 60) - (t.pause_total || 0);
+
+                if(minutes < 0){
+                minutes = 0;
+                }
 
                 if(!users[user]) users[user] = {};
                 if(!users[user][label]) users[user][label] = 0;
@@ -322,7 +343,11 @@ async function loadPage(page){
             let duration = "-";
 
             if(t.start_time && t.stop_time){
-                let diff = Math.floor((new Date(t.stop_time) - new Date(t.start_time)) / 1000);
+                let diff = Math.floor((new Date(t.stop_time) - new Date(t.start_time)) / 1000) - ((t.pause_total || 0) * 60);
+
+            if(diff < 0){
+            diff = 0;
+            }
                 let h = Math.floor(diff / 3600);
                 let m = Math.floor((diff % 3600) / 60);
                 let s = diff % 60;
@@ -1374,6 +1399,10 @@ if(running){
     });
 }
 
+await apiPost("/logout-user", {
+    username: currentUser
+});
+
 localStorage.removeItem("username");
 localStorage.removeItem("isAdmin");
 
@@ -1590,7 +1619,8 @@ if(runningBox){
             running.is_paused
             ? "⏸️ Pause: " + running.project + " / " + running.task +
               "<br>Seit: " + running.start_time +
-              "<br>Pause seit: " + running.pause_time
+              "<br>Pause seit: " + running.pause_time +
+              "<br>Pause gesamt: " + (running.pause_total || 0) + " Min."
             : "🟢 Läuft: " + running.project + " / " + running.task +
               "<br>Seit: " + running.start_time
         )
@@ -1939,6 +1969,28 @@ alert(msg);
 
 loadPage("vorschlaege");
 }
+
+async function loadOnlineUsers(){
+
+let users = await apiGet("/online-users");
+
+let box = document.getElementById("onlineUsersList");
+
+if(!box){
+    return;
+}
+
+if(users.length === 0){
+    box.innerHTML = "Niemand online";
+    return;
+}
+
+box.innerHTML = users
+    .map(u => u.username)
+    .join(", ");
+}
+
+setInterval(loadOnlineUsers, 5000);
 
 loadPage("start");
 </script>

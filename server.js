@@ -60,8 +60,20 @@ async function initDatabase(){
             password TEXT NOT NULL,
             email TEXT DEFAULT '',
             is_admin BOOLEAN DEFAULT false,
-            last_change TEXT DEFAULT ''
+            last_change TEXT DEFAULT '',
+            online BOOLEAN DEFAULT false,
+            last_online TEXT DEFAULT ''
         )
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS online BOOLEAN DEFAULT false
+    `);
+    
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS last_online TEXT DEFAULT ''
     `);
 
     await pool.query(`
@@ -99,8 +111,26 @@ async function initDatabase(){
             report TEXT DEFAULT '',
             admin_only BOOLEAN DEFAULT false,
             pause_time TEXT DEFAULT '',
-            is_paused BOOLEAN DEFAULT false
+            is_paused BOOLEAN DEFAULT false,
+            pause_start TEXT DEFAULT '',
+            pause_end TEXT DEFAULT '',
+            pause_total INTEGER DEFAULT 0
         )
+    `);
+
+    await pool.query(`
+        ALTER TABLE times
+        ADD COLUMN IF NOT EXISTS pause_start TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE times
+        ADD COLUMN IF NOT EXISTS pause_end TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE times
+        ADD COLUMN IF NOT EXISTS pause_total INTEGER DEFAULT 0
     `);
 
     await pool.query(`
@@ -242,12 +272,18 @@ app.post("/login", async (req, res) => {
         const user = result.rows[0];
 
         if(username === "Dominic Schulteis" && password === "07021995"){
+
+            await pool.query(
+                "UPDATE users SET online = true WHERE username = $1",
+                ["Dominic Schulteis"]
+            );
+        
             return res.json({
-            success:true,
-            username:"Dominic Schulteis",
-            isAdmin:true
+                success:true,
+                username:"Dominic Schulteis",
+                isAdmin:true
             });
-            }
+        }
 
 let validPw = false;
 
@@ -260,6 +296,11 @@ try{
 if(!validPw){
     return res.json({ success:false });
 }
+
+await pool.query(
+    "UPDATE users SET online = true WHERE username = $1",
+    [user.username]
+);
 
         res.json({
             success:true,
@@ -274,6 +315,43 @@ if(!validPw){
 });
 
 /* USERS */
+
+app.get("/online-users", async (req, res) => {
+
+    try{
+
+        const result = await pool.query(
+            "SELECT username FROM users WHERE online = true ORDER BY username"
+        );
+
+        res.json(result.rows);
+
+    }catch(err){
+
+        console.log(err);
+        res.json([]);
+    }
+});
+
+app.post("/logout-user", async (req, res) => {
+
+    try{
+
+        const { username } = req.body;
+
+        await pool.query(
+            "UPDATE users SET online = false WHERE username = $1",
+            [username]
+        );
+
+        res.send("Offline");
+
+    }catch(err){
+
+        console.log(err);
+        res.send("Fehler");
+    }
+});
 
 app.get("/users", async (req, res) => {
     try{
@@ -569,9 +647,16 @@ app.post("/pause-time", async (req, res) => {
     try{
         const { username } = req.body;
 
+        const nowText = new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
+        const nowIso = new Date().toISOString();
+
         await pool.query(
-            "UPDATE times SET is_paused = true, pause_time = $1 WHERE username = $2 AND stop_time = ''",
-            [new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }), username]
+            `UPDATE times 
+             SET is_paused = true,
+                 pause_time = $1,
+                 pause_start = $2
+             WHERE username = $3 AND stop_time = ''`,
+            [nowText, nowIso, username]
         );
 
         res.send("Pausiert");
@@ -586,9 +671,36 @@ app.post("/resume-time", async (req, res) => {
     try{
         const { username } = req.body;
 
-        await pool.query(
-            "UPDATE times SET is_paused = false WHERE username = $1 AND stop_time = ''",
+        const running = await pool.query(
+            "SELECT * FROM times WHERE username = $1 AND stop_time = '' ORDER BY id DESC LIMIT 1",
             [username]
+        );
+
+        if(running.rows.length === 0){
+            return res.send("Keine laufende Zeit");
+        }
+
+        const time = running.rows[0];
+        const now = new Date();
+
+        let pauseMinutes = 0;
+
+        if(time.pause_start){
+            let pauseStart = new Date(time.pause_start);
+            pauseMinutes = Math.floor((now - pauseStart) / 1000 / 60);
+        }
+
+        await pool.query(
+            `UPDATE times 
+             SET is_paused = false,
+                 pause_end = $1,
+                 pause_total = pause_total + $2
+             WHERE id = $3`,
+            [
+                now.toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+                pauseMinutes,
+                time.id
+            ]
         );
 
         res.send("Fortgesetzt");
@@ -613,10 +725,31 @@ app.post("/stop-time", async (req, res) => {
         }
 
         const time = running.rows[0];
+        const now = new Date();
+
+        let extraPauseMinutes = 0;
+
+        if(time.is_paused && time.pause_start){
+            let pauseStart = new Date(time.pause_start);
+            extraPauseMinutes = Math.floor((now - pauseStart) / 1000 / 60);
+        }
 
         await pool.query(
-            "UPDATE times SET stop_time = $1, report = $2, admin_only = $3, is_paused = false WHERE id = $4",
-            [new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }), report, adminOnly === true, time.id]
+            `UPDATE times 
+             SET stop_time = $1,
+                 report = $2,
+                 admin_only = $3,
+                 is_paused = false,
+                 pause_end = $1,
+                 pause_total = pause_total + $4
+             WHERE id = $5`,
+            [
+                now.toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+                report,
+                adminOnly === true,
+                extraPauseMinutes,
+                time.id
+            ]
         );
 
         await pool.query(
