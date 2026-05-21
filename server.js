@@ -197,8 +197,14 @@ await pool.query(`
         suggestion_id INTEGER REFERENCES suggestions(id) ON DELETE CASCADE,
         username TEXT NOT NULL,
         comment TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        parent_comment_id INTEGER DEFAULT NULL
     )
+`);
+
+await pool.query(`
+    ALTER TABLE suggestion_comments
+    ADD COLUMN IF NOT EXISTS parent_comment_id INTEGER DEFAULT NULL
 `);
 }
 
@@ -1029,19 +1035,20 @@ app.post("/vote-suggestion", async (req, res) => {
 
 app.post("/comment-suggestion", async (req, res) => {
     try{
-        const { suggestionId, username, comment } = req.body;
+        const { suggestionId, username, comment, parentCommentId } = req.body;
 
         if(!comment){
             return res.send("Kommentar fehlt");
         }
 
         await pool.query(
-            "INSERT INTO suggestion_comments (suggestion_id, username, comment, created_at) VALUES ($1, $2, $3, $4)",
+            "INSERT INTO suggestion_comments (suggestion_id, username, comment, created_at, parent_comment_id) VALUES ($1, $2, $3, $4, $5)",
             [
-                suggestionId,
-                username,
-                comment.trim(),
-                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })
+            suggestionId,
+            username,
+            comment.trim(),
+            new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+            parentCommentId || null
             ]
         );
 
@@ -1071,6 +1078,38 @@ app.post("/delete-suggestion", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Löschen fehlgeschlagen");
+    }
+});
+
+app.post("/delete-suggestion-comment", async (req, res) => {
+    try{
+        const { id, username, isAdmin } = req.body;
+
+        const result = await pool.query(
+            "SELECT * FROM suggestion_comments WHERE id = $1",
+            [id]
+        );
+
+        if(result.rows.length === 0){
+            return res.send("Kommentar nicht gefunden");
+        }
+
+        const comment = result.rows[0];
+
+        if(comment.username !== username && isAdmin !== true){
+            return res.send("Keine Berechtigung");
+        }
+
+        await pool.query(
+            "DELETE FROM suggestion_comments WHERE id = $1",
+            [id]
+        );
+
+        res.send("Kommentar gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Kommentar löschen fehlgeschlagen");
     }
 });
 

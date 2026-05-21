@@ -751,7 +751,9 @@ isAdmin
 
 <h4>💬 Kommentare</h4>
 
-${s.comments.map(c => `
+${s.comments
+.filter(c => !c.parent_comment_id)
+.map(c => `
 <div style="
 background:rgba(255,255,255,0.08);
 padding:10px;
@@ -763,6 +765,38 @@ text-align:left;
 ${c.comment}
 <br><br>
 <small>${c.created_at}</small>
+<div style="margin-top:10px;">
+<button onclick="replyToSuggestionComment(${s.id}, ${c.id})">
+↩️ Antworten
+</button>
+</div>
+
+<div style="margin-left:25px; margin-top:10px;">
+${s.comments
+.filter(r => r.parent_comment_id === c.id)
+.map(r => `
+<div style="
+background:rgba(255,255,255,0.05);
+padding:10px;
+margin-bottom:10px;
+border-radius:10px;
+">
+<b>${r.username}</b><br>
+${r.comment}
+<br><small>${r.created_at}</small>
+${
+    r.username === currentUser || isAdmin
+    ? `<br><button onclick="deleteSuggestionComment(${r.id})">🗑️ Antwort löschen</button>`
+    : ""
+}
+</div>
+`).join("")}
+</div>
+${
+    c.username === currentUser || isAdmin
+    ? `<br><button onclick="deleteSuggestionComment(${c.id})">🗑️ Kommentar löschen</button>`
+    : ""
+}
 </div>
 `).join("")}
 
@@ -1869,6 +1903,41 @@ let msg = await apiPost("/edit-project", {
 alert(msg);
 
 loadPage("projekt");
+}
+
+async function deleteSuggestionComment(id){
+
+if(!confirm("Kommentar löschen?")) return;
+
+let msg = await apiPost("/delete-suggestion-comment", {
+    id,
+    username: currentUser,
+    isAdmin
+});
+
+alert(msg);
+
+loadPage("vorschlaege");
+}
+
+async function replyToSuggestionComment(suggestionId, commentId){
+
+let comment = prompt("Antwort schreiben:");
+
+if(!comment){
+    return;
+}
+
+let msg = await apiPost("/comment-suggestion", {
+    suggestionId,
+    username: currentUser,
+    comment,
+    parentCommentId: commentId
+});
+
+alert(msg);
+
+loadPage("vorschlaege");
 }
 
 loadPage("start");
