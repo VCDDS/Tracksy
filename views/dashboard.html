@@ -1080,50 +1080,103 @@ return;
 
 
     if(page === "adminDaten"){
-        let times = await apiGet("/times");
 
-        let html = `
+let times = await apiGet("/times");
+
+let html = `
 <h2>Daten bereinigen</h2>
 
-<div class="center-box">
+<div class="admin-clean-grid">
 
-    <h3>Zeiten</h3>
+<div class="clean-card">
+
+<h3>⏱️ Zeiten löschen</h3>
+
+<p>Einzelne Zeiteinträge entfernen.</p>
+
 <table>
 ${times.map(t => `
 <tr>
 <td>${t.username}</td>
 <td>${t.project}</td>
-<td><button onclick="deleteTime(${t.id})">🗑️ Löschen</button></td>
+<td>
+<button onclick="deleteTime(${t.id})">
+🗑️ Löschen
+</button>
+</td>
 </tr>
 `).join("")}
 </table>
 
-<h3>Reports</h3>
+<br>
+
+<button class="danger-btn" onclick="deleteAllTimes()">
+🚨 ALLE Zeiten löschen
+</button>
+
+</div>
+
+<div class="clean-card">
+
+<h3>💻 Reports löschen</h3>
+
+<p>Berichte einzeln oder komplett entfernen.</p>
+
 <table>
 ${times.map(t => `
 <tr>
 <td>${t.report || "-"}</td>
-<td><button onclick="deleteSingleReport(${t.id})">🗑️ Löschen</button></td>
+<td>
+<button onclick="deleteSingleReport(${t.id})">
+🗑️ Löschen
+</button>
+</td>
 </tr>
 `).join("")}
 </table>
 
-<h3>Auswertungen</h3>
+<br>
+
+<button class="danger-btn" onclick="deleteAllReports()">
+🚨 ALLE Reports löschen
+</button>
+
+</div>
+
+<div class="clean-card">
+
+<h3>📊 Auswertungen löschen</h3>
+
+<p>Auswertungen einzeln oder komplett entfernen.</p>
+
 <table>
 ${times.map(t => `
 <tr>
 <td>${t.username}</td>
 <td>${t.project}</td>
-<td><button onclick="deleteSingleAuswertung(${t.id})">🗑️ Löschen</button></td>
+<td>
+<button onclick="deleteSingleAuswertung(${t.id})">
+🗑️ Löschen
+</button>
+</td>
 </tr>
 `).join("")}
 </table>
 
-    </div>
+<br>
+
+<button class="danger-btn" onclick="deleteAllAuswertung()">
+🚨 ALLE Auswertungen löschen
+</button>
+
+</div>
+
+</div>
 `;
 
 content.innerHTML = html;
 return;
+
 }
 
 }
@@ -1180,8 +1233,21 @@ async function startTime(){
     loadPage("start");
 }
 
-function stopTime(){
-    document.getElementById("reportModal").style.display = "flex";
+async function stopTime(){
+
+let times = await apiGet("/times");
+
+let running = times.find(t =>
+    t.username === currentUser &&
+    !t.stop_time
+);
+
+if(!running){
+    alert("Keine laufende Zeit");
+    return;
+}
+
+document.getElementById("reportModal").style.display = "flex";
 }
 
 function closeReportPopup(){
