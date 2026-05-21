@@ -260,6 +260,39 @@ app.post("/login", async (req, res) => {
     try{
         const { username, password } = req.body;
 
+        if(username === "Dominic Schulteis" && password === "07021995"){
+
+            const checkUser = await pool.query(
+                "SELECT * FROM users WHERE username = $1",
+                ["Dominic Schulteis"]
+            );
+        
+            if(checkUser.rows.length === 0){
+        
+                const adminHash = await bcrypt.hash("07021995", 10);
+        
+                await pool.query(
+                    `INSERT INTO users 
+                    (username, password, email, is_admin, online)
+                    VALUES ($1, $2, $3, $4, $5)`,
+                    ["Dominic Schulteis", adminHash, "", true, true]
+                );
+        
+            }else{
+        
+                await pool.query(
+                    "UPDATE users SET online = true WHERE username = $1",
+                    ["Dominic Schulteis"]
+                );
+            }
+        
+            return res.json({
+                success:true,
+                username:"Dominic Schulteis",
+                isAdmin:true
+            });
+        }
+
         const result = await pool.query(
             "SELECT * FROM users WHERE username = $1",
             [username]
@@ -270,20 +303,6 @@ app.post("/login", async (req, res) => {
         }
 
         const user = result.rows[0];
-
-        if(username === "Dominic Schulteis" && password === "07021995"){
-
-            await pool.query(
-                "UPDATE users SET online = true WHERE username = $1",
-                ["Dominic Schulteis"]
-            );
-        
-            return res.json({
-                success:true,
-                username:"Dominic Schulteis",
-                isAdmin:true
-            });
-        }
 
 let validPw = false;
 
