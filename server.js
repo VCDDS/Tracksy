@@ -160,6 +160,36 @@ async function initDatabase(){
             created_at TEXT NOT NULL
         )
     `);
+
+    await pool.query(`
+    CREATE TABLE IF NOT EXISTS suggestions (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        created_at TEXT NOT NULL
+    )
+`);
+
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS suggestion_votes (
+        id SERIAL PRIMARY KEY,
+        suggestion_id INTEGER REFERENCES suggestions(id) ON DELETE CASCADE,
+        username TEXT NOT NULL,
+        vote TEXT NOT NULL,
+        UNIQUE(suggestion_id, username)
+    )
+`);
+
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS suggestion_comments (
+        id SERIAL PRIMARY KEY,
+        suggestion_id INTEGER REFERENCES suggestions(id) ON DELETE CASCADE,
+        username TEXT NOT NULL,
+        comment TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+`);
 }
 
 initDatabase().catch(err => {
@@ -866,6 +896,130 @@ app.post("/delete-note", async (req, res) => {
         );
 
         res.send("Notiz gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Löschen fehlgeschlagen");
+    }
+});
+
+/* SUGGESTIONS */
+
+app.get("/suggestions", async (req, res) => {
+    try{
+        const suggestions = await pool.query(
+            "SELECT * FROM suggestions ORDER BY id DESC"
+        );
+
+        const votes = await pool.query(
+            "SELECT * FROM suggestion_votes"
+        );
+
+        const comments = await pool.query(
+            "SELECT * FROM suggestion_comments ORDER BY id ASC"
+        );
+
+        const data = suggestions.rows.map(s => ({
+            ...s,
+            good: votes.rows.filter(v => v.suggestion_id === s.id && v.vote === "good").length,
+            bad: votes.rows.filter(v => v.suggestion_id === s.id && v.vote === "bad").length,
+            comments: comments.rows.filter(c => c.suggestion_id === s.id)
+        }));
+
+        res.json(data);
+
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
+});
+
+app.post("/create-suggestion", async (req, res) => {
+    try{
+        const { username, title, description } = req.body;
+
+        if(!username || !title){
+            return res.send("Titel fehlt");
+        }
+
+        await pool.query(
+            "INSERT INTO suggestions (username, title, description, created_at) VALUES ($1, $2, $3, $4)",
+            [
+                username,
+                title.trim(),
+                description || "",
+                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })
+            ]
+        );
+
+        res.send("Vorschlag gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Vorschlag Fehler");
+    }
+});
+
+app.post("/vote-suggestion", async (req, res) => {
+    try{
+        const { suggestionId, username, vote } = req.body;
+
+        await pool.query(
+            `INSERT INTO suggestion_votes (suggestion_id, username, vote)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (suggestion_id, username)
+             DO UPDATE SET vote = $3`,
+            [suggestionId, username, vote]
+        );
+
+        res.send("Bewertung gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Bewertung Fehler");
+    }
+});
+
+app.post("/comment-suggestion", async (req, res) => {
+    try{
+        const { suggestionId, username, comment } = req.body;
+
+        if(!comment){
+            return res.send("Kommentar fehlt");
+        }
+
+        await pool.query(
+            "INSERT INTO suggestion_comments (suggestion_id, username, comment, created_at) VALUES ($1, $2, $3, $4)",
+            [
+                suggestionId,
+                username,
+                comment.trim(),
+                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })
+            ]
+        );
+
+        res.send("Kommentar gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Kommentar Fehler");
+    }
+});
+
+app.post("/delete-suggestion", async (req, res) => {
+    try{
+        const { id, isAdmin } = req.body;
+
+        if(isAdmin !== true){
+            return res.send("Keine Berechtigung");
+        }
+
+        await pool.query(
+            "DELETE FROM suggestions WHERE id = $1",
+            [id]
+        );
+
+        res.send("Vorschlag gelöscht");
 
     }catch(err){
         console.log(err);

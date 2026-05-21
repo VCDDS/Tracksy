@@ -37,6 +37,7 @@
         <button onclick="loadPage('dokumente')">📄 <span>Dokumente</span></button>
         <button onclick="loadPage('kalender')">📅 <span>Kalender</span></button>
         <button onclick="loadPage('notizen')">✏️ <span>Notizen</span></button>
+        <button onclick="loadPage('vorschlaege')">💡 <span>Vorschläge</span></button>
         <button onclick="loadPage('nachrichten')">📩 <span>Nachrichten</span></button>
         <button onclick="loadPage('benutzer')">👤 <span>Benutzer</span></button>
     
@@ -678,6 +679,88 @@ ${entries.map(e => `
 `;
 
 content.innerHTML = html;
+return;
+}
+
+if(page === "vorschlaege"){
+
+let suggestions = await apiGet("/suggestions");
+
+let html = `
+<h2>💡 Vorschläge</h2>
+
+<div class="center-box">
+
+<input id="suggestionTitle" placeholder="Für was ist der Vorschlag?">
+
+<textarea id="suggestionDescription" placeholder="Beschreibung"></textarea>
+
+<button onclick="createSuggestion()">Vorschlag senden</button>
+
+</div>
+`;
+
+suggestions.forEach(s => {
+
+html += `
+<div class="center-box">
+
+<h3>${s.title}</h3>
+
+<p><b>Von:</b> ${s.username}</p>
+
+<p>${s.description || "-"}</p>
+
+<p>📅 ${s.created_at}</p>
+
+<div style="margin-top:10px;">
+<button onclick="voteSuggestion(${s.id}, 'good')">
+👍 Gut (${s.good})
+</button>
+
+<button onclick="voteSuggestion(${s.id}, 'bad')">
+👎 Schlecht (${s.bad})
+</button>
+
+${
+isAdmin
+? `<button onclick="deleteSuggestion(${s.id})">🗑️ Löschen</button>`
+: ""
+}
+
+</div>
+
+<hr>
+
+<h4>💬 Kommentare</h4>
+
+${s.comments.map(c => `
+<div style="
+background:rgba(255,255,255,0.08);
+padding:10px;
+margin-bottom:10px;
+border-radius:10px;
+text-align:left;
+">
+<b>${c.username}</b><br>
+${c.comment}
+<br><br>
+<small>${c.created_at}</small>
+</div>
+`).join("")}
+
+<textarea id="comment_${s.id}" placeholder="Kommentar schreiben"></textarea>
+
+<button onclick="commentSuggestion(${s.id})">
+Kommentar senden
+</button>
+
+</div>
+`;
+});
+
+content.innerHTML = html;
+
 return;
 }
 
@@ -1653,6 +1736,74 @@ let msg = await apiPost("/edit-calendar-entry", {
 alert(msg);
 
 loadPage("kalender");
+}
+
+async function createSuggestion(){
+
+let title = document.getElementById("suggestionTitle").value;
+let description = document.getElementById("suggestionDescription").value;
+
+if(!title){
+    alert("Titel fehlt");
+    return;
+}
+
+let msg = await apiPost("/create-suggestion", {
+    username: currentUser,
+    title,
+    description
+});
+
+alert(msg);
+
+loadPage("vorschlaege");
+}
+
+async function voteSuggestion(id, vote){
+
+let msg = await apiPost("/vote-suggestion", {
+    suggestionId: id,
+    username: currentUser,
+    vote
+});
+
+alert(msg);
+
+loadPage("vorschlaege");
+}
+
+async function commentSuggestion(id){
+
+let comment = document.getElementById("comment_" + id).value;
+
+if(!comment){
+    alert("Kommentar fehlt");
+    return;
+}
+
+let msg = await apiPost("/comment-suggestion", {
+    suggestionId: id,
+    username: currentUser,
+    comment
+});
+
+alert(msg);
+
+loadPage("vorschlaege");
+}
+
+async function deleteSuggestion(id){
+
+if(!confirm("Vorschlag löschen?")) return;
+
+let msg = await apiPost("/delete-suggestion", {
+    id,
+    isAdmin
+});
+
+alert(msg);
+
+loadPage("vorschlaege");
 }
 
 loadPage("start");
