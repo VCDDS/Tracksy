@@ -396,8 +396,8 @@ canvas{
 @media (max-width:768px){
 
     :root{
-        --topbar-height:155px;
-        --content-padding:12px;
+        --topbar-height:270px;
+        --content-padding:10px;
     }
 
     body{
@@ -407,58 +407,73 @@ canvas{
     .topbar{
         flex-direction:column;
         align-items:stretch;
-        padding:10px;
+        padding:8px;
+        gap:8px;
     }
 
-    .nav-left,
-    .nav-right{
-        width:100%;
-        justify-content:center;
+    .nav-left{
+        display:grid;
+        grid-template-columns:repeat(3, 1fr);
         gap:6px;
+        width:100%;
     }
 
     .logo{
-        width:100%;
+        grid-column:1 / -1;
         text-align:center;
-        margin-right:0;
+        margin:0;
+        font-size:18px;
     }
 
-    .topbar button{
-        border:none;
-        padding:8px 14px;
-        border-radius:12px;
-        background:rgba(255,255,255,0.08);
-        color:white;
-        cursor:pointer;
-        transition:0.2s;
-        font-size:13px;
+    #adminMenu{
+        grid-column:1 / -1;
+        width:100%;
     }
-    
-    .topbar button:hover{
-        background:rgba(0,255,255,0.18);
-        transform:translateY(-2px);
+
+    .topbar button,
+    .admin-btn,
+    .logout-btn{
+        width:100%;
+        height:32px;
+        font-size:12px;
+        padding:0 6px;
+    }
+
+    .nav-right{
+        width:100%;
+        display:grid;
+        grid-template-columns:1fr;
+        gap:6px;
+        font-size:12px;
     }
 
     #datetime,
     .user{
-        font-size:12px;
+        display:block;
+        width:100%;
+        text-align:center;
+        font-size:11px;
+        padding:6px 8px;
     }
 
     .dropdown-content{
-        position:fixed;
-        top:120px;
-        left:10px;
-        right:10px;
-        width:auto;
+        position:static;
+        width:100%;
+        margin-top:6px;
+    }
+
+    #content{
+        padding:10px;
     }
 
     .center-box,
     .chart-box,
+    .clean-card,
     .modal-box,
     .suggestion-card{
-        width:95%;
-        max-width:95%;
-        padding:15px;
+        width:100%;
+        max-width:100%;
+        box-sizing:border-box;
     }
 
     table{
@@ -470,10 +485,15 @@ canvas{
 
     input,
     select,
-    textarea,
-    button{
-        max-width:100%;
-        font-size:15px;
+    textarea{
+        width:100%;
+        box-sizing:border-box;
+    }
+
+    .online-box{
+        font-size:13px;
+        line-height:1.5;
+        word-break:break-word;
     }
 }
 
@@ -484,85 +504,52 @@ canvas{
 @media (max-width:420px){
 
     :root{
-        --topbar-height:180px;
+        --topbar-height:285px;
     }
 
     .topbar button,
     .admin-btn,
     .logout-btn{
-        font-size:12px;
-        padding:7px 8px;
+        height:31px;
+        font-size:11px;
+        padding:0 5px;
     }
 
     .center-box{
-        margin:15px auto;
+        margin:12px auto;
     }
 }
 
 /* =========================================================
-   DRUCKEN / PDF
+   ONLINE BOX
 ========================================================= */
 
-@media print{
-
-    .topbar,
-    button,
-    .dropdown{
-        display:none !important;
-    }
-
-    html,
-    body{
-        overflow:visible !important;
-        height:auto !important;
-        background:white !important;
-        color:black !important;
-    }
-
-    #content{
-        position:static;
-        overflow:visible;
-        height:auto;
-        padding:0;
-    }
-
-    table{
-        background:white !important;
-        color:black !important;
-    }
-
-    th,
-    td{
-        color:black !important;
-        border:1px solid black !important;
-    }
-}
-
 .online-box{
-
     background:rgba(255,255,255,0.08);
-
     padding:10px;
-
     border-radius:10px;
-
     margin-bottom:15px;
-
     text-align:left;
-
     font-size:14px;
-
     border:1px solid rgba(34,197,94,0.3);
 }
 
+/* =========================================================
+   FOOTER
+========================================================= */
+
 .dev-footer{
-    position: fixed;
-    bottom: 8px;
-    right: 12px;
-    color: rgba(255,255,255,0.45);
-    font-size: 12px;
-    z-index: 999;
+    position:fixed;
+    bottom:8px;
+    right:12px;
+    color:rgba(255,255,255,0.45);
+    font-size:12px;
+    z-index:999;
 }
+
+/* =========================================================
+   DATEN BEREINIGEN
+========================================================= */
 
 .admin-clean-grid{
     display:grid;
@@ -593,100 +580,101 @@ canvas{
     background:#ef4444;
 }
 
-@media (max-width: 768px){
+/* =========================================================
+   DRUCKEN / PDF
+========================================================= */
 
-    .topbar{
-        flex-direction:column;
-        align-items:stretch;
-        padding:8px;
-        gap:8px;
+@media print{
+
+    .topbar,
+    button,
+    .dropdown,
+    .dev-footer{
+        display:none !important;
     }
 
-    .nav-left{
-        display:grid;
-        grid-template-columns:repeat(3, 1fr);
-        gap:6px;
-        width:100%;
-    }
-
-    .logo{
-        grid-column:1 / -1;
-        text-align:center;
-        margin:0;
-        font-size:18px;
-    }
-
-    #adminMenu{
-        grid-column:1 / -1;
-        width:100%;
-    }
-
-    .topbar button,
-    .admin-btn{
-        width:100%;
-        height:34px;
-        font-size:12px;
-        padding:0 6px;
-    }
-
-    .nav-right{
-        width:100%;
-        justify-content:center;
-        font-size:12px;
-        gap:6px;
-    }
-
-    #datetime{
-        width:100%;
-        text-align:center;
-    }
-
-    .dropdown-content{
-        position:static;
-        width:100%;
-        margin-top:6px;
+    html,
+    body{
+        overflow:visible !important;
+        height:auto !important;
+        background:white !important;
+        color:black !important;
     }
 
     #content{
-        padding:10px;
+        position:static;
+        overflow:visible;
+        height:auto;
+        padding:0;
     }
 
     table{
-        display:block;
-        width:100%;
-        overflow-x:auto;
-        white-space:nowrap;
+        background:white !important;
+        color:black !important;
     }
 
-    .center-box,
-    .chart-box,
-    .clean-card{
-        width:100%;
-        max-width:100%;
-        box-sizing:border-box;
-    }
-
-    input,
-    select,
-    textarea{
-        width:100%;
-        box-sizing:border-box;
+    th,
+    td{
+        color:black !important;
+        border:1px solid black !important;
     }
 }
 
-.user{
-    display:block;
-    text-align:center;
-}
+/*PDF FIX*/
 
-#datetime{
-    display:block;
-    text-align:center;
-    font-size:11px;
-}
+@media print{
 
-.online-box{
-    font-size:13px;
-    line-height:1.5;
-    word-break:break-word;
+    .topbar,
+    .dev-footer,
+    button,
+    .dropdown{
+        display:none !important;
+    }
+
+    html,
+    body{
+        overflow:visible !important;
+        height:auto !important;
+        background:white !important;
+        color:black !important;
+    }
+
+    #content{
+        position:static !important;
+        overflow:visible !important;
+        height:auto !important;
+        padding:20px !important;
+    }
+
+    h2,
+    h3,
+    p,
+    td,
+    th{
+        color:black !important;
+    }
+
+    .chart-box{
+        background:white !important;
+        border:1px solid #000 !important;
+        color:black !important;
+        page-break-inside:avoid;
+    }
+
+    canvas{
+        background:white !important;
+        max-width:100% !important;
+    }
+
+    table{
+        background:white !important;
+        color:black !important;
+        border:1px solid black !important;
+    }
+
+    th,
+    td{
+        color:black !important;
+        border:1px solid black !important;
+    }
 }

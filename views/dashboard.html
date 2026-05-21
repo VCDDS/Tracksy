@@ -57,7 +57,7 @@
 <div id="content"></div>
 
 <footer class="dev-footer">
-    D.Schulteis - visualcode.dev © 2026
+    Powered by D.Schulteis <-TRACKSY-> visualcode.dev © 04.2026
 </footer>
 
 <div id="reportModal" class="modal">
@@ -353,10 +353,18 @@ async function loadPage(page){
                     }
                 },
                 plugins: {
-                    legend: {
-                        labels: { color: "white" }
-                    }
-                }
+    legend: {
+        display: true,
+        labels: {
+            color: document.body.classList.contains("print-mode") ? "black" : "white"
+        }
+    },
+    title: {
+        display: true,
+        text: "Arbeitszeit und Pause in Minuten",
+        color: document.body.classList.contains("print-mode") ? "black" : "white"
+    }
+}
             }
         });
     });
@@ -1544,8 +1552,16 @@ function toggleAdminMenu(){
 }
 
 function printOrPDF(){
-    window.print();
+    document.body.classList.add("print-mode");
+
+    setTimeout(() => {
+        window.print();
+    }, 300);
 }
+
+window.onafterprint = function(){
+    document.body.classList.remove("print-mode");
+};
 
 let currentPage = "start";
 
