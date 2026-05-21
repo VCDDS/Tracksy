@@ -432,6 +432,7 @@ async function loadPage(page){
                     <button onclick="addTask(${p.id})">➕ Aufgabe</button>
                     <button onclick="editTask(${p.id})">✏️ Aufgabe</button>
                     <button onclick="archiveTask(${p.id})">📦 Aufgabe</button>
+                    <button onclick="editProjectPrompt(${p.id}, '${p.name}', '${p.description || ""}')">🛠️ Projekt</button>
                     <button onclick="deleteProject(${p.id})">🗑️ Projekt</button>
                 </td>
             </tr>`;
@@ -1844,6 +1845,25 @@ async function toggleProjectSuggestions(id, current){
 let msg = await apiPost("/toggle-project-suggestions", {
     id,
     allow: !current
+});
+
+alert(msg);
+
+loadPage("projekt");
+}
+
+async function editProjectPrompt(id, oldName, oldDesc){
+
+let name = prompt("Projektname:", oldName);
+if(name === null) return;
+
+let desc = prompt("Beschreibung:", oldDesc || "");
+if(desc === null) return;
+
+let msg = await apiPost("/edit-project", {
+    id,
+    name,
+    desc
 });
 
 alert(msg);

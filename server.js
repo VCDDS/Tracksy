@@ -395,6 +395,24 @@ app.post("/delete-project", async (req, res) => {
     }
 });
 
+app.post("/edit-project", async (req, res) => {
+    try{
+
+        const { id, name, desc } = req.body;
+
+        await pool.query(
+            "UPDATE projects SET name = $1, description = $2 WHERE id = $3",
+            [name.trim(), desc || "", id]
+        );
+
+        res.send("Projekt geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Projekt ändern fehlgeschlagen");
+    }
+});
+
 app.post("/create-task", async (req, res) => {
     try{
         const { projectId, name } = req.body;
