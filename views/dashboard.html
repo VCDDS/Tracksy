@@ -406,6 +406,7 @@ async function loadPage(page){
                 <th>Beschreibung</th>
                 <th>Aufgaben</th>
                 <th>Aktuell</th>
+                <th>Vorschläge</th>
                 <th>Aktionen</th>
             </tr>
         `;
@@ -420,6 +421,13 @@ async function loadPage(page){
                 <td>${p.description || "-"}</td>
                 <td>${tasks || "-"}</td>
                 <td>${status}</td>
+
+                <td>
+                    <button onclick="toggleProjectSuggestions(${p.id}, ${p.allow_suggestions})">
+                    ${p.allow_suggestions ? "🟢 Erlaubt" : "🔴 Gesperrt"}
+                </button>
+                </td>
+
                 <td>
                     <button onclick="addTask(${p.id})">➕ Aufgabe</button>
                     <button onclick="editTask(${p.id})">✏️ Aufgabe</button>
@@ -772,11 +780,16 @@ content.innerHTML = html;
 let projectSelect = document.getElementById("suggestionProject");
 
 projects.forEach(p => {
-    projectSelect.innerHTML += `
-    <option value="${p.name}">
-        ${p.name}
-    </option>
-    `;
+
+if(!p.allow_suggestions){
+    return;
+}
+
+projectSelect.innerHTML += `
+<option value="${p.name}">
+    ${p.name}
+</option>
+`;
 });
 
 return;
@@ -1824,6 +1837,18 @@ let msg = await apiPost("/delete-suggestion", {
 alert(msg);
 
 loadPage("vorschlaege");
+}
+
+async function toggleProjectSuggestions(id, current){
+
+let msg = await apiPost("/toggle-project-suggestions", {
+    id,
+    allow: !current
+});
+
+alert(msg);
+
+loadPage("projekt");
 }
 
 loadPage("start");

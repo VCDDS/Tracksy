@@ -75,6 +75,11 @@ async function initDatabase(){
     `);
 
     await pool.query(`
+        ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS allow_suggestions BOOLEAN DEFAULT true
+    `);
+
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS tasks (
             id SERIAL PRIMARY KEY,
             project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
@@ -421,6 +426,24 @@ app.post("/edit-task", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Aufgabe konnte nicht geändert werden");
+    }
+});
+
+app.post("/toggle-project-suggestions", async (req, res) => {
+    try{
+
+        const { id, allow } = req.body;
+
+        await pool.query(
+            "UPDATE projects SET allow_suggestions = $1 WHERE id = $2",
+            [allow === true, id]
+        );
+
+        res.send("Projekt Vorschläge geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Änderung fehlgeschlagen");
     }
 });
 
