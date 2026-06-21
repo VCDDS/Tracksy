@@ -718,3 +718,92 @@ canvas{
     margin-right:auto;
     background:rgba(59,130,246,0.18);
 }
+
+/* =========================================================
+   MOBILE FIX TRACKSY DASHBOARD + AUSWERTUNG
+========================================================= */
+
+@media (max-width:768px){
+
+    :root{
+        --topbar-height:275px;
+        --content-padding:8px;
+    }
+
+    #content{
+        padding:8px;
+        overflow-x:hidden;
+    }
+
+    .center-box{
+        margin:10px auto;
+        padding:14px 10px;
+        overflow:hidden;
+    }
+
+    .running-box{
+        font-size:14px;
+        padding:10px 8px;
+        line-height:1.35;
+    }
+
+    .center-box select{
+        font-size:14px;
+        height:42px;
+    }
+
+    .center-box button{
+        min-width:0;
+        padding:8px 10px;
+        font-size:14px;
+    }
+
+    .chart-box{
+        width:100%;
+        max-width:100%;
+        margin:10px auto;
+        padding:10px 6px;
+        overflow:hidden;
+    }
+
+    .chart-box canvas{
+        width:100% !important;
+        max-width:100% !important;
+        height:280px !important;
+    }
+
+    h2{
+        font-size:24px;
+        margin:8px 0 16px 0;
+    }
+
+    h3{
+        font-size:20px;
+    }
+}
+
+@media (max-width:420px){
+
+    :root{
+        --topbar-height:280px;
+    }
+
+    .nav-left{
+        gap:5px;
+    }
+
+    .center-box{
+        padding:12px 8px;
+    }
+
+    .chart-box canvas{
+        height:250px !important;
+    }
+
+    .dev-footer{
+        position:static;
+        text-align:center;
+        margin:12px 0 8px 0;
+        font-size:11px;
+    }
+}
