@@ -718,25 +718,78 @@ canvas{
     margin-right:auto;
     background:rgba(59,130,246,0.18);
 }
-
 /* =========================================================
-   MOBILE FIX TRACKSY DASHBOARD + AUSWERTUNG
+   MOBILE FIX TRACKSY DASHBOARD + AUSWERTUNG FINAL
 ========================================================= */
 
 @media (max-width:768px){
 
     :root{
-        --topbar-height:275px;
+        --topbar-height:330px;
         --content-padding:8px;
     }
 
-    #content{
+    body{
+        font-size:15px;
+    }
+
+    .topbar{
         padding:8px;
+        gap:7px;
+    }
+
+    .nav-left{
+        gap:6px;
+    }
+
+    .topbar button,
+    .admin-btn,
+    .logout-btn{
+        min-height:34px;
+        height:34px;
+        font-size:12px;
+        padding:0 6px;
+    }
+
+    .nav-right{
+        gap:6px;
+    }
+
+    #datetime,
+    .user{
+        min-height:34px;
+        font-size:12px;
+        padding:8px;
+    }
+
+    .logout-btn{
+        position:relative;
+        z-index:50;
+        min-height:44px !important;
+        height:44px !important;
+        font-size:14px !important;
+        border-radius:12px !important;
+        margin-bottom:10px;
+    }
+
+    #content{
+        top:var(--topbar-height);
+        padding:8px;
+        overflow-y:auto;
         overflow-x:hidden;
     }
 
+    .online-box{
+        font-size:14px;
+        line-height:1.35;
+        padding:9px;
+        margin-bottom:12px;
+    }
+
     .center-box{
-        margin:10px auto;
+        width:100%;
+        max-width:100%;
+        margin:8px auto 16px auto;
         padding:14px 10px;
         overflow:hidden;
     }
@@ -745,65 +798,114 @@ canvas{
         font-size:14px;
         padding:10px 8px;
         line-height:1.35;
+        margin-bottom:12px;
     }
 
     .center-box select{
-        font-size:14px;
-        height:42px;
+        height:46px;
+        font-size:15px;
+        margin-bottom:12px;
     }
 
     .center-box button{
         min-width:0;
-        padding:8px 10px;
-        font-size:14px;
+        min-height:44px;
+        padding:9px 12px;
+        font-size:15px;
+        border-radius:10px;
     }
 
     .chart-box{
         width:100%;
         max-width:100%;
-        margin:10px auto;
-        padding:10px 6px;
+        margin:8px auto 16px auto;
+        padding:12px 8px;
         overflow:hidden;
     }
 
     .chart-box canvas{
         width:100% !important;
         max-width:100% !important;
-        height:280px !important;
+        height:300px !important;
     }
 
     h2{
         font-size:24px;
-        margin:8px 0 16px 0;
+        margin:8px 0 14px 0;
+        line-height:1.15;
     }
 
     h3{
         font-size:20px;
+        line-height:1.2;
     }
 }
 
 @media (max-width:420px){
 
     :root{
-        --topbar-height:280px;
+        --topbar-height:345px;
+        --content-padding:7px;
+    }
+
+    .topbar{
+        padding:7px;
+        gap:6px;
     }
 
     .nav-left{
         gap:5px;
     }
 
+    .topbar button,
+    .admin-btn{
+        min-height:33px;
+        height:33px;
+        font-size:12px;
+    }
+
+    #datetime,
+    .user{
+        min-height:33px;
+        font-size:12px;
+    }
+
+    .logout-btn{
+        min-height:46px !important;
+        height:46px !important;
+        font-size:14px !important;
+        margin-bottom:14px;
+    }
+
+    #content{
+        top:345px;
+        padding:7px;
+    }
+
     .center-box{
+        margin:8px auto 14px auto;
         padding:12px 8px;
     }
 
+    .center-box button{
+        min-height:42px;
+        font-size:14px;
+        padding:8px 10px;
+    }
+
+    .chart-box{
+        margin:8px auto 14px auto;
+        padding:10px 6px;
+    }
+
     .chart-box canvas{
-        height:250px !important;
+        height:280px !important;
     }
 
     .dev-footer{
         position:static;
         text-align:center;
-        margin:12px 0 8px 0;
+        margin:14px 0 8px 0;
         font-size:11px;
     }
 }
