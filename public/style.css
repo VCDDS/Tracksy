@@ -909,3 +909,28 @@ canvas{
         font-size:11px;
     }
 }
+/* =========================================================
+   MOBILE AUSWERTUNG CHART BESSER LESBAR
+========================================================= */
+
+@media (max-width:768px){
+
+    .chart-box{
+        overflow-x:auto !important;
+        overflow-y:hidden !important;
+        padding:14px 10px 18px 10px !important;
+    }
+
+    .chart-box canvas{
+        min-width:720px !important;
+        height:360px !important;
+    }
+}
+
+@media (max-width:420px){
+
+    .chart-box canvas{
+        min-width:760px !important;
+        height:380px !important;
+    }
+}
