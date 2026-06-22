@@ -875,7 +875,13 @@ let suggestions = await apiGet("/suggestions");
 let projects = await apiGet("/projects");
 
 if(isCustomer){
-    suggestions = suggestions.filter(s => s.project === assignedProject);
+    suggestions = suggestions.filter(s =>
+        s.project === assignedProject ||
+        s.project === "" ||
+        s.project === null ||
+        s.project === "Projekt Idee"
+    );
+
     projects = projects.filter(p => p.name === assignedProject);
 }
 
