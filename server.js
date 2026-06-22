@@ -62,7 +62,9 @@ async function initDatabase(){
             is_admin BOOLEAN DEFAULT false,
             last_change TEXT DEFAULT '',
             online BOOLEAN DEFAULT false,
-            last_online TEXT DEFAULT ''
+            last_online TEXT DEFAULT '',
+            role TEXT DEFAULT 'user',
+            assigned_project TEXT DEFAULT ''
         )
     `);
 
@@ -74,6 +76,16 @@ async function initDatabase(){
     await pool.query(`
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS last_online TEXT DEFAULT ''
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'
+    `);
+    
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS assigned_project TEXT DEFAULT ''
     `);
 
     await pool.query(`
@@ -289,7 +301,9 @@ app.post("/login", async (req, res) => {
             return res.json({
                 success:true,
                 username:"Dominic Schulteis",
-                isAdmin:true
+                isAdmin:true,
+                role:"admin",
+                assignedProject:""
             });
         }
 
@@ -321,11 +335,13 @@ await pool.query(
     [user.username]
 );
 
-        res.json({
-            success:true,
-            username:user.username,
-            isAdmin:user.is_admin
-        });
+res.json({
+    success:true,
+    username:user.username,
+    isAdmin:user.is_admin,
+    role:user.role || (user.is_admin ? "admin" : "user"),
+    assignedProject:user.assigned_project || ""
+});
 
     }catch(err){
         console.log(err);
@@ -375,7 +391,7 @@ app.post("/logout-user", async (req, res) => {
 app.get("/users", async (req, res) => {
     try{
         const result = await pool.query(
-            "SELECT username, email, is_admin, last_change FROM users ORDER BY username"
+            "SELECT username, email, is_admin, role, assigned_project, last_change FROM users ORDER BY username"
         );
         res.json(result.rows);
     }catch(err){
@@ -386,13 +402,25 @@ app.get("/users", async (req, res) => {
 
 app.post("/create-user", async (req, res) => {
     try{
-        const { name, email, pw, admin } = req.body;
+        const { name, email, pw, admin, role, assignedProject } = req.body;
 
         const hashedPw = await bcrypt.hash(pw, 10);
 
+        const finalRole = admin === true ? "admin" : (role || "user");
+
         await pool.query(
-            "INSERT INTO users (username, password, email, is_admin, last_change) VALUES ($1, $2, $3, $4, $5)",
-            [name.trim(), hashedPw, email || "", admin === true, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })]
+            `INSERT INTO users
+            (username, password, email, is_admin, role, assigned_project, last_change)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+                name.trim(),
+                hashedPw,
+                email || "",
+                admin === true,
+                finalRole,
+                assignedProject || "",
+                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })
+            ]
         );
 
         res.send("Benutzer erstellt");
@@ -405,14 +433,58 @@ app.post("/create-user", async (req, res) => {
 
 app.post("/edit-user", async (req, res) => {
     try{
-        const { oldName, newName, email, pw, admin } = req.body;
+        const { oldName, newName, email, pw, admin, role, assignedProject } = req.body;
 
-        const hashedPw = await bcrypt.hash(pw, 10);
+        const finalRole = admin === true ? "admin" : (role || "user");
 
-        await pool.query(
-            "UPDATE users SET username = $1, password = $2, email = $3, is_admin = $4, last_change = $5 WHERE username = $6",
-            [newName.trim(), hashedPw, email || "", admin === true, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }), oldName]
-        );
+        if(pw && pw.trim() !== ""){
+
+            const hashedPw = await bcrypt.hash(pw, 10);
+
+            await pool.query(
+                `UPDATE users
+                 SET username = $1,
+                     password = $2,
+                     email = $3,
+                     is_admin = $4,
+                     role = $5,
+                     assigned_project = $6,
+                     last_change = $7
+                 WHERE username = $8`,
+                [
+                    newName.trim(),
+                    hashedPw,
+                    email || "",
+                    admin === true,
+                    finalRole,
+                    assignedProject || "",
+                    new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+                    oldName
+                ]
+            );
+
+        }else{
+
+            await pool.query(
+                `UPDATE users
+                 SET username = $1,
+                     email = $2,
+                     is_admin = $3,
+                     role = $4,
+                     assigned_project = $5,
+                     last_change = $6
+                 WHERE username = $7`,
+                [
+                    newName.trim(),
+                    email || "",
+                    admin === true,
+                    finalRole,
+                    assignedProject || "",
+                    new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+                    oldName
+                ]
+            );
+        }
 
         res.send("Benutzer geändert");
 

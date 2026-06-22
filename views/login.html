@@ -128,6 +128,8 @@ async function login(){
 
         localStorage.setItem("username", data.username);
         localStorage.setItem("isAdmin", data.isAdmin);
+        localStorage.setItem("userRole", data.role || (data.isAdmin ? "admin" : "user"));
+        localStorage.setItem("assignedProject", data.assignedProject || "");
 
         location.href="/dashboard";
 

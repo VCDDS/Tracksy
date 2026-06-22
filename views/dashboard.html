@@ -110,6 +110,9 @@ const content = document.getElementById("content");
 
 let currentUser = localStorage.getItem("username") || "Gast";
 let isAdmin = localStorage.getItem("isAdmin") === "true";
+let userRole = localStorage.getItem("userRole") || (isAdmin ? "admin" : "kunde");
+let assignedProject = localStorage.getItem("assignedProject") || "";
+let isCustomer = userRole === "kunde";
 
 document.getElementById("user").textContent = currentUser;
 function updateDateTime(){
@@ -129,6 +132,23 @@ updateDateTime();
 
 if(!isAdmin){
     document.getElementById("adminMenu").style.display = "none";
+}
+
+if(isCustomer){
+    document.getElementById("adminMenu").style.display = "none";
+
+    document.querySelectorAll(".nav-left button").forEach(btn => {
+        let text = btn.innerText;
+
+        if(
+            !text.includes("Start") &&
+            !text.includes("Report") &&
+            !text.includes("Nachrichten") &&
+            !text.includes("Benutzer")
+        ){
+            btn.style.display = "none";
+        }
+    });
 }
 
 async function apiGet(url){
@@ -170,9 +190,65 @@ function getDateValue(str){
 
 async function loadPage(page){
 
-    currentPage = page;
+currentPage = page;
+
+if(isCustomer){
+    const allowedCustomerPages = ["start", "report", "nachrichten", "benutzer"];
+
+    if(!allowedCustomerPages.includes(page)){
+        page = "start";
+        currentPage = "start";
+    }
+}
 
     if(page === "start"){
+
+        if(isCustomer){
+            let times = await apiGet("/times");
+
+            let customerTimes = assignedProject
+                ? times.filter(t => t.project === assignedProject)
+                : times;
+
+            let totalSeconds = 0;
+
+            customerTimes.forEach(t => {
+                if(t.start_time && t.stop_time){
+                    let start = parseGermanDate(t.start_time);
+                    let stop = parseGermanDate(t.stop_time);
+                    if(!start || !stop) return;
+
+                    let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
+                    if(diff > 0) totalSeconds += diff;
+                }
+            });
+
+            let h = Math.floor(totalSeconds / 3600);
+            let m = Math.floor((totalSeconds % 3600) / 60);
+
+            content.innerHTML = `
+            <div class="center-box">
+                <img src="/logo.png" style="max-width:130px;margin-bottom:15px;">
+                <h2>Willkommen im Kundenbereich</h2>
+
+                <div class="running-box">
+                    <b>Projekt:</b><br>
+                    ${assignedProject || "Noch kein Projekt zugeordnet"}
+                </div>
+
+                <div class="running-box">
+                    <b>Bisher gearbeitet:</b><br>
+                    ${h} Std. ${m} Min.
+                </div>
+
+                <button onclick="loadPage('report')">💻 Report öffnen</button>
+                <button onclick="loadPage('nachrichten')">📩 Nachricht schreiben</button>
+            </div>
+            `;
+            return;
+        }
+
+
         let projects = await apiGet("/projects");
         let times = await apiGet("/times");
 
@@ -1579,6 +1655,8 @@ await apiPost("/logout-user", {
 
 localStorage.removeItem("username");
 localStorage.removeItem("isAdmin");
+localStorage.removeItem("userRole");
+localStorage.removeItem("assignedProject");
 
 location.href = "/login";
 }
