@@ -110,7 +110,7 @@ const content = document.getElementById("content");
 
 let currentUser = localStorage.getItem("username") || "Gast";
 let isAdmin = localStorage.getItem("isAdmin") === "true";
-let userRole = localStorage.getItem("userRole") || (isAdmin ? "admin" : "kunde");
+let userRole = localStorage.getItem("userRole") || (isAdmin ? "admin" : "user");
 let assignedProject = localStorage.getItem("assignedProject") || "";
 let isCustomer = userRole === "kunde";
 
@@ -1103,47 +1103,68 @@ content.innerHTML = html;
 return;
 }
 
-    if(page === "benutzerVerwaltung"){
-        let users = await apiGet("/users");
+if(page === "benutzerVerwaltung"){
+    let users = await apiGet("/users");
+    let projects = await apiGet("/projects");
 
-        let html = `
-        <h2>Benutzer verwalten</h2>
+    let projectOptions = projects.map(p => 
+        `<option value="${p.name}">${p.name}</option>`
+    ).join("");
 
-        <input id="newUser" placeholder="Benutzername">
-        <input id="newEmail" placeholder="E-Mail">
-        <input id="newPw" placeholder="Passwort">
-        <button onclick="addUser()">Benutzer erstellen</button>
+    let html = `
+    <h2>Benutzer verwalten</h2>
 
-        <table>
-            <tr>
-                <th>Name</th>
-                <th>E-Mail</th>
-                <th>Admin</th>
-                <th>Aktionen</th>
-            </tr>
-        `;
+    <input id="newUser" placeholder="Benutzername">
+    <input id="newEmail" placeholder="E-Mail">
+    <input id="newPw" placeholder="Passwort">
 
-        users.forEach(u => {
-            html += `
-            <tr>
-                <td>${u.username}</td>
-                <td>${u.email || "-"}</td>
-                <td>${u.is_admin ? "✔" : "❌"}</td>
-                <td>
-                    <button onclick="editUser('${u.username}', '${u.email || ""}', ${u.is_admin})">✏️ Bearbeiten</button>
-                    ${
-                    u.username === "Dominic Schulteis"
-                    ? "🔒 Hauptadmin"
-                    : `<button onclick="deleteUser('${u.username}')">❌ Löschen</button>`
-                    }
-                </td>
-            </tr>`;
-        });
+    <select id="newRole">
+        <option value="user">Benutzer</option>
+        <option value="kunde">Kunde</option>
+        <option value="admin">Admin</option>
+    </select>
 
-        html += "</table>";
-        content.innerHTML = html;
-        return;
-    }
+    <select id="newAssignedProject">
+        <option value="">Kein Projekt zuweisen</option>
+        ${projectOptions}
+    </select>
+
+    <button onclick="addUser()">Benutzer erstellen</button>
+
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>E-Mail</th>
+            <th>Rolle</th>
+            <th>Projekt</th>
+            <th>Admin</th>
+            <th>Aktionen</th>
+        </tr>
+    `;
+
+    users.forEach(u => {
+        html += `
+        <tr>
+            <td>${u.username}</td>
+            <td>${u.email || "-"}</td>
+            <td>${u.role || (u.is_admin ? "admin" : "user")}</td>
+            <td>${u.assigned_project || "-"}</td>
+            <td>${u.is_admin ? "✔" : "❌"}</td>
+            <td>
+                <button onclick="editUser('${u.username}', '${u.email || ""}', ${u.is_admin}, '${u.role || ""}', '${u.assigned_project || ""}')">✏️ Bearbeiten</button>
+                ${
+                u.username === "Dominic Schulteis"
+                ? "🔒 Hauptadmin"
+                : `<button onclick="deleteUser('${u.username}')">❌ Löschen</button>`
+                }
+            </td>
+        </tr>`;
+    });
+
+    html += "</table>";
+    content.innerHTML = html;
+    return;
+}
 
     if(page === "zeitenKorrigieren"){
         let times = await apiGet("/times");
@@ -1479,43 +1500,62 @@ async function addUser(){
     let name = document.getElementById("newUser").value;
     let email = document.getElementById("newEmail").value;
     let pw = document.getElementById("newPw").value;
+    let role = document.getElementById("newRole").value;
+    let assignedProject = document.getElementById("newAssignedProject").value;
 
     if(!name || !pw){
         alert("Bitte alles ausfüllen");
         return;
     }
 
-    let admin = confirm("Admin Benutzer erstellen?");
+    let admin = role === "admin";
 
     let msg = await apiPost("/create-user", {
         name,
         email,
         pw,
-        admin
+        admin,
+        role,
+        assignedProject
     });
 
     alert(msg);
     loadPage("benutzerVerwaltung");
 }
 
-async function editUser(oldName, oldEmail, oldAdmin){
+async function editUser(oldName, oldEmail, oldAdmin, oldRole, oldAssignedProject){
+    let projects = await apiGet("/projects");
+
     let newName = prompt("Name:", oldName);
     if(newName === null) return;
 
     let email = prompt("Email:", oldEmail);
     if(email === null) return;
 
-    let pw = prompt("Passwort:");
+    let pw = prompt("Passwort leer lassen = nicht ändern:");
     if(pw === null) return;
 
-    let admin = confirm("Admin?");
+    let role = prompt("Rolle: admin / user / kunde", oldRole || (oldAdmin ? "admin" : "user"));
+    if(role === null) return;
+
+    let projectList = projects.map(p => p.name).join("\n");
+
+    let assignedProject = prompt(
+        "Projekt zuweisen:\n\n" + projectList + "\n\nLeer lassen = kein Projekt",
+        oldAssignedProject || ""
+    );
+    if(assignedProject === null) return;
+
+    let admin = role === "admin";
 
     let msg = await apiPost("/edit-user", {
         oldName,
         newName,
         email,
         pw,
-        admin
+        admin,
+        role,
+        assignedProject
     });
 
     alert(msg);

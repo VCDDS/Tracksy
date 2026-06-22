@@ -128,7 +128,7 @@ async function login(){
 
         localStorage.setItem("username", data.username);
         localStorage.setItem("isAdmin", data.isAdmin);
-        localStorage.setItem("userRole", data.role || (data.isAdmin ? "admin" : "user"));
+        localStorage.setItem("userRole", data.role || (data.isAdmin ? "admin" : "kunde"));
         localStorage.setItem("assignedProject", data.assignedProject || "");
 
         location.href="/dashboard";
