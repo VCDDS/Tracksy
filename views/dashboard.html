@@ -238,8 +238,8 @@ if(isCustomer){
                 </div>
 
                 <div class="running-box">
-                    <b>Bisher gearbeitet:</b><br>
-                    ${h} Std. ${m} Min.
+                <b>Projektstand:</b><br>
+                Bisher gearbeitet: ${h} Std. ${m} Min.
                 </div>
 
                 <button onclick="loadPage('report')">💻 Report öffnen</button>
@@ -468,6 +468,12 @@ if(isCustomer){
 
     if(page === "report"){
         let times = await apiGet("/times");
+
+        if(isCustomer){
+    times = times.filter(t =>
+        t.project === assignedProject
+    );
+}
 
         let html = `
         <h2>Report</h2>
