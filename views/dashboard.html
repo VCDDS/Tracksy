@@ -143,6 +143,7 @@ if(isCustomer){
         if(
             !text.includes("Start") &&
             !text.includes("Report") &&
+            !text.includes("Vorschläge") &&
             !text.includes("Nachrichten") &&
             !text.includes("Benutzer")
         ){
@@ -193,7 +194,7 @@ async function loadPage(page){
 currentPage = page;
 
 if(isCustomer){
-    const allowedCustomerPages = ["start", "report", "nachrichten", "benutzer"];
+    const allowedCustomerPages = ["start", "report", "vorschlaege", "nachrichten", "benutzer"];
 
     if(!allowedCustomerPages.includes(page)){
         page = "start";
@@ -872,6 +873,11 @@ if(page === "vorschlaege"){
 
 let suggestions = await apiGet("/suggestions");
 let projects = await apiGet("/projects");
+
+if(isCustomer){
+    suggestions = suggestions.filter(s => s.project === assignedProject);
+    projects = projects.filter(p => p.name === assignedProject);
+}
 
 let html = `
 <h2>💡 Vorschläge</h2>
