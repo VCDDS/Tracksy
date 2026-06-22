@@ -876,13 +876,12 @@ let projects = await apiGet("/projects");
 
 if(isCustomer){
     suggestions = suggestions.filter(s =>
-        s.project === assignedProject ||
-        s.project === "" ||
-        s.project === null ||
-        s.project === "Projekt Idee"
+        s.project === assignedProject
     );
 
-    projects = projects.filter(p => p.name === assignedProject);
+    projects = projects.filter(p =>
+        p.name === assignedProject
+    );
 }
 
 let html = `
