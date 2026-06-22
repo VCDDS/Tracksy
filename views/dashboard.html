@@ -929,7 +929,10 @@ html += `
 
 ${
 isAdmin
-? `<button onclick="deleteSuggestion(${s.id})">🗑️ Löschen</button>`
+? `
+<button onclick="editSuggestion(${s.id})">✏️ Bearbeiten</button>
+<button onclick="deleteSuggestion(${s.id})">🗑️ Löschen</button>
+`
 : ""
 }
 
@@ -2194,6 +2197,38 @@ let msg = await apiPost("/comment-suggestion", {
     suggestionId: id,
     username: currentUser,
     comment
+});
+
+alert(msg);
+
+loadPage("vorschlaege");
+}
+
+async function editSuggestion(id){
+
+let suggestions = await apiGet("/suggestions");
+let s = suggestions.find(x => x.id === id);
+
+if(!s){
+    alert("Vorschlag nicht gefunden");
+    return;
+}
+
+let title = prompt("Titel:", s.title);
+if(title === null) return;
+
+let project = prompt("Projekt:", s.project || "");
+if(project === null) return;
+
+let description = prompt("Beschreibung:", s.description || "");
+if(description === null) return;
+
+let msg = await apiPost("/edit-suggestion", {
+    id,
+    title,
+    project,
+    description,
+    isAdmin
 });
 
 alert(msg);

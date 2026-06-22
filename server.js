@@ -1288,6 +1288,27 @@ app.post("/comment-suggestion", async (req, res) => {
     }
 });
 
+app.post("/edit-suggestion", async (req, res) => {
+    try{
+        const { id, title, project, description, isAdmin } = req.body;
+
+        if(isAdmin !== true){
+            return res.send("Keine Berechtigung");
+        }
+
+        await pool.query(
+            "UPDATE suggestions SET title = $1, project = $2, description = $3 WHERE id = $4",
+            [title || "", project || "", description || "", id]
+        );
+
+        res.send("Vorschlag geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Vorschlag konnte nicht geändert werden");
+    }
+});
+
 app.post("/delete-suggestion", async (req, res) => {
     try{
         const { id, isAdmin } = req.body;
