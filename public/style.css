@@ -9,7 +9,7 @@
     --bg-input:#111827;
     --bg-button:#1f2937;
     --bg-button-hover:#374151;
-    --cyan:rgb(0, 47, 255);
+    --cyan:rgb(0, 195, 255);
     --white:white;
     --red:#ef4444;
     --red-hover:#dc2626;
@@ -616,4 +616,13 @@ canvas{max-width:100%;}
     p{
         color:black !important;
     }
+}
+h2{
+    display:inline-block;
+    padding:10px 20px;
+    background:rgba(0,0,0,0.65);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:12px;
+    backdrop-filter:blur(6px);
+    margin-bottom:20px;
 }
