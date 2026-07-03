@@ -626,3 +626,19 @@ h2{
     backdrop-filter:blur(10px);
     margin-bottom:20px;
 }
+
+.manual-btn{
+    display: inline-block;
+    margin-top: 12px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.manual-btn:hover{
+    transform: scale(1.03);
+    opacity: 0.9;
+}
