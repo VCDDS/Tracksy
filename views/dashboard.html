@@ -259,6 +259,53 @@ if(isCustomer){
 
         let running = times.find(t => t.username === currentUser && !t.stop_time);
 
+        let projectTotals = {};
+
+times.forEach(t => {
+    if(t.project && t.start_time && t.stop_time){
+        let start = parseGermanDate(t.start_time);
+        let stop = parseGermanDate(t.stop_time);
+
+        if(!start || !stop) return;
+
+        let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
+
+        if(diff < 0){
+            diff = 0;
+        }
+
+        if(!projectTotals[t.project]){
+            projectTotals[t.project] = 0;
+        }
+
+        projectTotals[t.project] += diff;
+    }
+});
+
+let projectTotalHtml = `
+<div class="admin-project-summary">
+    <h3>📊 Projektübersicht</h3>
+    <table>
+        <tr>
+            <th>Projekt</th>
+            <th>Insgesamt gearbeitet</th>
+        </tr>
+        ${Object.keys(projectTotals).map(project => {
+            let seconds = projectTotals[project];
+            let h = Math.floor(seconds / 3600);
+            let m = Math.floor((seconds % 3600) / 60);
+
+            return `
+            <tr>
+                <td>${project}</td>
+                <td>${h} Std. ${m} Min.</td>
+            </tr>
+            `;
+        }).join("")}
+    </table>
+</div>
+`;
+
         let runningText = running
     ? (
         running.is_paused
@@ -280,6 +327,8 @@ if(isCustomer){
             <h2>Start</h2>
 
             <div class="running-box">${runningText}</div>
+            
+            ${projectTotalHtml}
 
             <select id="startProject" class="field-project">
                 <option value="">Projekt wählen</option>

@@ -642,3 +642,17 @@ h2{
     transform: scale(1.03);
     opacity: 0.9;
 }
+.admin-project-summary{
+    margin: 18px auto;
+    padding: 15px;
+    max-width: 650px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(0, 200, 255, 0.35);
+    border-radius: 14px;
+    box-shadow: 0 0 18px rgba(0, 200, 255, 0.18);
+}
+
+.admin-project-summary h3{
+    margin-top: 0;
+    color: #38bdf8;
+}
