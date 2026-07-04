@@ -200,6 +200,31 @@ async function initDatabase(){
     `);
 
     await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS source TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS customer_name TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS customer_email TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Offen'
+    `);
+    
+    await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT ''
+    `);
+
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS documents (
             id SERIAL PRIMARY KEY,
             filename TEXT NOT NULL,
