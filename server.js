@@ -186,6 +186,31 @@ async function initDatabase(){
     `);
 
     await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS customer_deleted BOOLEAN DEFAULT false
+    `);
+    
+    await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS delete_reason TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS customer_edited BOOLEAN DEFAULT false
+    `);
+    
+    await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS edit_note TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS updated_at TEXT DEFAULT ''
+    `); 
+
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS tickets (
             id SERIAL PRIMARY KEY,
             project TEXT NOT NULL,
@@ -1473,6 +1498,69 @@ app.post("/create-ticket", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Ticket Fehler");
+    }
+});
+
+app.post("/edit-external-ticket", async (req, res) => {
+    try{
+        const { id, title, message, editNote } = req.body;
+
+        if(!id || !title || !message){
+            return res.send("Ticket Daten fehlen");
+        }
+
+        await pool.query(
+            `UPDATE tickets
+             SET title = $1,
+                 message = $2,
+                 customer_edited = true,
+                 edit_note = $3,
+                 updated_at = $4
+             WHERE id = $5`,
+            [
+                title.trim(),
+                message.trim(),
+                editNote || "Ticket wurde über RadioNetz bearbeitet.",
+                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+                id
+            ]
+        );
+
+        res.send("Ticket geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Ticket ändern fehlgeschlagen");
+    }
+});
+
+app.post("/delete-external-ticket", async (req, res) => {
+    try{
+        const { id, reason } = req.body;
+
+        if(!id || !reason){
+            return res.send("Löschgrund fehlt");
+        }
+
+        await pool.query(
+            `UPDATE tickets
+             SET customer_deleted = true,
+                 delete_reason = $1,
+                 status = 'Vom Kunden gelöscht',
+                 updated_at = $2
+             WHERE id = $3`,
+            [
+                reason.trim(),
+                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+                id
+            ]
+        );
+
+        res.send("Ticket als gelöscht markiert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Ticket löschen fehlgeschlagen");
     }
 });
 
