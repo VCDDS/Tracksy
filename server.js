@@ -51,6 +51,23 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
+async function isRealAdmin(username){
+    if(!username){
+        return false;
+    }
+
+    const result = await pool.query(
+        "SELECT is_admin, role FROM users WHERE username = $1",
+        [username]
+    );
+
+    if(result.rows.length === 0){
+        return false;
+    }
+
+    return result.rows[0].is_admin === true || result.rows[0].role === "admin";
+}
+
 async function initDatabase(){
 
     await pool.query(`
@@ -1290,12 +1307,11 @@ app.post("/comment-suggestion", async (req, res) => {
 
 app.post("/edit-suggestion", async (req, res) => {
     try{
-        const { id, title, project, description, isAdmin } = req.body;
+        const { id, title, project, description, username } = req.body;
 
-        if(isAdmin !== true){
-            return res.send("Keine Berechtigung");
+        if(!await isRealAdmin(username)){
+        return res.send("Keine Berechtigung");
         }
-
         await pool.query(
             "UPDATE suggestions SET title = $1, project = $2, description = $3 WHERE id = $4",
             [title || "", project || "", description || "", id]

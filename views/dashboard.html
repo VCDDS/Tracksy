@@ -2287,7 +2287,7 @@ let msg = await apiPost("/edit-suggestion", {
     title,
     project,
     description,
-    isAdmin
+    username: currentUser
 });
 
 alert(msg);
