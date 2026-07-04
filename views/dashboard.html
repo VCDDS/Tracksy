@@ -30,6 +30,7 @@
         </div>
 
         <button onclick="loadPage('start')">🏠 <span>Start</span></button>
+        <button onclick="loadPage('tickets')">🎫 <span>Tickets</span></button>
         <button onclick="loadPage('zeiten')">⌛ <span>Zeiten</span></button>
         <button onclick="loadPage('auswertung')">📊 <span>Auswertung</span></button>
         <button onclick="loadPage('report')">💻 <span>Report</span></button>
@@ -366,6 +367,54 @@ let projectTotalHtml = `
         loadOnlineUsers();
         return;
     }
+
+    if(page === "tickets"){
+
+let tickets = await apiGet("/tickets");
+
+let html = `
+<h2>🎫 Tickets</h2>
+
+<table>
+    <tr>
+        <th>Projekt</th>
+        <th>Quelle</th>
+        <th>Kunde</th>
+        <th>E-Mail</th>
+        <th>Titel</th>
+        <th>Nachricht</th>
+        <th>Status</th>
+        <th>Datum</th>
+        <th>Aktion</th>
+    </tr>
+`;
+
+tickets.forEach(t => {
+    html += `
+    <tr>
+        <td>${t.project || "-"}</td>
+        <td>${t.source || "-"}</td>
+        <td>${t.customer_name || "-"}</td>
+        <td>${t.customer_email || "-"}</td>
+        <td>${t.title || "-"}</td>
+        <td>${t.message || "-"}</td>
+        <td>${t.status || "Offen"}</td>
+        <td>${t.created_at || "-"}</td>
+        <td>
+            <button onclick="changeTicketStatus(${t.id}, 'Offen')">Offen</button>
+            <button onclick="changeTicketStatus(${t.id}, 'In Arbeit')">In Arbeit</button>
+            <button onclick="changeTicketStatus(${t.id}, 'Erledigt')">Erledigt</button>
+            <button onclick="deleteTicket(${t.id})">🗑️ Löschen</button>
+        </td>
+    </tr>
+    `;
+});
+
+html += `</table>`;
+
+content.innerHTML = html;
+return;
+}
 
     if(page === "zeiten"){
         let times = await apiGet("/times");
@@ -2396,6 +2445,29 @@ box.innerHTML = users
 }
 
 setInterval(loadOnlineUsers, 5000);
+
+async function changeTicketStatus(id, status){
+
+let msg = await apiPost("/update-ticket-status", {
+    id,
+    status
+});
+
+alert(msg);
+loadPage("tickets");
+}
+
+async function deleteTicket(id){
+
+if(!confirm("Ticket wirklich löschen?")) return;
+
+let msg = await apiPost("/delete-ticket", {
+    id
+});
+
+alert(msg);
+loadPage("tickets");
+}
 
 async function checkNewSuggestions(){
 

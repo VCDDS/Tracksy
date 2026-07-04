@@ -174,6 +174,20 @@ async function initDatabase(){
     `);
 
     await pool.query(`
+        CREATE TABLE IF NOT EXISTS tickets (
+            id SERIAL PRIMARY KEY,
+            project TEXT NOT NULL,
+            source TEXT DEFAULT '',
+            customer_name TEXT DEFAULT '',
+            customer_email TEXT DEFAULT '',
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            status TEXT DEFAULT 'Offen',
+            created_at TEXT NOT NULL
+        )
+    `);
+
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS documents (
             id SERIAL PRIMARY KEY,
             filename TEXT NOT NULL,
@@ -1375,6 +1389,87 @@ app.post("/delete-suggestion-comment", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Kommentar löschen fehlgeschlagen");
+    }
+});
+
+/* TICKETS */
+
+app.get("/tickets", async (req, res) => {
+    try{
+        const result = await pool.query(
+            "SELECT * FROM tickets ORDER BY id DESC"
+        );
+
+        res.json(result.rows);
+
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
+});
+
+app.post("/create-ticket", async (req, res) => {
+    try{
+        const { project, source, customerName, customerEmail, title, message } = req.body;
+
+        if(!project || !title || !message){
+            return res.send("Ticket Daten fehlen");
+        }
+
+        await pool.query(
+            `INSERT INTO tickets 
+            (project, source, customer_name, customer_email, title, message, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+                project,
+                source || "",
+                customerName || "",
+                customerEmail || "",
+                title.trim(),
+                message.trim(),
+                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })
+            ]
+        );
+
+        res.send("Ticket erstellt");
+
+    }catch(err){
+        console.log(err);
+        res.send("Ticket Fehler");
+    }
+});
+
+app.post("/update-ticket-status", async (req, res) => {
+    try{
+        const { id, status } = req.body;
+
+        await pool.query(
+            "UPDATE tickets SET status = $1 WHERE id = $2",
+            [status, id]
+        );
+
+        res.send("Ticket Status geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Status Fehler");
+    }
+});
+
+app.post("/delete-ticket", async (req, res) => {
+    try{
+        const { id } = req.body;
+
+        await pool.query(
+            "DELETE FROM tickets WHERE id = $1",
+            [id]
+        );
+
+        res.send("Ticket gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Ticket löschen fehlgeschlagen");
     }
 });
 
