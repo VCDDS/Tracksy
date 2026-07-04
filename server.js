@@ -37,7 +37,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: function(req, file, cb){
         if(file.mimetype !== "application/pdf"){
             return cb(new Error("Nur PDF Dateien erlaubt"));
