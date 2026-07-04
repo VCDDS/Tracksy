@@ -375,51 +375,72 @@ let tickets = await apiGet("/tickets");
 let html = `
 <h2>🎫 Tickets</h2>
 
-<table>
-    <tr>
-        <th>Projekt</th>
-        <th>Quelle</th>
-        <th>Kunde</th>
-        <th>Titel</th>
-        <th>Nachricht</th>
-        <th>Status</th>
-        <th>Datum</th>
-        <th>Hinweis</th>
-        <th>Aktion</th>
-    </tr>
+<div class="ticket-admin-grid">
 `;
 
 tickets.forEach(t => {
 
-    let note = "-";
+    let priority = "Normal";
+    let cleanMessage = t.message || "-";
+
+    const priorityMatch = cleanMessage.match(/Priorität:\s*(.*)/);
+
+    if(priorityMatch){
+        priority = priorityMatch[1].split("\\n")[0].trim();
+        cleanMessage = cleanMessage.replace(/Priorität:\s*.*\n\n?/, "");
+    }
+
+    let priorityClass = "ticket-priority-normal";
+    if(priority.toLowerCase() === "hoch") priorityClass = "ticket-priority-high";
+    if(priority.toLowerCase() === "niedrig") priorityClass = "ticket-priority-low";
+
+    let statusClass = "ticket-status-open";
+    if((t.status || "").toLowerCase() === "in arbeit") statusClass = "ticket-status-progress";
+    if((t.status || "").toLowerCase() === "erledigt") statusClass = "ticket-status-done";
+    if((t.status || "").toLowerCase().includes("gelöscht")) statusClass = "ticket-status-deleted";
+
+    let note = "";
 
     if(t.customer_deleted){
-        note = "🗑️ Vom Kunden gelöscht<br><b>Grund:</b> " + (t.delete_reason || "-");
+        note = `<div class="ticket-note deleted">🗑️ Vom Kunden gelöscht<br><b>Grund:</b> ${t.delete_reason || "-"}</div>`;
     }else if(t.customer_edited){
-        note = "✏️ Vom Kunden bearbeitet<br><b>Änderung:</b> " + (t.edit_note || "-");
+        note = `<div class="ticket-note edited">✏️ Vom Kunden bearbeitet<br><b>Änderung:</b> ${t.edit_note || "-"}</div>`;
     }
 
     html += `
-    <tr>
-        <td>${t.project || "-"}</td>
-        <td>${t.source || "-"}</td>
-        <td>${t.customer_name || "-"}</td>
-        <td>${t.title || "-"}</td>
-        <td>${t.message || "-"}</td>
-        <td>${t.status || "Offen"}</td>
-        <td>${t.created_at || "-"}</td>
-        <td>${note}</td>
-        <td>
+    <div class="tracksy-ticket-card">
+        <div class="tracksy-ticket-head">
+            <div>
+                <h3>${t.title || "-"}</h3>
+                <p>${t.project || "-"} · ${t.source || "-"}</p>
+            </div>
+
+            <span class="ticket-status-badge ${statusClass}">
+                ${t.status || "Offen"}
+            </span>
+        </div>
+
+        <div class="ticket-badge-row">
+            <span>👤 ${t.customer_name || "-"}</span>
+            <span class="${priorityClass}">Priorität: ${priority}</span>
+            <span>📅 ${t.created_at || "-"}</span>
+        </div>
+
+        <p class="ticket-message">${cleanMessage}</p>
+
+        ${note}
+
+        <div class="ticket-action-row">
             <button onclick="changeTicketStatus(${t.id}, 'Offen')">Offen</button>
             <button onclick="changeTicketStatus(${t.id}, 'In Arbeit')">In Arbeit</button>
             <button onclick="changeTicketStatus(${t.id}, 'Erledigt')">Erledigt</button>
-            <button onclick="deleteTicket(${t.id})">🗑️ Löschen</button>
-        </td>
-    </tr>
+            <button class="danger-btn" onclick="deleteTicket(${t.id})">🗑️ Löschen</button>
+        </div>
+    </div>
     `;
 });
 
-html += `</table>`;
+html += `</div>`;
 
 content.innerHTML = html;
 return;

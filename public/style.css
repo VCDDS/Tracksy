@@ -656,3 +656,103 @@ h2{
     margin-top: 0;
     color: #38bdf8;
 }
+
+/* ===== TRACKSY TICKETS ===== */
+
+.ticket-admin-grid {
+    display: grid;
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.tracksy-ticket-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 18px;
+}
+
+.tracksy-ticket-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.tracksy-ticket-head h3 {
+    margin: 0;
+}
+
+.ticket-badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 14px 0;
+}
+
+.ticket-badge-row span,
+.ticket-status-badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.ticket-priority-high {
+    background: rgba(255,70,70,0.18);
+    color: #ff6b6b;
+}
+
+.ticket-priority-normal {
+    background: rgba(255,193,7,0.18);
+    color: #ffd45c;
+}
+
+.ticket-priority-low {
+    background: rgba(46,204,113,0.18);
+    color: #5ee39a;
+}
+
+.ticket-status-open {
+    background: rgba(255,70,70,0.18);
+    color: #ff6b6b;
+}
+
+.ticket-status-progress {
+    background: rgba(59,130,246,0.18);
+    color: #7db4ff;
+}
+
+.ticket-status-done {
+    background: rgba(46,204,113,0.18);
+    color: #5ee39a;
+}
+
+.ticket-status-deleted {
+    background: rgba(148,163,184,0.18);
+    color: #cbd5e1;
+}
+
+.ticket-message {
+    line-height: 1.5;
+}
+
+.ticket-note {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 12px;
+}
+
+.ticket-note.deleted {
+    background: rgba(255,70,70,0.12);
+}
+
+.ticket-note.edited {
+    background: rgba(255,193,7,0.12);
+}
+
+.ticket-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
