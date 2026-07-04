@@ -446,6 +446,53 @@ content.innerHTML = html;
 return;
 }
 
+if(page === "zeiten"){
+        let times = await apiGet("/times");
+
+        let html = `
+        <h2>Zeiten</h2>
+        <table>
+            <tr>
+                <th>User</th>
+                <th>Projekt</th>
+                <th>Aufgabe</th>
+                <th>Start</th>
+                <th>Stop</th>
+                <th>Pause Start</th>
+                <th>Pause Ende</th>
+                <th>Pause Gesamt</th>
+                <th>Status</th>
+            </tr>
+        `;
+
+        times.forEach(t => {
+            html += `
+            <tr>
+                <td>${t.username || "-"}</td>
+                <td>${t.project || "-"}</td>
+                <td>${t.task || "-"}</td>
+                <td>${t.start_time || "-"}</td>
+                <td>${t.stop_time || "-"}</td>
+                <td>${t.pause_time || "-"}</td>
+                <td>${t.pause_end || "-"}</td>
+                <td>${t.pause_total ? t.pause_total + " Min." : "-"}</td>
+                <td>
+                    ${
+                        t.stop_time
+                        ? "⏹️ Gestoppt"
+                        : t.is_paused
+                        ? "⏸️ Pause"
+                        : "▶️ Aktiv"
+                    }
+                </td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        content.innerHTML = html;
+        return;
+    }
+    
     if(page === "auswertung"){
     let times = await apiGet("/times");
 
