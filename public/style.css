@@ -1,6 +1,6 @@
 /* =========================================================
-   TRACKSY – DARK APP DASHBOARD DESIGN
-   style.css komplett ersetzen
+   TRACKSY v2.0.0 – COMPLETE DASHBOARD UPDATE
+   Bereinigte style.css
 ========================================================= */
 
 :root{
@@ -24,8 +24,8 @@
     --radius:18px;
     --shadow:0 18px 50px rgba(0,0,0,0.45);
 
-    --sidebar-width:280px;
-    --topbar-height:82px;
+    --sidebar-width:220px;
+    --topbar-height:64px;
     --font-main:Arial, sans-serif;
 }
 
@@ -33,7 +33,8 @@
     box-sizing:border-box;
 }
 
-html,body{
+html,
+body{
     margin:0;
     width:100%;
     height:100%;
@@ -50,7 +51,7 @@ body{
 }
 
 /* =========================
-   DESKTOP SIDEBAR
+   SIDEBAR / NAVIGATION
 ========================= */
 
 .topbar{
@@ -79,9 +80,9 @@ body{
 }
 
 .logo{
-    font-size:30px;
+    font-size:24px;
     font-weight:900;
-    margin-bottom:24px;
+    margin-bottom:16px;
     padding:0 8px;
     color:white;
 }
@@ -89,14 +90,14 @@ body{
 .nav-left button,
 .admin-btn{
     width:100%;
-    min-height:48px;
-    padding:12px 16px;
+    min-height:38px;
+    padding:9px 12px;
     border:none;
     border-radius:12px;
     background:transparent;
     color:white;
     text-align:left;
-    font-size:16px;
+    font-size:13px;
     font-weight:700;
     cursor:pointer;
     transition:0.2s ease;
@@ -154,7 +155,7 @@ body{
 }
 
 /* =========================
-   TOP HEADER DESKTOP
+   TOP HEADER
 ========================= */
 
 .nav-right{
@@ -168,9 +169,9 @@ body{
     display:flex;
     justify-content:flex-end;
     align-items:center;
-    gap:18px;
+    gap:10px;
 
-    padding:0 28px;
+    padding:0 18px;
     background:rgba(5,10,22,0.72);
     border-bottom:1px solid var(--border);
     backdrop-filter:blur(18px);
@@ -178,22 +179,25 @@ body{
 
 .user,
 #datetime{
-    padding:10px 16px;
+    padding:8px 12px;
     border-radius:14px;
     background:rgba(255,255,255,0.07);
     border:1px solid var(--border);
+    font-size:13px;
     font-weight:700;
 }
 
 .logout-btn{
-    width:100%;
-    min-height:52px;
-    margin-top:20px;
+    width:auto;
+    min-width:180px;
+    min-height:38px;
+    margin-top:0;
+    padding:8px 18px;
     border:none;
     border-radius:14px;
     background:linear-gradient(135deg,#ef4444,#991b1b);
     color:white;
-    font-size:16px;
+    font-size:13px;
     font-weight:800;
     cursor:pointer;
 }
@@ -209,7 +213,7 @@ body{
     right:0;
     bottom:0;
     overflow:auto;
-    padding:28px;
+    padding:22px;
 }
 
 h2{
@@ -231,7 +235,7 @@ p{
 }
 
 /* =========================
-   CARDS / BOXES
+   GLOBAL CARDS
 ========================= */
 
 .center-box,
@@ -239,7 +243,13 @@ p{
 .clean-card,
 .tracksy-ticket-card,
 .modal-box,
-.admin-project-summary{
+.admin-project-summary,
+.dashboard-hero,
+.dashboard-live,
+.dash-card,
+.dashboard-panel,
+.analysis-summary div,
+.analysis-card{
     background:linear-gradient(145deg,rgba(15,26,46,0.96),rgba(8,15,30,0.96));
     border:1px solid var(--border);
     border-radius:var(--radius);
@@ -297,8 +307,9 @@ textarea{
     min-height:140px;
     resize:vertical;
 }
+
 /* =========================
-   BUTTONS GLOBAL
+   BUTTONS
 ========================= */
 
 button,
@@ -328,6 +339,13 @@ button:hover,
 .stop-btn,
 .danger-btn{
     background:linear-gradient(135deg,#ef4444,#991b1b);
+}
+
+.manual-btn{
+    display:inline-block;
+    margin-top:12px;
+    text-decoration:none;
+    background:linear-gradient(135deg,#2563eb,#06b6d4);
 }
 
 /* =========================
@@ -362,7 +380,7 @@ tr:hover td{
 }
 
 /* =========================
-   CHARTS
+   CHARTS / ADMIN / MODAL
 ========================= */
 
 .chart-box{
@@ -375,10 +393,6 @@ canvas{
     max-width:100%;
 }
 
-/* =========================
-   ADMIN CLEAN GRID
-========================= */
-
 .admin-clean-grid{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
@@ -389,10 +403,6 @@ canvas{
     padding:22px;
     overflow:auto;
 }
-
-/* =========================
-   MODAL
-========================= */
 
 .modal{
     display:none;
@@ -412,7 +422,7 @@ canvas{
 }
 
 /* =========================
-   KALENDER
+   KALENDER / CHAT / BADGES
 ========================= */
 
 .calendar-day{
@@ -434,10 +444,6 @@ canvas{
     margin:3px;
 }
 
-/* =========================
-   CHAT
-========================= */
-
 .chat-box{
     max-width:900px;
     margin:24px auto;
@@ -457,10 +463,6 @@ canvas{
 .chat-other{
     background:rgba(37,99,235,0.18);
 }
-
-/* =========================
-   BADGES
-========================= */
 
 .suggestion-badge{
     display:inline-block;
@@ -482,7 +484,7 @@ canvas{
 }
 
 /* =========================
-   FOOTER
+   FOOTER / PROJEKTÜBERSICHT
 ========================= */
 
 .dev-footer{
@@ -495,21 +497,6 @@ canvas{
     font-size:12px;
     z-index:800;
 }
-
-/* =========================
-   MANUAL BUTTON
-========================= */
-
-.manual-btn{
-    display:inline-block;
-    margin-top:12px;
-    text-decoration:none;
-    background:linear-gradient(135deg,#2563eb,#06b6d4);
-}
-
-/* =========================
-   PROJEKTÜBERSICHT
-========================= */
 
 .admin-project-summary{
     margin:22px auto;
@@ -524,8 +511,165 @@ canvas{
 }
 
 /* =========================
-   TICKETS – MODERN SUPPORT CENTER
+   DASHBOARD STARTSEITE
 ========================= */
+
+.dashboard-shell{
+    max-width:1180px;
+    margin:0 auto;
+}
+
+.dashboard-hero{
+    display:grid;
+    grid-template-columns:1fr 320px;
+    gap:22px;
+    align-items:center;
+    margin-bottom:24px;
+    padding:24px;
+    border-radius:24px;
+}
+
+.dashboard-kicker{
+    color:var(--cyan);
+    font-weight:800;
+    margin:0 0 8px 0;
+}
+
+.dashboard-hero h1{
+    margin:0;
+    font-size:34px;
+}
+
+.dashboard-hero p{
+    color:var(--muted);
+    font-size:17px;
+}
+
+.dashboard-logo{
+    max-width:150px;
+    margin-left:auto;
+}
+
+.dashboard-live{
+    padding:22px;
+    border-radius:24px;
+}
+
+.dashboard-live span,
+.dash-card span{
+    color:var(--muted);
+    font-size:14px;
+    font-weight:800;
+}
+
+.dashboard-live strong,
+.dash-card strong{
+    display:block;
+    margin-top:8px;
+    font-size:20px;
+}
+
+.dashboard-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+    margin-bottom:24px;
+}
+
+.dash-card{
+    padding:18px;
+    min-height:160px;
+    border-radius:24px;
+}
+
+.dash-card small{
+    display:block;
+    color:var(--muted);
+    margin-top:8px;
+}
+
+.dash-card button{
+    margin-top:16px;
+}
+
+.dashboard-workspace{
+    display:grid;
+    grid-template-columns:1.3fr 0.7fr;
+    gap:22px;
+}
+
+.dashboard-panel{
+    padding:18px;
+    border-radius:24px;
+}
+
+.dashboard-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.quick-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+}
+
+/* =========================
+   TICKETS
+========================= */
+
+.ticket-page{
+    max-width:1280px;
+    margin:0 auto;
+}
+
+.ticket-page-head{
+    margin-bottom:20px;
+}
+
+.ticket-page-head p{
+    color:var(--muted);
+    margin-top:-12px;
+}
+
+.ticket-stat-grid{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:16px;
+    margin-bottom:20px;
+}
+
+.ticket-stat-card{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:18px;
+    background:linear-gradient(145deg,rgba(15,26,46,0.96),rgba(8,15,30,0.96));
+    border:1px solid var(--border);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+}
+
+.ticket-stat-icon{
+    font-size:24px;
+}
+
+.ticket-stat-card strong{
+    display:block;
+    font-size:22px;
+}
+
+.ticket-stat-card small{
+    color:var(--muted);
+}
+
+.ticket-filter-bar{
+    display:grid;
+    grid-template-columns:2fr 1fr 1fr auto;
+    gap:12px;
+    margin-bottom:20px;
+}
 
 .ticket-admin-grid{
     display:grid;
@@ -534,54 +678,32 @@ canvas{
     margin-top:20px;
 }
 
-/* TICKET KARTE */
-
 .tracksy-ticket-card{
     position:relative;
     display:flex;
     flex-direction:column;
     min-width:0;
     padding:22px;
-
     background:
-        radial-gradient(
-            circle at top right,
-            rgba(37,99,235,0.14),
-            transparent 38%
-        ),
-        linear-gradient(
-            145deg,
-            rgba(15,26,46,0.98),
-            rgba(8,15,30,0.98)
-        );
-
+        radial-gradient(circle at top right, rgba(37,99,235,0.14), transparent 38%),
+        linear-gradient(145deg,rgba(15,26,46,0.98),rgba(8,15,30,0.98));
     border:1px solid rgba(255,255,255,0.10);
     border-left:3px solid #2563eb;
     border-radius:18px;
-
     box-shadow:
         0 16px 40px rgba(0,0,0,0.30),
         inset 0 1px 0 rgba(255,255,255,0.04);
-
     overflow:hidden;
-
-    transition:
-        transform 0.2s ease,
-        border-color 0.2s ease,
-        box-shadow 0.2s ease;
+    transition:transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tracksy-ticket-card:hover{
     transform:translateY(-4px);
-
     border-color:rgba(34,211,238,0.32);
-
     box-shadow:
         0 22px 50px rgba(0,0,0,0.42),
         0 0 24px rgba(37,99,235,0.10);
 }
-
-/* KOPF */
 
 .tracksy-ticket-head{
     display:flex;
@@ -598,35 +720,33 @@ canvas{
 
 .tracksy-ticket-head h3{
     margin:0 0 8px 0;
-
     color:#f8fafc;
-
     font-size:18px;
     font-weight:900;
     line-height:1.3;
-
     word-break:break-word;
 }
 
 .tracksy-ticket-head p{
     margin:0;
-
     color:#94a3b8;
-
     font-size:13px;
     line-height:1.5;
-
     word-break:break-word;
 }
 
-/* BADGE ZEILE */
+.ticket-number{
+    display:inline-block;
+    margin-bottom:8px;
+    color:var(--cyan);
+    font-weight:900;
+}
 
 .ticket-badge-row{
     display:flex;
     flex-wrap:wrap;
     align-items:center;
     gap:8px;
-
     margin:4px 0 16px 0;
 }
 
@@ -634,346 +754,231 @@ canvas{
     display:inline-flex;
     align-items:center;
     justify-content:center;
-
     min-width:0;
-
     padding:7px 10px;
-
     border:1px solid rgba(255,255,255,0.08);
     border-radius:999px;
-
     background:rgba(255,255,255,0.055);
-
     color:#cbd5e1;
-
     font-size:12px;
     font-weight:700;
-
     white-space:nowrap;
 }
-
-/* STATUS BADGE */
 
 .ticket-status-badge{
     display:inline-flex;
     align-items:center;
     justify-content:center;
-
     flex-shrink:0;
-
     min-width:90px;
-
     padding:7px 12px;
-
     border-radius:999px;
-
     font-size:12px;
     font-weight:900;
-
     white-space:nowrap;
-
     box-shadow:
         inset 0 1px 0 rgba(255,255,255,0.15),
         0 8px 20px rgba(0,0,0,0.22);
 }
 
-/* PRIORITÄTEN */
-
-.ticket-priority-high{
-    background:linear-gradient(
-        135deg,
-        rgba(239,68,68,0.95),
-        rgba(153,27,27,0.95)
-    ) !important;
-
-    border-color:rgba(248,113,113,0.35) !important;
-
+.ticket-priority-high,
+.ticket-status-open{
+    background:linear-gradient(135deg,#ef4444,#991b1b) !important;
     color:white !important;
 }
 
 .ticket-priority-normal{
-    background:linear-gradient(
-        135deg,
-        rgba(245,158,11,0.95),
-        rgba(146,64,14,0.95)
-    ) !important;
-
-    border-color:rgba(251,191,36,0.35) !important;
-
+    background:linear-gradient(135deg,#f59e0b,#92400e) !important;
     color:white !important;
 }
 
-.ticket-priority-low{
-    background:linear-gradient(
-        135deg,
-        rgba(34,197,94,0.95),
-        rgba(22,101,52,0.95)
-    ) !important;
-
-    border-color:rgba(74,222,128,0.35) !important;
-
+.ticket-priority-low,
+.ticket-status-done{
+    background:linear-gradient(135deg,#22c55e,#166534) !important;
     color:white !important;
-}
-
-/* STATUS */
-
-.ticket-status-open{
-    background:linear-gradient(
-        135deg,
-        #ef4444,
-        #991b1b
-    );
-
-    color:white;
 }
 
 .ticket-status-progress{
-    background:linear-gradient(
-        135deg,
-        #38bdf8,
-        #1d4ed8
-    );
-
-    color:white;
-}
-
-.ticket-status-done{
-    background:linear-gradient(
-        135deg,
-        #22c55e,
-        #166534
-    );
-
+    background:linear-gradient(135deg,#38bdf8,#1d4ed8);
     color:white;
 }
 
 .ticket-status-deleted{
-    background:linear-gradient(
-        135deg,
-        #64748b,
-        #334155
-    );
-
+    background:linear-gradient(135deg,#64748b,#334155);
     color:white;
 }
 
-/* NACHRICHT */
-
 .ticket-message{
     flex:1;
-
     margin:0;
     padding:16px;
-
     min-height:86px;
-
-    background:
-        linear-gradient(
-            135deg,
-            rgba(2,6,23,0.48),
-            rgba(15,23,42,0.40)
-        );
-
+    background:linear-gradient(135deg,rgba(2,6,23,0.48),rgba(15,23,42,0.40));
     border:1px solid rgba(255,255,255,0.07);
     border-radius:14px;
-
     color:#e2e8f0;
-
     font-size:14px;
     line-height:1.65;
-
     word-break:break-word;
 }
-
-/* KUNDEN HINWEISE */
 
 .ticket-note{
     margin-top:14px;
     padding:13px 14px;
-
     border-radius:13px;
-
     font-size:13px;
     line-height:1.5;
 }
 
 .ticket-note.deleted{
     background:rgba(239,68,68,0.12);
-
     border:1px solid rgba(239,68,68,0.24);
-
     color:#fecaca;
 }
 
 .ticket-note.edited{
     background:rgba(245,158,11,0.12);
-
     border:1px solid rgba(245,158,11,0.24);
-
     color:#fde68a;
 }
-
-/* AKTIONEN */
 
 .ticket-action-row{
     display:grid;
     grid-template-columns:repeat(4,minmax(0,1fr));
     gap:8px;
-
     margin-top:18px;
 }
 
 .ticket-action-row button{
     width:100%;
     min-width:0;
-
     padding:10px 8px;
-
     border-radius:11px;
-
     font-size:12px;
     font-weight:800;
-
     white-space:nowrap;
 }
 
-/* OFFEN */
-
 .ticket-action-row button:nth-child(1){
-    background:linear-gradient(
-        135deg,
-        #0f4c81,
-        #0369a1
-    );
+    background:linear-gradient(135deg,#0f4c81,#0369a1);
 }
-
-/* IN ARBEIT */
 
 .ticket-action-row button:nth-child(2){
-    background:linear-gradient(
-        135deg,
-        #2563eb,
-        #1d4ed8
-    );
+    background:linear-gradient(135deg,#2563eb,#1d4ed8);
 }
-
-/* ERLEDIGT */
 
 .ticket-action-row button:nth-child(3){
-    background:linear-gradient(
-        135deg,
-        #16a34a,
-        #166534
-    );
+    background:linear-gradient(135deg,#16a34a,#166534);
 }
-
-/* LÖSCHEN */
 
 .ticket-action-row .danger-btn{
-    background:linear-gradient(
-        135deg,
-        #ef4444,
-        #991b1b
-    );
+    background:linear-gradient(135deg,#ef4444,#991b1b);
 }
 
-/* BUTTON HOVER */
-
-.ticket-action-row button:hover{
-    transform:translateY(-2px);
-
-    filter:brightness(1.12);
-
-    box-shadow:
-        0 10px 22px rgba(0,0,0,0.28);
+.ticket-empty-state{
+    margin-top:20px;
+    padding:24px;
+    text-align:center;
+    color:var(--muted);
+    border:1px dashed var(--border);
+    border-radius:18px;
 }
 
 /* =========================
-   TICKET RESPONSIVE
+   AUSWERTUNG
 ========================= */
 
-@media (max-width:1450px){
-
-    .ticket-admin-grid{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-    }
+.analysis-page{
+    max-width:1180px;
+    margin:0 auto;
 }
 
-@media (max-width:1000px){
-
-    .ticket-admin-grid{
-        grid-template-columns:1fr;
-    }
+.analysis-summary{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+    margin-bottom:24px;
 }
 
-@media (max-width:768px){
-
-    .ticket-admin-grid{
-        grid-template-columns:1fr;
-        gap:14px;
-        margin-top:14px;
-    }
-
-    .tracksy-ticket-card{
-        padding:17px;
-        border-radius:18px;
-    }
-
-    .tracksy-ticket-head{
-        flex-direction:column;
-        gap:10px;
-    }
-
-    .ticket-status-badge{
-        align-self:flex-start;
-    }
-
-    .tracksy-ticket-head h3{
-        font-size:17px;
-    }
-
-    .ticket-badge-row{
-        gap:6px;
-    }
-
-    .ticket-badge-row span{
-        font-size:11px;
-        padding:6px 9px;
-    }
-
-    .ticket-message{
-        min-height:0;
-        padding:14px;
-        font-size:14px;
-    }
-
-    .ticket-action-row{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-    }
-
-    .ticket-action-row button{
-        min-height:44px;
-        font-size:12px;
-    }
+.analysis-summary div{
+    padding:22px;
 }
 
-@media (max-width:420px){
-
-    .tracksy-ticket-card{
-        padding:15px;
-    }
-
-    .ticket-action-row{
-        grid-template-columns:1fr;
-    }
-
-    .ticket-action-row button{
-        width:100%;
-    }
+.analysis-summary span{
+    color:var(--muted);
+    font-weight:800;
 }
+
+.analysis-summary strong{
+    display:block;
+    margin-top:8px;
+    font-size:24px;
+}
+
+.analysis-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:22px;
+}
+
+.analysis-card{
+    padding:22px;
+}
+
+.analysis-card h3{
+    margin:0;
+}
+
+.analysis-card p{
+    color:var(--muted);
+}
+
+.analysis-task{
+    margin-top:18px;
+}
+
+.analysis-task-top{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+}
+
+.analysis-task-top strong{
+    word-break:break-word;
+}
+
+.analysis-task-top span{
+    color:#67e8f9;
+    white-space:nowrap;
+}
+
+.analysis-bar{
+    height:12px;
+    margin:10px 0 6px 0;
+    background:rgba(255,255,255,0.08);
+    border-radius:999px;
+    overflow:hidden;
+}
+
+.analysis-bar-work{
+    height:100%;
+    border-radius:999px;
+    background:linear-gradient(135deg,#22c55e,#06b6d4);
+}
+
+.analysis-task small{
+    color:#fbbf24;
+}
+
 /* =========================
    TABLET
 ========================= */
+
+@media (max-width:1450px){
+    .ticket-admin-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+}
 
 @media (max-width:1100px){
 
@@ -1021,28 +1026,47 @@ canvas{
         width:260px;
     }
 
-    .nav-right{
-        left:var(--sidebar-width);
-    }
-
-    #content{
-        left:var(--sidebar-width);
-    }
-
+    .nav-right,
+    #content,
     .dev-footer{
         left:var(--sidebar-width);
+    }
+
+    .dashboard-hero,
+    .dashboard-workspace{
+        grid-template-columns:1fr;
+    }
+
+    .dashboard-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .ticket-stat-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .ticket-filter-bar{
+        grid-template-columns:1fr 1fr;
+    }
+}
+
+@media (max-width:1000px){
+    .ticket-admin-grid,
+    .analysis-summary,
+    .analysis-grid{
+        grid-template-columns:1fr;
     }
 }
 
 /* =========================
-   HANDY APP DESIGN
+   HANDY
 ========================= */
 
 @media (max-width:768px){
 
     :root{
         --sidebar-width:0px;
-        --topbar-height:76px;
+        --topbar-height:64px;
     }
 
     .topbar{
@@ -1050,13 +1074,11 @@ canvas{
         right:0;
         bottom:auto;
         width:100%;
-        height:76px;
-        min-height:76px;
-
+        height:64px;
+        min-height:64px;
         display:grid;
         grid-template-columns:48px 1fr 48px;
         align-items:center;
-
         padding:12px 18px;
         border-right:none;
         border-bottom:1px solid var(--border);
@@ -1078,7 +1100,7 @@ canvas{
         grid-column:2;
         margin:0;
         padding:0;
-        font-size:24px;
+        font-size:23px;
         text-align:center;
     }
 
@@ -1093,26 +1115,9 @@ canvas{
     }
 
     #content{
-        top:76px;
+        top:64px;
         left:0;
         padding:18px 14px 95px 14px;
-    }
-
-    .center-box{
-        max-width:100%;
-        margin:0 0 18px 0;
-        padding:20px;
-        border-radius:22px;
-        text-align:left;
-    }
-
-    .center-box h2{
-        display:block;
-        background:none;
-        box-shadow:none;
-        padding:0;
-        margin:0 0 14px 0;
-        font-size:26px;
     }
 
     h2{
@@ -1124,13 +1129,6 @@ canvas{
 
     h3{
         font-size:20px;
-    }
-
-    .online-box,
-    .running-box{
-        border-radius:18px;
-        padding:16px;
-        font-size:15px;
     }
 
     button,
@@ -1159,6 +1157,7 @@ canvas{
         padding:13px;
     }
 
+    .center-box,
     .chart-box,
     .clean-card,
     .tracksy-ticket-card,
@@ -1170,194 +1169,6 @@ canvas{
         border-radius:22px;
     }
 
-    .chart-box{
-        overflow-x:auto;
-    }
-
-    .chart-box canvas{
-        min-width:720px;
-        min-height:340px;
-    }
-
-    .tracksy-ticket-head{
-        flex-direction:column;
-    }
-
-    .ticket-action-row button{
-        width:100%;
-    }
-
-    .dev-footer{
-        display:none;
-    }
-
-    .logout-btn{
-        display:none;
-    }
-}
-
-/* =========================
-   KLEINE HANDYS
-========================= */
-
-@media (max-width:420px){
-
-    #content{
-        padding:16px 12px 90px 12px;
-    }
-
-    .logo{
-        font-size:23px;
-    }
-
-    .center-box,
-    .chart-box,
-    .clean-card,
-    .tracksy-ticket-card,
-    .admin-project-summary{
-        padding:16px;
-    }
-
-    h2{
-        font-size:24px;
-    }
-
-    button,
-    .manual-btn{
-        min-height:46px;
-        font-size:14px;
-    }
-}
-
-/* =========================
-   DASHBOARD STARTSEITE
-========================= */
-
-.dashboard-shell{
-    max-width:1180px;
-    margin:0 auto;
-}
-
-.dashboard-hero{
-    display:grid;
-    grid-template-columns:1fr 320px;
-    gap:22px;
-    align-items:center;
-    margin-bottom:24px;
-}
-
-.dashboard-hero,
-.dashboard-live,
-.dash-card,
-.dashboard-panel{
-    background:linear-gradient(145deg,rgba(15,26,46,0.96),rgba(8,15,30,0.96));
-    border:1px solid var(--border);
-    border-radius:24px;
-    box-shadow:var(--shadow);
-}
-
-.dashboard-hero{
-    padding:28px;
-}
-
-.dashboard-kicker{
-    color:var(--cyan);
-    font-weight:800;
-    margin:0 0 8px 0;
-}
-
-.dashboard-hero h1{
-    margin:0;
-    font-size:42px;
-}
-
-.dashboard-hero p{
-    color:var(--muted);
-    font-size:17px;
-}
-
-.dashboard-logo{
-    max-width:150px;
-    margin-left:auto;
-}
-
-.dashboard-live{
-    padding:22px;
-}
-
-.dashboard-live span,
-.dash-card span{
-    color:var(--muted);
-    font-size:14px;
-    font-weight:800;
-}
-
-.dashboard-live strong,
-.dash-card strong{
-    display:block;
-    margin-top:8px;
-    font-size:24px;
-}
-
-.dashboard-grid{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:18px;
-    margin-bottom:24px;
-}
-
-.dash-card{
-    padding:22px;
-    min-height:160px;
-}
-
-.dash-card small{
-    display:block;
-    color:var(--muted);
-    margin-top:8px;
-}
-
-.dash-card button{
-    margin-top:16px;
-}
-
-.dashboard-workspace{
-    display:grid;
-    grid-template-columns:1.3fr 0.7fr;
-    gap:22px;
-}
-
-.dashboard-panel{
-    padding:24px;
-}
-
-.dashboard-actions{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-}
-
-.quick-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:12px;
-}
-
-@media (max-width:1100px){
-    .dashboard-hero{
-        grid-template-columns:1fr;
-    }
-
-    .dashboard-grid{
-        grid-template-columns:repeat(2,1fr);
-    }
-
-    .dashboard-workspace{
-        grid-template-columns:1fr;
-    }
-}
-
-@media (max-width:768px){
     .dashboard-shell{
         max-width:100%;
     }
@@ -1369,15 +1180,21 @@ canvas{
     }
 
     .dashboard-hero h1{
-        font-size:30px;
+        font-size:26px;
     }
 
     .dashboard-logo{
         display:none;
     }
 
-    .dashboard-grid{
+    .dashboard-grid,
+    .dashboard-workspace,
+    .dashboard-actions,
+    .quick-grid,
+    .ticket-stat-grid,
+    .ticket-filter-bar{
         grid-template-columns:1fr;
+        display:grid;
         gap:14px;
     }
 
@@ -1386,14 +1203,89 @@ canvas{
         padding:20px;
     }
 
-    .dashboard-workspace{
-        grid-template-columns:1fr;
+    .dash-card strong{
+        font-size:20px;
     }
 
-    .dashboard-actions,
-    .quick-grid{
+    .chart-box{
+        overflow-x:auto;
+    }
+
+    .chart-box canvas{
+        min-width:720px;
+        min-height:340px;
+    }
+
+    .tracksy-ticket-card{
+        padding:17px;
+    }
+
+    .tracksy-ticket-head{
+        flex-direction:column;
+        gap:10px;
+    }
+
+    .ticket-status-badge{
+        align-self:flex-start;
+    }
+
+    .tracksy-ticket-head h3{
+        font-size:17px;
+    }
+
+    .ticket-badge-row span{
+        font-size:11px;
+        padding:6px 9px;
+    }
+
+    .ticket-message{
+        min-height:0;
+        padding:14px;
+        font-size:14px;
+    }
+
+    .ticket-action-row{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .ticket-action-row button{
+        width:100%;
+        min-height:44px;
+        font-size:12px;
+    }
+
+    .dev-footer,
+    .logout-btn{
+        display:none;
+    }
+}
+
+@media (max-width:420px){
+
+    #content{
+        padding:16px 12px 90px 12px;
+    }
+
+    h2{
+        font-size:24px;
+    }
+
+    button,
+    .manual-btn{
+        min-height:46px;
+        font-size:14px;
+    }
+
+    .center-box,
+    .chart-box,
+    .clean-card,
+    .tracksy-ticket-card,
+    .admin-project-summary{
+        padding:16px;
+    }
+
+    .ticket-action-row{
         grid-template-columns:1fr;
-        display:grid;
     }
 }
 
@@ -1460,4 +1352,3 @@ canvas{
         box-shadow:none !important;
     }
 }
-

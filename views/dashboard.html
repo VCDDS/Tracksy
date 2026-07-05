@@ -70,7 +70,7 @@
 <div id="content"></div>
 
 <footer class="dev-footer">
-    Powered by D.Schulteis <-TRACKSY-> visualcode.dev © 04.2026
+    Powered by D.Schulteis <-TRACKSY-> v2.0.0 - Last Update 05.07.2026 - visualcode.dev © 04.2026
 </footer>
 
 <div id="reportModal" class="modal">
@@ -739,108 +739,134 @@ if(page === "zeiten"){
     }
     
     if(page === "auswertung"){
-    let times = await apiGet("/times");
 
-    let users = {};
-    let colors = ["#22c55e","#f97316","#3b82f6","#a855f7","#ef4444","#14b8a6","#eab308","#ec4899"];
+let times = await apiGet("/times");
 
-    times.forEach(t => {
-        if(t.start_time && t.stop_time){
-            let user = t.username || "Unbekannt";
-            let label = (t.project || "-") + " / " + (t.task || "-");
+let projects = {};
 
-            let start = parseGermanDate(t.start_time);
-            let stop = parseGermanDate(t.stop_time);
+times.forEach(t => {
+    if(!t.start_time || !t.stop_time) return;
 
-            if(!start || !stop) return;
+    let start = parseGermanDate(t.start_time);
+    let stop = parseGermanDate(t.stop_time);
+    if(!start || !stop) return;
 
-            let totalMinutes = Math.floor((stop - start) / 1000 / 60);
-            let pauseMinutes = t.pause_total || 0;
-            let workMinutes = totalMinutes - pauseMinutes;
+    let totalMinutes = Math.floor((stop - start) / 1000 / 60);
+    let pauseMinutes = t.pause_total || 0;
+    let workMinutes = totalMinutes - pauseMinutes;
 
-            if(workMinutes < 0) workMinutes = 0;
-            if(pauseMinutes < 0) pauseMinutes = 0;
+    if(workMinutes < 0) workMinutes = 0;
 
-            if(!users[user]) users[user] = {};
-            if(!users[user][label]){
-                users[user][label] = {
-                    work: 0,
-                    pause: 0
-                };
-            }
+    let project = t.project || "Ohne Projekt";
+    let task = t.task || "Ohne Aufgabe";
 
-            users[user][label].work += workMinutes;
-            users[user][label].pause += pauseMinutes;
-        }
-    });
-
-    let html = `<h2>Auswertung Zeit</h2>`;
-
-    Object.keys(users).forEach((user, index) => {
-        html += `
-        <div class="chart-box">
-            <h3>👤 ${user}</h3>
-            <canvas id="userChart_${index}"></canvas>
-        </div>`;
-    });
-
-    content.innerHTML = html;
-
-    Object.keys(users).forEach((user, index) => {
-        let labels = Object.keys(users[user]);
-        let workData = labels.map(l => users[user][l].work);
-        let pauseData = labels.map(l => users[user][l].pause);
-
-        new Chart(document.getElementById("userChart_" + index), {
-            type: "bar",
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: "Arbeitszeit Min.",
-                        data: workData,
-                        backgroundColor: "#22c55e",
-                        borderRadius: 8
-                    },
-                    {
-                        label: "Pause Min.",
-                        data: pauseData,
-                        backgroundColor: "#f97316",
-                        borderRadius: 8
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    x: {
-                        stacked: true,
-                        ticks: { color: "white" }
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        ticks: { color: "white" }
-                    }
-                },
-                plugins: {
-    legend: {
-        display: true,
-        labels: {
-            color: document.body.classList.contains("print-mode") ? "black" : "white"
-        }
-    },
-    title: {
-        display: true,
-        text: "Arbeitszeit und Pause in Minuten",
-        color: document.body.classList.contains("print-mode") ? "black" : "white"
+    if(!projects[project]){
+        projects[project] = {
+            work: 0,
+            pause: 0,
+            tasks: {}
+        };
     }
-}
-            }
-        });
+
+    if(!projects[project].tasks[task]){
+        projects[project].tasks[task] = {
+            work: 0,
+            pause: 0
+        };
+    }
+
+    projects[project].work += workMinutes;
+    projects[project].pause += pauseMinutes;
+    projects[project].tasks[task].work += workMinutes;
+    projects[project].tasks[task].pause += pauseMinutes;
+});
+
+let totalWork = 0;
+let totalPause = 0;
+
+Object.values(projects).forEach(p => {
+    totalWork += p.work;
+    totalPause += p.pause;
+});
+
+let html = `
+<div class="analysis-page">
+    <h2>📊 Auswertung</h2>
+
+    <div class="analysis-summary">
+        <div>
+            <span>Arbeitszeit</span>
+            <strong>${Math.floor(totalWork / 60)} Std. ${totalWork % 60} Min.</strong>
+        </div>
+
+        <div>
+            <span>Pause</span>
+            <strong>${Math.floor(totalPause / 60)} Std. ${totalPause % 60} Min.</strong>
+        </div>
+
+        <div>
+            <span>Gesamt</span>
+            <strong>${Math.floor((totalWork + totalPause) / 60)} Std. ${(totalWork + totalPause) % 60} Min.</strong>
+        </div>
+    </div>
+
+    <div class="analysis-grid">
+`;
+
+Object.keys(projects).forEach(projectName => {
+
+    let p = projects[projectName];
+    let maxTaskMinutes = Math.max(
+        ...Object.values(p.tasks).map(t => t.work + t.pause),
+        1
+    );
+
+    html += `
+    <div class="analysis-card">
+        <div class="analysis-card-head">
+            <div>
+                <h3>${projectName}</h3>
+                <p>Arbeitszeit: ${Math.floor(p.work / 60)} Std. ${p.work % 60} Min. · Pause: ${p.pause} Min.</p>
+            </div>
+        </div>
+
+        <div class="analysis-task-list">
+    `;
+
+    Object.keys(p.tasks).forEach(taskName => {
+        let task = p.tasks[taskName];
+        let total = task.work + task.pause;
+        let width = Math.max(5, Math.round((total / maxTaskMinutes) * 100));
+
+        html += `
+        <div class="analysis-task">
+            <div class="analysis-task-top">
+                <strong>${taskName}</strong>
+                <span>${Math.floor(task.work / 60)} Std. ${task.work % 60} Min.</span>
+            </div>
+
+            <div class="analysis-bar">
+                <div class="analysis-bar-work" style="width:${width}%"></div>
+            </div>
+
+            <small>Pause: ${task.pause} Min.</small>
+        </div>
+        `;
     });
 
-    return;
+    html += `
+        </div>
+    </div>
+    `;
+});
+
+html += `
+    </div>
+</div>
+`;
+
+content.innerHTML = html;
+return;
 }
 
     if(page === "report"){
