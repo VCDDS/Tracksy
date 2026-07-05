@@ -1085,11 +1085,7 @@ canvas{
     }
 
     .topbar::before{
-        content:"☰";
-        font-size:28px;
-        text-align:left;
-        cursor:pointer;
-        pointer-events:auto;
+        content:"";
     }
 
     .topbar::after{

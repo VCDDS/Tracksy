@@ -237,17 +237,6 @@ function toggleMobileAdminMenu(){
     menu.classList.toggle("mobile-admin-menu-open");
 }
 
-document.addEventListener("click", function(e){
-    if(window.innerWidth > 768) return;
-
-    let x = e.clientX;
-    let y = e.clientY;
-
-    if(x < 70 && y < 80){
-        toggleMobileAdminMenu();
-    }
-});
-
 async function loadPage(page){
 
 currentPage = page;
