@@ -69,6 +69,26 @@
 
 <div id="content"></div>
 
+<div class="mobile-bottom-nav">
+    <button onclick="loadPage('start')">🏠<span>Start</span></button>
+    <button onclick="loadPage('tickets')">🎫<span>Tickets</span></button>
+    <button onclick="loadPage('projekte')">📁<span>Projekte</span></button>
+    <button onclick="loadPage('nachrichten')">📩<span>Nachrichten</span></button>
+    <button onclick="toggleMobileMenu()">☰<span>Menü</span></button>
+</div>
+
+<div id="mobileMenu" class="mobile-menu">
+    <button onclick="loadPage('zeiten'); toggleMobileMenu()">⌛ Zeiten</button>
+    <button onclick="loadPage('auswertung'); toggleMobileMenu()">📊 Auswertung</button>
+    <button onclick="loadPage('report'); toggleMobileMenu()">💻 Report</button>
+    <button onclick="loadPage('dokumente'); toggleMobileMenu()">📄 Dokumente</button>
+    <button onclick="loadPage('kalender'); toggleMobileMenu()">📅 Kalender</button>
+    <button onclick="loadPage('notizen'); toggleMobileMenu()">✏️ Notizen</button>
+    <button onclick="loadPage('vorschlaege'); toggleMobileMenu()">💡 Vorschläge</button>
+    <button onclick="loadPage('benutzer'); toggleMobileMenu()">👤 Benutzer</button>
+    <button class="danger-btn" onclick="logout()">🔒 Abmelden</button>
+</div>
+
 <footer class="dev-footer">
     Powered by D.Schulteis <-TRACKSY-> v2.0.0 - Last Update 05.07.2026 - visualcode.dev © 04.2026
 </footer>
@@ -188,6 +208,16 @@ function parseGermanDate(str){
 function getDateValue(str){
     let d = parseGermanDate(str);
     return d ? d.getTime() : 0;
+}
+
+function toggleMobileMenu(){
+    const menu = document.getElementById("mobileMenu");
+
+    if(!menu){
+        return;
+    }
+
+    menu.classList.toggle("mobile-menu-open");
 }
 
 async function loadPage(page){
@@ -869,78 +899,104 @@ content.innerHTML = html;
 return;
 }
 
-    if(page === "report"){
-        let times = await apiGet("/times");
+if(page === "report"){
 
-        if(isCustomer){
+let times = await apiGet("/times");
+
+if(isCustomer){
     times = times.filter(t =>
         t.project === assignedProject
     );
 }
 
-        let html = `
-        <h2>Report</h2>
-        <table>
-            <tr>
-                <th>User</th>
-                <th>Projekt</th>
-                <th>Aufgabe</th>
-                <th>Bericht</th>
-                <th>Datum</th>
-                <th>Gesamtzeit</th>
-                <th>Status</th>
-                <th>Aktion</th>
-            </tr>
-        `;
+let reportItems = times.filter(t => t.report && t.report.trim() !== "");
 
-        times.forEach(t => {
-            let duration = "-";
+let html = `
+<div class="report-page">
+    <h2>💻 Report</h2>
 
-            if(t.start_time && t.stop_time){
-                let start = parseGermanDate(t.start_time);
-                let stop = parseGermanDate(t.stop_time);
+    <div class="report-summary">
+        <div>
+            <strong>${reportItems.length}</strong>
+            <span>Berichte</span>
+        </div>
 
-if(!start || !stop) return;
+        <div>
+            <strong>${times.length}</strong>
+            <span>Zeiteinträge</span>
+        </div>
+    </div>
 
-let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
+    <div class="report-grid">
+`;
+
+times.forEach(t => {
+
+    let duration = "-";
+
+    if(t.start_time && t.stop_time){
+        let start = parseGermanDate(t.start_time);
+        let stop = parseGermanDate(t.stop_time);
+
+        if(start && stop){
+            let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
 
             if(diff < 0){
-            diff = 0;
-            }
-                let h = Math.floor(diff / 3600);
-                let m = Math.floor((diff % 3600) / 60);
-                let s = diff % 60;
-
-                duration =
-                    String(h).padStart(2, "0") + ":" +
-                    String(m).padStart(2, "0") + ":" +
-                    String(s).padStart(2, "0");
+                diff = 0;
             }
 
-            html += `
-            <tr>
-                <td>${t.username || "-"}</td>
-                <td>${t.project || "-"}</td>
-                <td>${t.task || "-"}</td>
-                <td>${t.report || "-"}</td>
-                <td>${t.stop_time || "-"}</td>
-                <td>${duration}</td>
-                <td>${t.admin_only ? "❌ kein Stop" : "-"}</td>
+            let h = Math.floor(diff / 3600);
+            let m = Math.floor((diff % 3600) / 60);
+            let s = diff % 60;
 
-<td>
-    ${
-        t.username === currentUser
-        ? `<button onclick="editOwnReport(${t.id}, \`${t.report || ""}\`)">✏️ Bearbeiten</button>`
-        : "-"
+            duration =
+                String(h).padStart(2, "0") + ":" +
+                String(m).padStart(2, "0") + ":" +
+                String(s).padStart(2, "0");
+        }
     }
-</td>
-            </tr>`;
-        });
 
-        html += "</table>";
-        content.innerHTML = html;
-        return;
-    }
+    html += `
+    <div class="report-card">
+
+        <div class="report-card-head">
+            <div>
+                <h3>${t.project || "-"}</h3>
+                <p>${t.task || "-"}</p>
+            </div>
+
+            <span>${duration}</span>
+        </div>
+
+        <div class="report-meta">
+            <span>👤 ${t.username || "-"}</span>
+            <span>📅 ${t.stop_time || "-"}</span>
+        </div>
+
+        <div class="report-text">
+            ${t.report || "Kein Bericht vorhanden"}
+        </div>
+
+        <div class="report-actions">
+            ${
+                t.username === currentUser
+                ? `<button onclick="editOwnReport(${t.id}, \`${t.report || ""}\`)">✏️ Bearbeiten</button>`
+                : ""
+            }
+        </div>
+
+    </div>
+    `;
+});
+
+html += `
+    </div>
+</div>
+`;
+
+content.innerHTML = html;
+return;
+}
 
     if(page === "projekte"){
         markProjectsSeen();
@@ -975,91 +1031,173 @@ let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
     }
 
     if(page === "projekt"){
-        let projects = await apiGet("/projects");
 
-        let html = `
-        <h2>Projekt erstellen</h2>
+let projects = await apiGet("/projects");
 
-        <input id="pName" placeholder="Projektname">
-        <input id="pDesc" maxlength="100" placeholder="Beschreibung max. 100 Zeichen">
-        <button onclick="addProject()">Projekt erstellen</button>
+let totalTasks = projects.reduce((sum, p) => {
+    return sum + (p.tasks ? p.tasks.length : 0);
+}, 0);
 
-        <h2>Projekt Verwaltung</h2>
+let activeProjects = projects.filter(p => p.current_task).length;
 
-        <table>
-            <tr>
-                <th>Projekt</th>
-                <th>Beschreibung</th>
-                <th>Aufgaben</th>
-                <th>Aktuell</th>
-                <th>Vorschläge</th>
-                <th>Aktionen</th>
-            </tr>
-        `;
+let html = `
+<div class="project-admin-page">
 
-        projects.forEach(p => {
-            let tasks = p.tasks.map(t => t.name).join("<br>");
-            let status = p.current_task ? `👤 ${p.current_user_name} bearbeitet: ${p.current_task}` : "-";
+    <div class="project-admin-header">
+        <div>
+            <p class="dashboard-kicker">Admin Bereich</p>
+            <h2>🗂️ Projekte verwalten</h2>
+            <p>Neue Projekte erstellen, Aufgaben verwalten und Einstellungen bearbeiten.</p>
+        </div>
+    </div>
 
-            html += `
-            <tr>
-                <td>${p.name}</td>
-                <td>${p.description || "-"}</td>
-                <td>${tasks || "-"}</td>
-                <td>${status}</td>
+    <div class="project-admin-summary">
 
-                <td>
-                    <button onclick="toggleProjectSuggestions(${p.id}, ${p.allow_suggestions})">
-                    ${p.allow_suggestions ? "🟢 Erlaubt" : "🔴 Gesperrt"}
-                </button>
-                </td>
+        <div class="project-stat-card">
+            <span>📁 Projekte</span>
+            <strong>${projects.length}</strong>
+            <small>Gesamt angelegt</small>
+        </div>
 
-                <td>
-                    <button onclick="addTask(${p.id})">➕ Aufgabe</button>
-                    <button onclick="editTask(${p.id})">✏️ Aufgabe</button>
-                    <button onclick="archiveTask(${p.id})">📦 Aufgabe</button>
-                    <button onclick="editProjectPrompt(${p.id}, '${p.name}', '${p.description || ""}')">🛠️ Projekt</button>
-                    <button onclick="deleteProject(${p.id})">🗑️ Projekt</button>
-                </td>
-            </tr>`;
-        });
+        <div class="project-stat-card">
+            <span>🧩 Aufgaben</span>
+            <strong>${totalTasks}</strong>
+            <small>Aktive Aufgaben</small>
+        </div>
 
-        html += "</table>";
-        content.innerHTML = html;
-        return;
-    }
+        <div class="project-stat-card">
+            <span>🟢 In Bearbeitung</span>
+            <strong>${activeProjects}</strong>
+            <small>Aktive Projekte</small>
+        </div>
 
-    if(page === "archiv"){
-        let projects = await apiGet("/projects");
+    </div>
 
-        let html = `
-        <h2>Archiv</h2>
-        <table>
-            <tr>
-                <th>Projekt</th>
-                <th>Archivierte Aufgabe</th>
-                <th>Aktion</th>
-            </tr>
-        `;
+    <section class="project-create-card">
+        <div class="project-create-head">
+            <div>
+                <h3>➕ Neues Projekt</h3>
+                <p>Projekt anlegen und anschließend Aufgaben hinzufügen.</p>
+            </div>
+        </div>
 
-        projects.forEach(p => {
-            p.archiveTasks.forEach(t => {
-                html += `
-                <tr>
-                    <td>${p.name}</td>
-                    <td>${t.name}</td>
-                    <td>
-                        <button onclick="restoreTask(${t.id})">↩️ Wiederherstellen</button>
-                        <button onclick="deleteTaskFinal(${t.id})">❌ Löschen</button>
-                    </td>
-                </tr>`;
-            });
-        });
+        <div class="project-create-form">
+            <input id="pName" placeholder="Projektname">
 
-        html += "</table>";
-        content.innerHTML = html;
-        return;
-    }
+            <input
+                id="pDesc"
+                maxlength="100"
+                placeholder="Kurze Beschreibung – max. 100 Zeichen"
+            >
+
+            <button class="project-create-btn" onclick="addProject()">
+                ➕ Projekt erstellen
+            </button>
+        </div>
+    </section>
+
+    <section class="project-list-section">
+
+        <div class="project-list-head">
+            <div>
+                <h3>📋 Projektübersicht</h3>
+                <p>Alle Projekte und Aufgaben auf einen Blick.</p>
+            </div>
+        </div>
+
+        <div class="project-admin-grid">
+`;
+
+projects.forEach(p => {
+
+    let tasks = p.tasks || [];
+
+    let status = p.current_task
+        ? `👤 ${p.current_user_name || "-"} · ${p.current_task}`
+        : "⚪ Keine aktive Bearbeitung";
+
+    html += `
+    <article class="project-manage-card">
+
+        <div class="project-manage-head">
+            <div>
+                <h3>${p.name}</h3>
+                <p>${p.description || "Keine Beschreibung vorhanden"}</p>
+            </div>
+
+            <span class="project-task-count">
+                ${tasks.length} Aufgaben
+            </span>
+        </div>
+
+        <div class="project-current-status ${p.current_task ? "active" : ""}">
+            ${status}
+        </div>
+
+        <div class="project-task-list">
+            <h4>🧩 Aufgaben</h4>
+
+            ${
+                tasks.length > 0
+                ? tasks.map(t => `
+                    <span class="project-task-chip">
+                        ${t.name}
+                    </span>
+                `).join("")
+                : `<p class="project-empty-text">Noch keine Aufgaben angelegt.</p>`
+            }
+        </div>
+
+        <div class="project-suggestion-setting">
+            <div>
+                <strong>💡 Vorschläge</strong>
+                <small>Kunden dürfen Vorschläge senden</small>
+            </div>
+
+            <button
+                class="${p.allow_suggestions ? "project-toggle-on" : "project-toggle-off"}"
+                onclick="toggleProjectSuggestions(${p.id}, ${p.allow_suggestions})"
+            >
+                ${p.allow_suggestions ? "🟢 Erlaubt" : "🔴 Gesperrt"}
+            </button>
+        </div>
+
+        <div class="project-manage-actions">
+            <button onclick="addTask(${p.id})">
+                ➕ Aufgabe
+            </button>
+
+            <button onclick="editTask(${p.id})">
+                ✏️ Aufgabe
+            </button>
+
+            <button onclick="archiveTask(${p.id})">
+                📦 Archivieren
+            </button>
+
+            <button onclick="editProjectPrompt(${p.id}, '${p.name}', '${p.description || ""}')">
+                🛠️ Projekt
+            </button>
+
+            <button class="danger-btn" onclick="deleteProject(${p.id})">
+                🗑️ Löschen
+            </button>
+        </div>
+
+    </article>
+    `;
+});
+
+html += `
+        </div>
+    </section>
+
+</div>
+`;
+
+content.innerHTML = html;
+return;
+}
 
     if(page === "nachrichten"){
     markMessagesSeen();
@@ -1280,154 +1418,147 @@ return;
 if(page === "vorschlaege"){
     markSuggestionsSeen();
 
-let suggestions = await apiGet("/suggestions");
-let projects = await apiGet("/projects");
+    let suggestions = await apiGet("/suggestions");
+    let projects = await apiGet("/projects");
 
-if(isCustomer){
-    suggestions = suggestions.filter(s =>
-        s.project === assignedProject
-    );
+    if(isCustomer){
+        suggestions = suggestions.filter(s =>
+            s.project === assignedProject
+        );
 
-    projects = projects.filter(p =>
-        p.name === assignedProject
-    );
-}
+        projects = projects.filter(p =>
+            p.name === assignedProject
+        );
+    }
 
-let html = `
-<h2>💡 Vorschläge</h2>
+    let html = `
+    <div class="suggestion-page">
+        <h2>💡 Vorschläge</h2>
 
-<div class="center-box">
+        <div class="suggestion-create-card">
+            <h3>Neuen Vorschlag erstellen</h3>
 
-<select id="suggestionProject">
-<option value="">Projekt wählen</option>
-<option value="Projekt Idee">💡 Projekt Idee</option>
-</select>
+            <select id="suggestionProject">
+                <option value="">Projekt wählen</option>
+                <option value="Projekt Idee">💡 Projekt Idee</option>
+            </select>
 
-<input id="suggestionTitle" placeholder="Titel vom Vorschlag">
+            <input id="suggestionTitle" placeholder="Titel vom Vorschlag">
 
-<textarea id="suggestionDescription" placeholder="Beschreibung"></textarea>
+            <textarea id="suggestionDescription" placeholder="Beschreibung"></textarea>
 
-<button onclick="createSuggestion()">Vorschlag senden</button>
+            <button onclick="createSuggestion()">Vorschlag senden</button>
+        </div>
 
-</div>
-`;
+        <div class="suggestion-grid">
+    `;
 
-suggestions.forEach(s => {
+    suggestions.forEach(s => {
 
-html += `
-<div class="center-box">
+        html += `
+        <div class="suggestion-card">
 
-<h3>${s.title}</h3>
+            <div class="suggestion-head">
+                <div>
+                    <h3>${s.title}</h3>
+                    <p>📁 ${s.project || "-"} · 👤 ${s.username}</p>
+                </div>
 
-<p><b>Projekt:</b> ${s.project || "-"}</p>
+                <span>📅 ${s.created_at}</span>
+            </div>
 
-<p><b>Von:</b> ${s.username}</p>
+            <div class="suggestion-text">
+                ${s.description || "-"}
+            </div>
 
-<p>${s.description || "-"}</p>
+            <div class="suggestion-vote-row">
+                <button onclick="voteSuggestion(${s.id}, 'good')">👍 Gut (${s.good})</button>
+                <button onclick="voteSuggestion(${s.id}, 'bad')">👎 Schlecht (${s.bad})</button>
 
-<p>📅 ${s.created_at}</p>
+                ${
+                    isAdmin
+                    ? `
+                    <button onclick="editSuggestion(${s.id})">✏️ Bearbeiten</button>
+                    <button class="danger-btn" onclick="deleteSuggestion(${s.id})">🗑️ Löschen</button>
+                    `
+                    : ""
+                }
+            </div>
 
-<div style="margin-top:10px;">
-<button onclick="voteSuggestion(${s.id}, 'good')">
-👍 Gut (${s.good})
-</button>
+            <div class="suggestion-comments">
+                <h4>💬 Kommentare</h4>
 
-<button onclick="voteSuggestion(${s.id}, 'bad')">
-👎 Schlecht (${s.bad})
-</button>
+                ${s.comments
+                .filter(c => !c.parent_comment_id)
+                .map(c => `
+                    <div class="suggestion-comment">
+                        <b>${c.username}</b>
+                        <p>${c.comment}</p>
+                        <small>${c.created_at}</small>
 
-${
-isAdmin
-? `
-<button onclick="editSuggestion(${s.id})">✏️ Bearbeiten</button>
-<button onclick="deleteSuggestion(${s.id})">🗑️ Löschen</button>
-`
-: ""
-}
+                        <div class="suggestion-comment-actions">
+                            <button onclick="replyToSuggestionComment(${s.id}, ${c.id})">↩️ Antworten</button>
 
-</div>
+                            ${
+                                c.username === currentUser || isAdmin
+                                ? `<button class="danger-btn" onclick="deleteSuggestionComment(${c.id})">🗑️ Löschen</button>`
+                                : ""
+                            }
+                        </div>
 
-<hr>
+                        <div class="suggestion-replies">
+                            ${s.comments
+                            .filter(r => r.parent_comment_id === c.id)
+                            .map(r => `
+                                <div class="suggestion-reply">
+                                    <b>${r.username}</b>
+                                    <p>${r.comment}</p>
+                                    <small>${r.created_at}</small>
 
-<h4>💬 Kommentare</h4>
+                                    ${
+                                        r.username === currentUser || isAdmin
+                                        ? `<button class="danger-btn" onclick="deleteSuggestionComment(${r.id})">🗑️ Antwort löschen</button>`
+                                        : ""
+                                    }
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `).join("")}
 
-${s.comments
-.filter(c => !c.parent_comment_id)
-.map(c => `
-<div style="
-background:rgba(255,255,255,0.08);
-padding:10px;
-margin-bottom:10px;
-border-radius:10px;
-text-align:left;
-">
-<b>${c.username}</b><br>
-${c.comment}
-<br><br>
-<small>${c.created_at}</small>
-<div style="margin-top:10px;">
-<button onclick="replyToSuggestionComment(${s.id}, ${c.id})">
-↩️ Antworten
-</button>
-</div>
+                <textarea id="comment_${s.id}" placeholder="Kommentar schreiben"></textarea>
 
-<div style="margin-left:25px; margin-top:10px;">
-${s.comments
-.filter(r => r.parent_comment_id === c.id)
-.map(r => `
-<div style="
-background:rgba(255,255,255,0.05);
-padding:10px;
-margin-bottom:10px;
-border-radius:10px;
-">
-<b>${r.username}</b><br>
-${r.comment}
-<br><small>${r.created_at}</small>
-${
-    r.username === currentUser || isAdmin
-    ? `<br><button onclick="deleteSuggestionComment(${r.id})">🗑️ Antwort löschen</button>`
-    : ""
-}
-</div>
-`).join("")}
-</div>
-${
-    c.username === currentUser || isAdmin
-    ? `<br><button onclick="deleteSuggestionComment(${c.id})">🗑️ Kommentar löschen</button>`
-    : ""
-}
-</div>
-`).join("")}
+                <button onclick="commentSuggestion(${s.id})">
+                    Kommentar senden
+                </button>
+            </div>
 
-<textarea id="comment_${s.id}" placeholder="Kommentar schreiben"></textarea>
+        </div>
+        `;
+    });
 
-<button onclick="commentSuggestion(${s.id})">
-Kommentar senden
-</button>
+    html += `
+        </div>
+    </div>
+    `;
 
-</div>
-`;
-});
+    content.innerHTML = html;
 
-content.innerHTML = html;
+    let projectSelect = document.getElementById("suggestionProject");
 
-let projectSelect = document.getElementById("suggestionProject");
+    projects.forEach(p => {
+        if(!p.allow_suggestions){
+            return;
+        }
 
-projects.forEach(p => {
+        projectSelect.innerHTML += `
+        <option value="${p.name}">
+            ${p.name}
+        </option>
+        `;
+    });
 
-if(!p.allow_suggestions){
     return;
-}
-
-projectSelect.innerHTML += `
-<option value="${p.name}">
-    ${p.name}
-</option>
-`;
-});
-
-return;
 }
 
 if(page === "notizen"){
@@ -1603,7 +1734,6 @@ if(page === "benutzerVerwaltung"){
                 <th>Aufgabe</th>
                 <th>Start</th>
                 <th>Stop</th>
-                <th>Bericht</th>
                 <th>Aktion</th>
             </tr>
         `;
@@ -1617,7 +1747,6 @@ if(page === "benutzerVerwaltung"){
                 <td>${t.task}</td>
                 <td>${t.start_time}</td>
                 <td>${t.stop_time}</td>
-                <td>${t.report}</td>
                 <td><button onclick="editTime(${t.id})">✏️ Bearbeiten</button></td>
             </tr>`;
         });
@@ -1632,124 +1761,167 @@ if(page === "benutzerVerwaltung"){
 
 let times = await apiGet("/times");
 
+let reportCount = times.filter(t =>
+    t.report && t.report.trim() !== ""
+).length;
+
+let evaluationCount = times.filter(t =>
+    t.start_time && t.stop_time
+).length;
+
 let html = `
-<h2>Daten bereinigen</h2>
+<div class="cleanup-page">
 
-<div class="admin-clean-grid">
+    <div class="cleanup-header">
+        <div>
+            <p class="dashboard-kicker">Admin Bereich</p>
+            <h2>🧹 Daten bereinigen</h2>
+            <p>Einträge gezielt prüfen und löschen.</p>
+        </div>
 
-<div class="clean-card">
-<h3>⏱️ Zeiten löschen</h3>
-<p>Hier siehst du genau welche Zeit gelöscht wird.</p>
+        <div class="cleanup-warning">
+            ⚠️ Gelöschte Daten können nicht wiederhergestellt werden.
+        </div>
+    </div>
 
-<table>
-<tr>
-<th>User</th>
-<th>Projekt</th>
-<th>Aufgabe</th>
-<th>Start</th>
-<th>Stop</th>
-<th>Aktion</th>
-</tr>
+    <div class="cleanup-summary">
 
-${times.map(t => `
-<tr>
-<td>${t.username || "-"}</td>
-<td>${t.project || "-"}</td>
-<td>${t.task || "-"}</td>
-<td>${t.start_time || "-"}</td>
-<td>${t.stop_time || "-"}</td>
-<td><button onclick="deleteTime(${t.id})">🗑️ Löschen</button></td>
-</tr>
-`).join("")}
-</table>
+        <div class="cleanup-stat">
+            <span>⏱️ Zeiten</span>
+            <strong>${times.length}</strong>
+            <small>Gespeicherte Zeiteinträge</small>
+        </div>
 
-<br>
+        <div class="cleanup-stat">
+            <span>💻 Reports</span>
+            <strong>${reportCount}</strong>
+            <small>Gespeicherte Berichte</small>
+        </div>
 
-<button class="danger-btn" onclick="deleteAllTimes()">
-🚨 ALLE Zeiten löschen
-</button>
+        <div class="cleanup-stat">
+            <span>📊 Auswertung</span>
+            <strong>${evaluationCount}</strong>
+            <small>Auswertbare Einträge</small>
+        </div>
 
-</div>
+    </div>
 
-<div class="clean-card">
+    <div class="cleanup-sections">
 
-<h3>💻 Berichte löschen</h3>
+        <section class="cleanup-section">
+            <div class="cleanup-section-head">
+                <div>
+                    <h3>⏱️ Zeiten verwalten</h3>
+                    <p>Einzelne Zeiteinträge gezielt entfernen.</p>
+                </div>
 
-<p>Hier siehst du genau welchen Bericht du löschst.</p>
+                <button class="danger-btn" onclick="deleteAllTimes()">
+                    🚨 Alle Zeiten löschen
+                </button>
+            </div>
 
-<table>
-<tr>
-<th>User</th>
-<th>Projekt</th>
-<th>Aufgabe</th>
-<th>Bericht</th>
-<th>Aktion</th>
-</tr>
+            <div class="cleanup-list">
+                ${times.map(t => `
+                    <div class="cleanup-item">
+                        <div class="cleanup-item-main">
+                            <strong>${t.project || "-"}</strong>
+                            <span>${t.task || "-"}</span>
+                        </div>
 
-${times.map(t => `
-<tr>
-<td>${t.username || "-"}</td>
-<td>${t.project || "-"}</td>
-<td>${t.task || "-"}</td>
-<td>${t.report || "-"}</td>
-<td>
-<button onclick="deleteSingleReport(${t.id})">
-🗑️ Löschen
-</button>
-</td>
-</tr>
-`).join("")}
+                        <div class="cleanup-item-meta">
+                            <span>👤 ${t.username || "-"}</span>
+                            <span>▶️ ${t.start_time || "-"}</span>
+                            <span>⏹️ ${t.stop_time || "-"}</span>
+                        </div>
 
-</table>
+                        <button class="cleanup-delete-btn" onclick="deleteTime(${t.id})">
+                            🗑️ Löschen
+                        </button>
+                    </div>
+                `).join("")}
+            </div>
+        </section>
 
-<br>
+        <section class="cleanup-section">
+            <div class="cleanup-section-head">
+                <div>
+                    <h3>💻 Reports verwalten</h3>
+                    <p>Berichte einzeln prüfen und entfernen.</p>
+                </div>
 
-<button class="danger-btn" onclick="deleteAllReports()">
-🚨 ALLE Reports löschen
-</button>
+                <button class="danger-btn" onclick="deleteAllReports()">
+                    🚨 Alle Reports löschen
+                </button>
+            </div>
 
-</div>
+            <div class="cleanup-list">
+                ${times
+                .filter(t => t.report && t.report.trim() !== "")
+                .map(t => `
+                    <div class="cleanup-item">
+                        <div class="cleanup-item-main">
+                            <strong>${t.project || "-"}</strong>
+                            <span>${t.task || "-"}</span>
+                        </div>
 
-<div class="clean-card">
-<h3>📊 Auswertung löschen</h3>
-<p>Hier siehst du genau welche Auswertung gelöscht wird.</p>
+                        <div class="cleanup-report-text">
+                            ${t.report}
+                        </div>
 
-<table>
-<tr>
-<th>User</th>
-<th>Projekt</th>
-<th>Aufgabe</th>
-<th>Start</th>
-<th>Stop</th>
-<th>Aktion</th>
-</tr>
+                        <div class="cleanup-item-meta">
+                            <span>👤 ${t.username || "-"}</span>
+                        </div>
 
-${times.map(t => `
-<tr>
-<td>${t.username || "-"}</td>
-<td>${t.project || "-"}</td>
-<td>${t.task || "-"}</td>
-<td>${t.start_time || "-"}</td>
-<td>${t.stop_time || "-"}</td>
-<td><button onclick="deleteSingleAuswertung(${t.id})">🗑️ Löschen</button></td>
-</tr>
-`).join("")}
-</table>
+                        <button class="cleanup-delete-btn" onclick="deleteSingleReport(${t.id})">
+                            🗑️ Löschen
+                        </button>
+                    </div>
+                `).join("")}
+            </div>
+        </section>
 
-<br>
+        <section class="cleanup-section">
+            <div class="cleanup-section-head">
+                <div>
+                    <h3>📊 Auswertung verwalten</h3>
+                    <p>Abgeschlossene Zeitdaten aus der Auswertung entfernen.</p>
+                </div>
 
-<button class="danger-btn" onclick="deleteAllAuswertung()">
-🚨 ALLE Auswertungen löschen
-</button>
+                <button class="danger-btn" onclick="deleteAllAuswertung()">
+                    🚨 Alle Auswertungen löschen
+                </button>
+            </div>
 
-</div>
+            <div class="cleanup-list">
+                ${times
+                .filter(t => t.start_time && t.stop_time)
+                .map(t => `
+                    <div class="cleanup-item">
+                        <div class="cleanup-item-main">
+                            <strong>${t.project || "-"}</strong>
+                            <span>${t.task || "-"}</span>
+                        </div>
 
+                        <div class="cleanup-item-meta">
+                            <span>👤 ${t.username || "-"}</span>
+                            <span>▶️ ${t.start_time || "-"}</span>
+                            <span>⏹️ ${t.stop_time || "-"}</span>
+                        </div>
+
+                        <button class="cleanup-delete-btn" onclick="deleteSingleAuswertung(${t.id})">
+                            🗑️ Löschen
+                        </button>
+                    </div>
+                `).join("")}
+            </div>
+        </section>
+
+    </div>
 </div>
 `;
 
 content.innerHTML = html;
 return;
-
 }
 
 }
@@ -2136,9 +2308,6 @@ async function editTime(id){
     let stop_time = prompt("Stop:", t.stop_time);
     if(stop_time === null) return;
 
-    let report = prompt("Bericht:", t.report);
-    if(report === null) return;
-
     let msg = await apiPost("/edit-time", {
         id,
         username,
@@ -2146,7 +2315,6 @@ async function editTime(id){
         task,
         start_time,
         stop_time,
-        report
     });
 
     alert(msg);
@@ -2265,16 +2433,12 @@ if(start_time === null) return;
 let stop_time = prompt("Stop:");
 if(stop_time === null) return;
 
-let report = prompt("Bericht:");
-if(report === null) return;
-
 let msg = await apiPost("/manual-time", {
     username,
     project,
     task,
     start_time,
     stop_time,
-    report
 });
 
 alert(msg);
