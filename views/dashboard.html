@@ -1720,44 +1720,111 @@ if(page === "benutzerVerwaltung"){
     return;
 }
 
-    if(page === "zeitenKorrigieren"){
-        let times = await apiGet("/times");
+if(page === "zeitenKorrigieren"){
 
-        let html = `
-        <h2>Zeiten korrigieren</h2>
+let times = await apiGet("/times");
+
+let completedTimes = times.filter(t => t.start_time && t.stop_time).length;
+let runningTimes = times.filter(t => t.start_time && !t.stop_time).length;
+
+let html = `
+<div class="time-edit-page">
+
+    <div class="time-edit-header">
+        <div>
+            <p class="dashboard-kicker">Admin Bereich</p>
+            <h2>🛠️ Zeiten korrigieren</h2>
+            <p>Zeiteinträge prüfen, korrigieren oder manuell nachtragen.</p>
+        </div>
+
         <button onclick="manualTime()">➕ Zeit nachtragen</button>
-        <table>
-            <tr>
-                <th>#</th>
-                <th>User</th>
-                <th>Projekt</th>
-                <th>Aufgabe</th>
-                <th>Start</th>
-                <th>Stop</th>
-                <th>Aktion</th>
-            </tr>
-        `;
+    </div>
 
-        times.forEach(t => {
-            html += `
-            <tr>
-                <td>${t.id}</td>
-                <td>${t.username}</td>
-                <td>${t.project}</td>
-                <td>${t.task}</td>
-                <td>${t.start_time}</td>
-                <td>${t.stop_time}</td>
-                <td><button onclick="editTime(${t.id})">✏️ Bearbeiten</button></td>
-            </tr>`;
-        });
+    <div class="time-edit-summary">
+        <div>
+            <span>⏱️ Einträge</span>
+            <strong>${times.length}</strong>
+            <small>Gesamt gespeichert</small>
+        </div>
 
-        html += "</table>";
-        content.innerHTML = html;
-        return;
-    }
+        <div>
+            <span>✅ Abgeschlossen</span>
+            <strong>${completedTimes}</strong>
+            <small>Mit Start und Stop</small>
+        </div>
+
+        <div>
+            <span>🟢 Laufend</span>
+            <strong>${runningTimes}</strong>
+            <small>Ohne Stopzeit</small>
+        </div>
+    </div>
+
+    <div class="time-edit-grid">
+`;
+
+times.forEach(t => {
+
+    let status = t.stop_time
+        ? "✅ Abgeschlossen"
+        : t.is_paused
+        ? "⏸️ Pause"
+        : "🟢 Läuft";
+
+    html += `
+    <div class="time-edit-card">
+
+        <div class="time-edit-card-head">
+            <div>
+                <small>#${t.id}</small>
+                <h3>${t.project || "-"}</h3>
+                <p>${t.task || "-"}</p>
+            </div>
+
+            <span class="time-status">${status}</span>
+        </div>
+
+        <div class="time-meta-grid">
+            <div>
+                <span>User</span>
+                <strong>${t.username || "-"}</strong>
+            </div>
+
+            <div>
+                <span>Start</span>
+                <strong>${t.start_time || "-"}</strong>
+            </div>
+
+            <div>
+                <span>Stop</span>
+                <strong>${t.stop_time || "-"}</strong>
+            </div>
+
+            <div>
+                <span>Pause</span>
+                <strong>${t.pause_total ? t.pause_total + " Min." : "-"}</strong>
+            </div>
+        </div>
+
+        <div class="time-edit-actions">
+            <button onclick="editTime(${t.id})">✏️ Korrigieren</button>
+        </div>
+
+    </div>
+    `;
+});
+
+html += `
+    </div>
+</div>
+`;
+
+content.innerHTML = html;
+return;
+}
 
 
-    if(page === "adminDaten"){
+if(page === "adminDaten"){
 
 let times = await apiGet("/times");
 
@@ -1823,6 +1890,11 @@ let html = `
             <div class="cleanup-list">
                 ${times.map(t => `
                     <div class="cleanup-item">
+
+                        <div class="cleanup-link-badge">
+                            #${t.id} · ${t.project || "-"} · ${t.task || "-"}
+                        </div>
+
                         <div class="cleanup-item-main">
                             <strong>${t.project || "-"}</strong>
                             <span>${t.task || "-"}</span>
@@ -1859,6 +1931,11 @@ let html = `
                 .filter(t => t.report && t.report.trim() !== "")
                 .map(t => `
                     <div class="cleanup-item">
+
+                        <div class="cleanup-link-badge">
+                            #${t.id} · ${t.project || "-"} · ${t.task || "-"}
+                        </div>
+
                         <div class="cleanup-item-main">
                             <strong>${t.project || "-"}</strong>
                             <span>${t.task || "-"}</span>
@@ -1897,6 +1974,11 @@ let html = `
                 .filter(t => t.start_time && t.stop_time)
                 .map(t => `
                     <div class="cleanup-item">
+
+                        <div class="cleanup-link-badge">
+                            #${t.id} · ${t.project || "-"} · ${t.task || "-"}
+                        </div>
+
                         <div class="cleanup-item-main">
                             <strong>${t.project || "-"}</strong>
                             <span>${t.task || "-"}</span>
