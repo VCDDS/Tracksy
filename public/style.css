@@ -1,32 +1,33 @@
 /* =========================================================
-   TRACKSY NEW DESIGN 2026
-   Komplett ersetzen in: style.css
+   TRACKSY – MODERN DASHBOARD DESIGN
+   Datei: style.css komplett ersetzen
 ========================================================= */
 
 :root{
-    --bg-main:#070b18;
-    --bg-soft:#0f172a;
-    --bg-card:rgba(15,23,42,0.82);
-    --bg-card-strong:rgba(17,24,39,0.95);
-    --glass:rgba(255,255,255,0.08);
+    --bg:#050a16;
+    --panel:#0b1222;
+    --panel-soft:#111b2f;
+    --card:rgba(15,25,45,0.88);
+    --card-strong:rgba(18,30,52,0.96);
 
-    --primary:#38bdf8;
-    --primary-strong:#2563eb;
-    --accent:#8b5cf6;
+    --blue:#2563eb;
+    --cyan:#22d3ee;
+    --purple:#7c3aed;
     --green:#22c55e;
     --red:#ef4444;
     --orange:#f59e0b;
+
     --text:#f8fafc;
     --muted:#94a3b8;
+    --border:rgba(255,255,255,0.12);
 
     --radius:18px;
-    --radius-sm:12px;
-    --shadow:0 20px 60px rgba(0,0,0,0.35);
+    --shadow:0 18px 55px rgba(0,0,0,0.42);
 
-    --topbar-height:96px;
+    --topbar-height:86px;
     --content-padding:26px;
 
-    --font-main:Inter, Arial, sans-serif;
+    --font-main:Arial, sans-serif;
 }
 
 *{
@@ -36,21 +37,20 @@
 html,body{
     margin:0;
     width:100%;
-    min-height:100%;
+    height:100%;
+    overflow:hidden;
 }
 
 body{
     font-family:var(--font-main);
     color:var(--text);
     background:
-        radial-gradient(circle at top left, rgba(56,189,248,0.20), transparent 35%),
-        radial-gradient(circle at top right, rgba(139,92,246,0.22), transparent 35%),
-        linear-gradient(135deg,#020617,#0f172a 55%,#020617);
-    background-attachment:fixed;
-    overflow:hidden;
+        radial-gradient(circle at top left, rgba(37,99,235,0.35), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(124,58,237,0.28), transparent 35%),
+        linear-gradient(135deg,#020617,#07111f 55%,#020617);
 }
 
-/* ================= NAVIGATION ================= */
+/* ================= NAV ================= */
 
 .topbar{
     position:fixed;
@@ -58,19 +58,19 @@ body{
     left:0;
     right:0;
     min-height:var(--topbar-height);
-    z-index:1000;
+    z-index:9999;
 
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap:14px;
+    gap:16px;
     flex-wrap:wrap;
 
     padding:14px 22px;
-    background:rgba(2,6,23,0.82);
+    background:rgba(5,10,22,0.92);
+    border-bottom:1px solid var(--border);
+    box-shadow:0 12px 40px rgba(0,0,0,0.45);
     backdrop-filter:blur(18px);
-    border-bottom:1px solid rgba(255,255,255,0.10);
-    box-shadow:0 10px 40px rgba(0,0,0,0.35);
 }
 
 .nav-left,
@@ -86,40 +86,41 @@ body{
 }
 
 .logo{
-    font-size:22px;
-    font-weight:800;
-    letter-spacing:0.3px;
-    color:white;
-    padding:10px 14px;
-    border-radius:999px;
-    background:linear-gradient(135deg,rgba(56,189,248,0.22),rgba(139,92,246,0.20));
-    border:1px solid rgba(255,255,255,0.12);
+    font-size:24px;
+    font-weight:900;
+    padding:10px 16px;
+    border-radius:16px;
+    background:linear-gradient(135deg,rgba(37,99,235,0.35),rgba(34,211,238,0.18));
+    border:1px solid rgba(34,211,238,0.25);
 }
+
+/* ================= BUTTONS ================= */
 
 button,
 .admin-btn,
 .manual-btn{
-    border:none;
-    cursor:pointer;
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:14px;
+    padding:11px 16px;
+    background:linear-gradient(135deg,#12203a,#172943);
     color:white;
-    border-radius:999px;
-    padding:10px 16px;
-    font-weight:700;
     font-size:14px;
-    background:linear-gradient(135deg,#1e293b,#334155);
-    box-shadow:0 8px 22px rgba(0,0,0,0.22);
-    transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,0.28);
+    transition:0.2s ease;
 }
 
 button:hover,
 .admin-btn:hover,
 .manual-btn:hover{
     transform:translateY(-2px);
-    box-shadow:0 14px 30px rgba(0,0,0,0.35);
+    border-color:rgba(34,211,238,0.45);
+    box-shadow:0 14px 34px rgba(0,0,0,0.42);
 }
 
 .start-btn{
-    background:linear-gradient(135deg,#22c55e,#15803d);
+    background:linear-gradient(135deg,#0ea5e9,#2563eb);
 }
 
 .stop-btn,
@@ -128,13 +129,19 @@ button:hover,
     background:linear-gradient(135deg,#ef4444,#991b1b);
 }
 
+.logout-btn{
+    min-width:150px;
+}
+
+/* ================= USER INFO ================= */
+
 .user,
 #datetime{
+    padding:11px 15px;
+    border-radius:14px;
     background:rgba(255,255,255,0.08);
-    border:1px solid rgba(255,255,255,0.10);
+    border:1px solid var(--border);
     color:white;
-    padding:10px 14px;
-    border-radius:999px;
     font-weight:700;
 }
 
@@ -147,15 +154,15 @@ button:hover,
 .dropdown-content{
     display:none;
     position:absolute;
-    top:48px;
+    top:52px;
     left:0;
-    min-width:260px;
-    background:rgba(15,23,42,0.98);
-    border:1px solid rgba(255,255,255,0.12);
+    min-width:270px;
+    background:rgba(10,18,34,0.98);
+    border:1px solid var(--border);
     border-radius:18px;
     overflow:hidden;
     box-shadow:var(--shadow);
-    z-index:9999;
+    z-index:99999;
 }
 
 .dropdown-content a{
@@ -167,7 +174,7 @@ button:hover,
 }
 
 .dropdown-content a:hover{
-    background:rgba(56,189,248,0.16);
+    background:rgba(37,99,235,0.25);
 }
 
 /* ================= CONTENT ================= */
@@ -184,12 +191,12 @@ button:hover,
 
 h2{
     display:inline-block;
-    margin:0 0 22px 0;
-    padding:12px 22px;
-    border-radius:999px;
-    background:linear-gradient(135deg,rgba(37,99,235,0.95),rgba(139,92,246,0.95));
-    box-shadow:0 12px 35px rgba(37,99,235,0.32);
+    margin:0 0 24px 0;
+    padding:13px 26px;
+    border-radius:18px;
+    background:linear-gradient(135deg,#2563eb,#7c3aed);
     color:white;
+    box-shadow:0 12px 34px rgba(37,99,235,0.35);
 }
 
 h3{
@@ -200,15 +207,16 @@ p{
     color:var(--text);
 }
 
-/* ================= BOXEN ================= */
+/* ================= CARDS ================= */
 
 .center-box,
 .chart-box,
 .clean-card,
 .tracksy-ticket-card,
-.modal-box{
-    background:var(--bg-card);
-    border:1px solid rgba(255,255,255,0.12);
+.modal-box,
+.admin-project-summary{
+    background:var(--card);
+    border:1px solid var(--border);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
     backdrop-filter:blur(16px);
@@ -216,7 +224,7 @@ p{
 
 .center-box{
     width:100%;
-    max-width:760px;
+    max-width:850px;
     margin:26px auto;
     padding:28px;
     text-align:center;
@@ -224,19 +232,19 @@ p{
 
 .running-box,
 .online-box{
-    background:rgba(255,255,255,0.08);
-    border:1px solid rgba(255,255,255,0.10);
+    background:linear-gradient(135deg,rgba(37,99,235,0.18),rgba(34,211,238,0.08));
+    border:1px solid rgba(34,211,238,0.20);
     border-radius:16px;
     padding:16px;
     margin-bottom:18px;
 }
 
 .online-box{
-    border-color:rgba(34,197,94,0.35);
-    box-shadow:0 0 24px rgba(34,197,94,0.12);
+    border-color:rgba(34,197,94,0.38);
+    box-shadow:0 0 25px rgba(34,197,94,0.13);
 }
 
-/* ================= FORMULARE ================= */
+/* ================= FORM ================= */
 
 input,
 select,
@@ -244,20 +252,19 @@ textarea{
     width:100%;
     margin-bottom:14px;
     padding:14px 16px;
-    border:none;
-    outline:none;
     border-radius:14px;
-    background:rgba(15,23,42,0.95);
-    border:1px solid rgba(255,255,255,0.12);
+    border:1px solid var(--border);
+    background:rgba(8,15,29,0.96);
     color:white;
     font-size:15px;
+    outline:none;
 }
 
 input:focus,
 select:focus,
 textarea:focus{
-    border-color:var(--primary);
-    box-shadow:0 0 0 3px rgba(56,189,248,0.18);
+    border-color:var(--cyan);
+    box-shadow:0 0 0 3px rgba(34,211,238,0.16);
 }
 
 textarea{
@@ -265,21 +272,21 @@ textarea{
     resize:vertical;
 }
 
-/* ================= TABELLEN ================= */
+/* ================= TABLES ================= */
 
 table{
     width:100%;
     border-collapse:separate;
     border-spacing:0;
     overflow:hidden;
-    background:var(--bg-card);
-    border:1px solid rgba(255,255,255,0.10);
+    background:var(--card);
+    border:1px solid var(--border);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
 }
 
 th{
-    background:linear-gradient(135deg,rgba(14,165,233,0.35),rgba(59,130,246,0.25));
+    background:linear-gradient(135deg,rgba(14,165,233,0.35),rgba(37,99,235,0.25));
     color:white;
     padding:16px;
     text-align:left;
@@ -294,7 +301,7 @@ tr:hover td{
     background:rgba(255,255,255,0.045);
 }
 
-/* ================= ADMIN GRID ================= */
+/* ================= GRIDS ================= */
 
 .admin-clean-grid{
     display:grid;
@@ -307,10 +314,17 @@ tr:hover td{
     overflow:auto;
 }
 
-/* ================= CHARTS ================= */
+.admin-project-summary{
+    margin:22px auto;
+    padding:22px;
+    max-width:900px;
+    border-color:rgba(34,211,238,0.24);
+}
+
+/* ================= CHART ================= */
 
 .chart-box{
-    max-width:900px;
+    max-width:950px;
     margin:26px auto;
     padding:24px;
 }
@@ -329,7 +343,7 @@ canvas{
     justify-content:center;
     background:rgba(2,6,23,0.82);
     backdrop-filter:blur(12px);
-    z-index:99999;
+    z-index:999999;
 }
 
 .modal-box{
@@ -338,7 +352,7 @@ canvas{
     padding:26px;
 }
 
-/* ================= KALENDER ================= */
+/* ================= CALENDAR ================= */
 
 .calendar-day{
     cursor:pointer;
@@ -347,7 +361,7 @@ canvas{
 }
 
 .calendar-day:hover{
-    background:rgba(56,189,248,0.12);
+    background:rgba(34,211,238,0.12);
 }
 
 .calendar-dot{
@@ -370,7 +384,7 @@ canvas{
     padding:16px;
     margin-bottom:14px;
     border-radius:18px;
-    border:1px solid rgba(255,255,255,0.10);
+    border:1px solid var(--border);
 }
 
 .chat-own{
@@ -378,7 +392,7 @@ canvas{
 }
 
 .chat-other{
-    background:rgba(59,130,246,0.16);
+    background:rgba(37,99,235,0.18);
 }
 
 /* ================= BADGES ================= */
@@ -407,30 +421,18 @@ canvas{
     position:fixed;
     right:16px;
     bottom:10px;
-    color:rgba(255,255,255,0.40);
+    color:rgba(255,255,255,0.38);
     font-size:12px;
     z-index:999;
 }
 
-/* ================= MANUAL BUTTON ================= */
+/* ================= MANUAL ================= */
 
 .manual-btn{
     display:inline-block;
     margin-top:12px;
     text-decoration:none;
     background:linear-gradient(135deg,#2563eb,#06b6d4);
-}
-
-/* ================= PROJEKTÜBERSICHT ================= */
-
-.admin-project-summary{
-    margin:22px auto;
-    padding:22px;
-    max-width:850px;
-    background:rgba(15,23,42,0.78);
-    border:1px solid rgba(56,189,248,0.26);
-    border-radius:22px;
-    box-shadow:0 0 35px rgba(56,189,248,0.15);
 }
 
 /* ================= TICKETS ================= */
@@ -517,14 +519,12 @@ canvas{
     background:rgba(245,158,11,0.14);
 }
 
-/* =========================================================
-   TABLET
-========================================================= */
+/* ================= TABLET ================= */
 
 @media (max-width:1024px){
 
     :root{
-        --topbar-height:150px;
+        --topbar-height:170px;
         --content-padding:18px;
     }
 
@@ -542,6 +542,7 @@ canvas{
     .logo,
     #adminMenu{
         grid-column:span 2;
+        text-align:center;
     }
 
     .nav-right{
@@ -551,30 +552,21 @@ canvas{
         gap:10px;
     }
 
-    .nav-right > *{
-        width:100%;
-        text-align:center;
-    }
-
+    .nav-right > *,
     button,
     .admin-btn{
         width:100%;
+        text-align:center;
     }
 }
 
-/* =========================================================
-   HANDY
-========================================================= */
+/* ================= HANDY ================= */
 
 @media (max-width:768px){
 
     :root{
-        --topbar-height:360px;
+        --topbar-height:390px;
         --content-padding:12px;
-    }
-
-    body{
-        overflow:hidden;
     }
 
     .topbar{
@@ -583,6 +575,8 @@ canvas{
     }
 
     .nav-left{
+        width:100%;
+        display:grid;
         grid-template-columns:repeat(2,1fr);
         gap:9px;
     }
@@ -594,19 +588,21 @@ canvas{
     }
 
     .logo{
-        font-size:24px;
-        justify-content:center;
+        font-size:25px;
     }
 
     .topbar button,
     .admin-btn{
-        min-height:46px;
+        min-height:48px;
         font-size:15px;
         padding:10px 8px;
     }
 
     .nav-right{
+        width:100%;
+        display:grid;
         grid-template-columns:1fr;
+        gap:9px;
     }
 
     #datetime,
@@ -617,8 +613,8 @@ canvas{
     }
 
     .logout-btn{
-        min-height:54px;
-        font-size:17px;
+        min-height:56px;
+        font-size:18px;
         border-radius:18px;
     }
 
@@ -682,19 +678,13 @@ canvas{
     }
 }
 
-/* =========================================================
-   KLEINE HANDYS
-========================================================= */
+/* ================= KLEINE HANDYS ================= */
 
 @media (max-width:420px){
 
     :root{
-        --topbar-height:385px;
+        --topbar-height:405px;
         --content-padding:10px;
-    }
-
-    .nav-left{
-        grid-template-columns:repeat(2,1fr);
     }
 
     .topbar button,
@@ -712,9 +702,7 @@ canvas{
     }
 }
 
-/* =========================================================
-   PRINT / PDF
-========================================================= */
+/* ================= PRINT ================= */
 
 @media print{
 
