@@ -203,170 +203,209 @@ if(isCustomer){
     }
 }
 
-    if(page === "start"){
+if(page === "start"){
 
-        if(isCustomer){
-            let times = await apiGet("/times");
+if(isCustomer){
+    let times = await apiGet("/times");
 
-            let customerTimes = assignedProject
-                ? times.filter(t => t.project === assignedProject)
-                : times;
+    let customerTimes = assignedProject
+        ? times.filter(t => t.project === assignedProject)
+        : times;
 
-            let totalSeconds = 0;
+    let totalSeconds = 0;
 
-            customerTimes.forEach(t => {
-                if(t.start_time && t.stop_time){
-                    let start = parseGermanDate(t.start_time);
-                    let stop = parseGermanDate(t.stop_time);
-                    if(!start || !stop) return;
+    customerTimes.forEach(t => {
+        if(t.start_time && t.stop_time){
+            let start = parseGermanDate(t.start_time);
+            let stop = parseGermanDate(t.stop_time);
+            if(!start || !stop) return;
 
-                    let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
-                    if(diff > 0) totalSeconds += diff;
-                }
-            });
-
-            let h = Math.floor(totalSeconds / 3600);
-            let m = Math.floor((totalSeconds % 3600) / 60);
-
-            content.innerHTML = `
-            <div class="center-box">
-                <img src="/logo.png" style="max-width:130px;margin-bottom:15px;">
-                <h2>Willkommen im Kundenbereich</h2>
-
-                <div class="running-box">
-                    <b>Projekt:</b><br>
-                    ${assignedProject || "Noch kein Projekt zugeordnet"}
-                </div>
-
-                <div class="running-box">
-                <b>Projektstand:</b><br>
-                Bisher gearbeitet: ${h} Std. ${m} Min.
-                </div>
-
-                <button onclick="loadPage('report')">💻 Report öffnen</button>
-                <button onclick="loadPage('nachrichten')">📩 Nachricht schreiben</button>
-                
-                <a class="manual-btn" href="/docs/Tracksy_Kundenhandbuch.pdf" target="_blank">
-                📘 Kundenhandbuch öffnen
-                </a>
-            </div>
-            `;
-            return;
+            let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
+            if(diff > 0) totalSeconds += diff;
         }
+    });
 
+    let h = Math.floor(totalSeconds / 3600);
+    let m = Math.floor((totalSeconds % 3600) / 60);
 
-        let projects = await apiGet("/projects");
-        let times = await apiGet("/times");
+    content.innerHTML = `
+    <div class="dashboard-shell">
 
-        let running = times.find(t => t.username === currentUser && !t.stop_time);
+        <section class="dashboard-hero">
+            <div>
+                <p class="dashboard-kicker">Kundenbereich</p>
+                <h1>Willkommen bei Tracksy</h1>
+                <p>Hier siehst du deinen aktuellen Projektstand und kannst Berichte oder Nachrichten öffnen.</p>
+            </div>
 
-        let projectTotals = {};
+            <img src="/logo.png" class="dashboard-logo">
+        </section>
 
-times.forEach(t => {
-    if(t.project && t.start_time && t.stop_time){
+        <section class="dashboard-grid">
+            <div class="dash-card">
+                <span>📁 Projekt</span>
+                <strong>${assignedProject || "Nicht zugeordnet"}</strong>
+                <small>Aktuelles Kundenprojekt</small>
+            </div>
+
+            <div class="dash-card">
+                <span>⏱️ Projektzeit</span>
+                <strong>${h} Std. ${m} Min.</strong>
+                <small>Bisher gearbeitet</small>
+            </div>
+
+            <div class="dash-card">
+                <span>💻 Report</span>
+                <strong>Berichte</strong>
+                <small>Projektfortschritt ansehen</small>
+                <button onclick="loadPage('report')">Öffnen</button>
+            </div>
+
+            <div class="dash-card">
+                <span>📩 Nachrichten</span>
+                <strong>Kontakt</strong>
+                <small>Nachricht schreiben</small>
+                <button onclick="loadPage('nachrichten')">Öffnen</button>
+            </div>
+        </section>
+
+        <a class="manual-btn" href="/docs/Tracksy_Kundenhandbuch.pdf" target="_blank">
+            📘 Kundenhandbuch öffnen
+        </a>
+
+    </div>
+    `;
+    return;
+}
+
+let projects = await apiGet("/projects");
+    let times = await apiGet("/times");
+
+    let running = times.find(t => t.username === currentUser && !t.stop_time);
+
+    let finishedTimes = times.filter(t => t.start_time && t.stop_time);
+    let totalSeconds = 0;
+
+    finishedTimes.forEach(t => {
         let start = parseGermanDate(t.start_time);
         let stop = parseGermanDate(t.stop_time);
-
         if(!start || !stop) return;
 
         let diff = Math.floor((stop - start) / 1000) - ((t.pause_total || 0) * 60);
+        if(diff > 0) totalSeconds += diff;
+    });
 
-        if(diff < 0){
-            diff = 0;
-        }
+    let totalHours = Math.floor(totalSeconds / 3600);
+    let totalMinutes = Math.floor((totalSeconds % 3600) / 60);
 
-        if(!projectTotals[t.project]){
-            projectTotals[t.project] = 0;
-        }
-
-        projectTotals[t.project] += diff;
-    }
-});
-
-let projectTotalHtml = `
-<div class="admin-project-summary">
-    <h3>📊 Projektübersicht</h3>
-    <table>
-        <tr>
-            <th>Projekt</th>
-            <th>Insgesamt gearbeitet</th>
-        </tr>
-        ${Object.keys(projectTotals).map(project => {
-            let seconds = projectTotals[project];
-            let h = Math.floor(seconds / 3600);
-            let m = Math.floor((seconds % 3600) / 60);
-
-            return `
-            <tr>
-                <td>${project}</td>
-                <td>${h} Std. ${m} Min.</td>
-            </tr>
-            `;
-        }).join("")}
-    </table>
-</div>
-`;
-
-        let runningText = running
-    ? (
-        running.is_paused
-        ? "⏸️ Pause: " + running.project + " / " + running.task +
-        "<br>Seit: " + running.start_time +
-        "<br>Pause seit: " + running.pause_time +
-        "<br>Pause gesamt: " + (running.pause_total || 0) + " Min."
-        : "🟢 Läuft: " + running.project + " / " + running.task + "<br>Seit: " + running.start_time
-    )
+    let runningText = running
+        ? (
+            running.is_paused
+            ? "⏸️ Pause: " + running.project + " / " + running.task
+            : "🟢 Läuft: " + running.project + " / " + running.task
+        )
         : "⚪ Keine laufende Zeit";
 
-        content.innerHTML = `
-        <div class="center-box">
+    content.innerHTML = `
+    <div class="dashboard-shell">
 
-            <div id="onlineUsersBox" class="online-box">
-            🟢 Online:
-            <span id="onlineUsersList">Lade...</span>
+        <section class="dashboard-hero">
+            <div>
+                <p class="dashboard-kicker">Projektzentrale</p>
+                <h1>Willkommen zurück, ${currentUser}</h1>
+                <p>Deine zentrale Übersicht für Projekte, Zeiten, Tickets, Reports und Kundenkommunikation.</p>
             </div>
-            <h2>Start</h2>
 
-            <div class="running-box">${runningText}</div>
-            
-            ${projectTotalHtml}
+            <div class="dashboard-live">
+                <span>Aktueller Status</span>
+                <strong>${runningText}</strong>
+            </div>
+        </section>
 
-            <select id="startProject" class="field-project">
-                <option value="">Projekt wählen</option>
-            </select>
+        <section class="dashboard-grid">
+            <div class="dash-card">
+                <span>📁 Projekte</span>
+                <strong>${projects.length}</strong>
+                <small>Aktive Projektübersicht</small>
+            </div>
 
-            <select id="startTask" class="field-task">
-                <option value="">Aufgabe wählen</option>
-            </select>
+            <div class="dash-card">
+                <span>⏱️ Gesamtzeit</span>
+                <strong>${totalHours} Std. ${totalMinutes} Min.</strong>
+                <small>Erfasste Arbeitszeit</small>
+            </div>
 
-            <button class="start-btn" onclick="startTime()">Start</button>
-            <button onclick="pauseTime()">Pause</button>
-            <button onclick="resumeTime()">Weiter</button>
-            <button class="stop-btn" onclick="stopTime()">Stop</button>
-        </div>
-        `;
+            <div class="dash-card">
+                <span>🟢 Online</span>
+                <strong id="onlineUsersList">Lade...</strong>
+                <small>Aktive Benutzer</small>
+            </div>
 
-        let pSelect = document.getElementById("startProject");
-        let tSelect = document.getElementById("startTask");
+            <div class="dash-card">
+                <span>🎫 Tickets</span>
+                <strong>Support</strong>
+                <small>Neue Kundenanfragen prüfen</small>
+                <button onclick="loadPage('tickets')">Öffnen</button>
+            </div>
+        </section>
+        <section class="dashboard-workspace">
 
-        projects.forEach(p => {
-            pSelect.innerHTML += `<option value="${p.name}">${p.name}</option>`;
-        });
+            <div class="dashboard-panel">
+                <h3>⏱️ Zeit starten</h3>
 
-        pSelect.onchange = function(){
-            let selected = projects.find(p => p.name === this.value);
-            tSelect.innerHTML = `<option value="">Aufgabe wählen</option>`;
+                <select id="startProject" class="field-project">
+                    <option value="">Projekt wählen</option>
+                </select>
 
-            if(selected){
-                selected.tasks.forEach(t => {
-                    tSelect.innerHTML += `<option value="${t.name}">${t.name}</option>`;
-                });
-            }
-        };
+                <select id="startTask" class="field-task">
+                    <option value="">Aufgabe wählen</option>
+                </select>
 
-        loadOnlineUsers();
-        return;
-    }
+                <div class="dashboard-actions">
+                    <button class="start-btn" onclick="startTime()">Start</button>
+                    <button onclick="pauseTime()">Pause</button>
+                    <button onclick="resumeTime()">Weiter</button>
+                    <button class="stop-btn" onclick="stopTime()">Stop</button>
+                </div>
+            </div>
+
+            <div class="dashboard-panel">
+                <h3>⚡ Schnellzugriff</h3>
+
+                <div class="quick-grid">
+                    <button onclick="loadPage('report')">💻 Report</button>
+                    <button onclick="loadPage('projekte')">📁 Projekte</button>
+                    <button onclick="loadPage('dokumente')">📄 Dokumente</button>
+                    <button onclick="loadPage('nachrichten')">📩 Nachrichten</button>
+                </div>
+            </div>
+
+        </section>
+
+    </div>
+    `;
+
+    let pSelect = document.getElementById("startProject");
+    let tSelect = document.getElementById("startTask");
+
+    projects.forEach(p => {
+        pSelect.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+    });
+
+    pSelect.onchange = function(){
+        let selected = projects.find(p => p.name === this.value);
+        tSelect.innerHTML = `<option value="">Aufgabe wählen</option>`;
+
+        if(selected){
+            selected.tasks.forEach(t => {
+                tSelect.innerHTML += `<option value="${t.name}">${t.name}</option>`;
+            });
+        }
+    };
+
+    loadOnlineUsers();
+    return;
+}
 
     if(page === "tickets"){
 
