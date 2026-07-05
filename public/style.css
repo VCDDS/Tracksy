@@ -1252,10 +1252,7 @@ canvas{
         font-size:12px;
     }
 
-    .dev-footer,
-    .logout-btn{
-        display:none;
-    }
+    
 }
 
 @media (max-width:420px){
