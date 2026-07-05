@@ -4,118 +4,221 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tracksy Login</title>
-<link rel="icon" type="image/png" href="/tracksy-wallpaper.png">
+<link rel="icon" type="image/png" href="/logo.png">
 
 <style>
+*{
+    box-sizing:border-box;
+}
+
+html,body{
+    margin:0;
+    width:100%;
+    min-height:100%;
+}
 
 body{
-    margin:0;
-    font-family:Arial,sans-serif;
-    background:url("/logo.png") no-repeat center center fixed;
-    background-size:cover;
-
+    font-family:Arial, sans-serif;
+    color:white;
+    min-height:100vh;
     display:flex;
-    justify-content:center;
     align-items:center;
+    justify-content:center;
+    padding:22px;
+    background:
+        radial-gradient(circle at 20% 15%, rgba(37,99,235,0.35), transparent 32%),
+        radial-gradient(circle at 85% 85%, rgba(124,58,237,0.30), transparent 35%),
+        linear-gradient(135deg,#020617,#061020 60%,#020617);
+}
 
-    height:100vh;
+.login-wrapper{
+    width:100%;
+    max-width:1050px;
+    display:grid;
+    grid-template-columns:1.1fr 0.9fr;
+    gap:28px;
+    align-items:center;
+}
+
+.login-info,
+.login-box{
+    background:linear-gradient(145deg,rgba(15,26,46,0.96),rgba(8,15,30,0.96));
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:26px;
+    box-shadow:0 18px 50px rgba(0,0,0,0.45);
+}
+
+.login-info{
+    padding:38px;
+}
+
+.login-info h1{
+    font-size:48px;
+    margin:0 0 14px 0;
+}
+
+.login-info p{
+    color:#94a3b8;
+    font-size:18px;
+    line-height:1.5;
+}
+
+.login-badges{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-top:28px;
+}
+
+.login-badge{
+    padding:18px;
+    border-radius:18px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.10);
+}
+
+.login-badge strong{
+    display:block;
+    font-size:24px;
+    margin-top:8px;
 }
 
 .login-box{
-
-    width:90%;
-    max-width:420px;
-
-    background:rgba(0,0,0,0.75);
-
-    padding:30px;
-    border-radius:14px;
-
-    box-sizing:border-box;
-
-    backdrop-filter:blur(8px);
-
-    border:1px solid rgba(0,255,255,0.2);
+    padding:32px;
 }
 
-h1{
-    color:cyan;
+.login-logo{
     text-align:center;
-    margin-bottom:25px;
+    font-size:34px;
+    font-weight:900;
+    margin-bottom:8px;
+}
+
+.login-subtitle{
+    text-align:center;
+    color:#94a3b8;
+    margin-bottom:26px;
 }
 
 input{
     width:100%;
-    padding:14px;
+    padding:15px 16px;
     margin-bottom:14px;
-
-    border:none;
-    border-radius:10px;
-
-    box-sizing:border-box;
-
-    background:#111827;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,0.10);
+    background:rgba(8,15,29,0.96);
     color:white;
+    font-size:16px;
+    outline:none;
+}
+
+input:focus{
+    border-color:#22d3ee;
+    box-shadow:0 0 0 3px rgba(34,211,238,0.15);
 }
 
 button{
     width:100%;
-    padding:14px;
-
+    min-height:52px;
     border:none;
-    border-radius:10px;
-
-    background:#06b6d4;
+    border-radius:16px;
+    background:linear-gradient(135deg,#2563eb,#7c3aed);
     color:white;
-
     font-size:16px;
+    font-weight:900;
     cursor:pointer;
+    box-shadow:0 14px 34px rgba(37,99,235,0.35);
 }
 
 button:hover{
-    background:#0891b2;
+    transform:translateY(-2px);
 }
 
 #error{
     color:#ef4444;
     text-align:center;
-    margin-top:12px;
+    margin-top:14px;
+    font-weight:700;
 }
 
+.login-footer{
+    margin-top:24px;
+    text-align:center;
+    color:rgba(255,255,255,0.35);
+    font-size:12px;
+}
+
+@media(max-width:850px){
+    .login-wrapper{
+        grid-template-columns:1fr;
+    }
+
+    .login-info{
+        display:none;
+    }
+
+    .login-box{
+        width:100%;
+        max-width:430px;
+        margin:auto;
+    }
+}
 </style>
 </head>
 
 <body>
 
-<div class="login-box">
+<div class="login-wrapper">
 
-    <h1>⏱️ Tracksy</h1>
+    <section class="login-info">
+        <h1>⏱️ Tracksy</h1>
+        <p>Deine moderne Projektzentrale für Zeiten, Reports, Tickets, Dokumente und Kundenkommunikation.</p>
 
-    <input id="username" placeholder="Benutzername">
+        <div class="login-badges">
+            <div class="login-badge">
+                📁
+                <strong>Projekte</strong>
+            </div>
+            <div class="login-badge">
+                🎫
+                <strong>Tickets</strong>
+            </div>
+            <div class="login-badge">
+                ⏱️
+                <strong>Zeiten</strong>
+            </div>
+        </div>
+    </section>
 
-    <input id="password" type="password" placeholder="Passwort">
+    <section class="login-box">
+        <div class="login-logo">⏱️ Tracksy</div>
+        <div class="login-subtitle">Anmelden und Projektzentrale öffnen</div>
 
-    <button onclick="login()">Anmelden</button>
+        <input id="username" placeholder="Benutzername">
+        <input id="password" type="password" placeholder="Passwort">
 
-    <div id="error"></div>
+        <button onclick="login()">Anmelden</button>
+
+        <div id="error"></div>
+
+        <div class="login-footer">
+            Powered by D.Schulteis &lt;-TRACKSY-&gt; visualcode.dev © 04.2026
+        </div>
+    </section>
 
 </div>
 
 <script>
-
 async function login(){
 
     let username = document.getElementById("username").value;
     let password = document.getElementById("password").value;
 
     let response = await fetch("/login", {
-
         method:"POST",
-
         headers:{
             "Content-Type":"application/json"
         },
-
         body:JSON.stringify({
             username,
             password
@@ -125,18 +228,14 @@ async function login(){
     let data = await response.json();
 
     if(data.success){
-
         localStorage.setItem("username", data.username);
         localStorage.setItem("isAdmin", data.isAdmin);
         localStorage.setItem("userRole", data.role || (data.isAdmin ? "admin" : "kunde"));
         localStorage.setItem("assignedProject", data.assignedProject || "");
 
         location.href="/dashboard";
-
     }else{
-
-        document.getElementById("error").innerText =
-        "Falsche Anmeldedaten";
+        document.getElementById("error").innerText = "Falsche Anmeldedaten";
     }
 }
 
@@ -145,7 +244,6 @@ document.addEventListener("keydown", function(e){
         login();
     }
 });
-
 </script>
 
 </body>

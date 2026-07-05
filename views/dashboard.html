@@ -407,14 +407,113 @@ let projects = await apiGet("/projects");
     return;
 }
 
-    if(page === "tickets"){
+if(page === "tickets"){
 
 let tickets = await apiGet("/tickets");
 
-let html = `
-<h2>🎫 Tickets</h2>
+let totalTickets = tickets.length;
 
-<div class="ticket-admin-grid">
+let openTickets = tickets.filter(t =>
+    (t.status || "Offen").toLowerCase() === "offen"
+).length;
+
+let progressTickets = tickets.filter(t =>
+    (t.status || "").toLowerCase() === "in arbeit"
+).length;
+
+let doneTickets = tickets.filter(t =>
+    (t.status || "").toLowerCase() === "erledigt"
+).length;
+
+let deletedTickets = tickets.filter(t =>
+    (t.status || "").toLowerCase().includes("gelöscht")
+).length;
+
+let html = `
+<div class="ticket-page">
+
+    <div class="ticket-page-head">
+        <div>
+            <h2>🎫 Tickets</h2>
+            <p>Übersicht aller Support-Tickets</p>
+        </div>
+    </div>
+
+    <div class="ticket-stat-grid">
+
+        <div class="ticket-stat-card">
+            <span class="ticket-stat-icon">🎫</span>
+            <div>
+                <strong>${totalTickets}</strong>
+                <small>Alle Tickets</small>
+            </div>
+        </div>
+
+        <div class="ticket-stat-card stat-open">
+            <span class="ticket-stat-icon">🕒</span>
+            <div>
+                <strong>${openTickets}</strong>
+                <small>Offen</small>
+            </div>
+        </div>
+
+        <div class="ticket-stat-card stat-progress">
+            <span class="ticket-stat-icon">🔄</span>
+            <div>
+                <strong>${progressTickets}</strong>
+                <small>In Bearbeitung</small>
+            </div>
+        </div>
+
+        <div class="ticket-stat-card stat-done">
+            <span class="ticket-stat-icon">✅</span>
+            <div>
+                <strong>${doneTickets}</strong>
+                <small>Erledigt</small>
+            </div>
+        </div>
+
+        <div class="ticket-stat-card stat-deleted">
+            <span class="ticket-stat-icon">🗑️</span>
+            <div>
+                <strong>${deletedTickets}</strong>
+                <small>Gelöscht</small>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="ticket-filter-bar">
+
+        <input
+            id="ticketSearch"
+            type="text"
+            placeholder="🔍 Suche nach Titel, Kunde, Projekt..."
+            oninput="filterTickets()"
+        >
+
+        <select id="ticketStatusFilter" onchange="filterTickets()">
+            <option value="">Status: Alle</option>
+            <option value="offen">Offen</option>
+            <option value="in arbeit">In Bearbeitung</option>
+            <option value="erledigt">Erledigt</option>
+            <option value="gelöscht">Gelöscht</option>
+        </select>
+
+        <select id="ticketPriorityFilter" onchange="filterTickets()">
+            <option value="">Priorität: Alle</option>
+            <option value="hoch">Hoch</option>
+            <option value="normal">Normal</option>
+            <option value="niedrig">Niedrig</option>
+        </select>
+
+        <button onclick="resetTicketFilters()">
+            ↻ Filter zurücksetzen
+        </button>
+
+    </div>
+
+    <div class="ticket-admin-grid">
 `;
 
 tickets.forEach(t => {
@@ -422,64 +521,171 @@ tickets.forEach(t => {
     let priority = "Normal";
     let cleanMessage = t.message || "-";
 
-    const priorityMatch = cleanMessage.match(/Priorität:\s*(.*)/);
+    const priorityMatch = cleanMessage.match(/Priorität:\\s*(.*)/);
 
     if(priorityMatch){
-        priority = priorityMatch[1].split("\\n")[0].trim();
-        cleanMessage = cleanMessage.replace(/Priorität:\s*.*\n\n?/, "");
+        priority = priorityMatch[1]
+            .split("\\n")[0]
+            .trim();
+
+        cleanMessage = cleanMessage.replace(
+            /Priorität:\\s*.*\\n\\n?/,
+            ""
+        );
     }
 
     let priorityClass = "ticket-priority-normal";
-    if(priority.toLowerCase() === "hoch") priorityClass = "ticket-priority-high";
-    if(priority.toLowerCase() === "niedrig") priorityClass = "ticket-priority-low";
 
+    if(priority.toLowerCase() === "hoch"){
+        priorityClass = "ticket-priority-high";
+    }
+
+    if(priority.toLowerCase() === "niedrig"){
+        priorityClass = "ticket-priority-low";
+    }
+
+    let status = t.status || "Offen";
     let statusClass = "ticket-status-open";
-    if((t.status || "").toLowerCase() === "in arbeit") statusClass = "ticket-status-progress";
-    if((t.status || "").toLowerCase() === "erledigt") statusClass = "ticket-status-done";
-    if((t.status || "").toLowerCase().includes("gelöscht")) statusClass = "ticket-status-deleted";
+
+    if(status.toLowerCase() === "in arbeit"){
+        statusClass = "ticket-status-progress";
+    }
+
+    if(status.toLowerCase() === "erledigt"){
+        statusClass = "ticket-status-done";
+    }
+
+    if(status.toLowerCase().includes("gelöscht")){
+        statusClass = "ticket-status-deleted";
+    }
 
     let note = "";
 
     if(t.customer_deleted){
-        note = `<div class="ticket-note deleted">🗑️ Vom Kunden gelöscht<br><b>Grund:</b> ${t.delete_reason || "-"}</div>`;
+
+        note = `
+        <div class="ticket-note deleted">
+            🗑️ Vom Kunden gelöscht
+            <br>
+            <b>Grund:</b> ${t.delete_reason || "-"}
+        </div>
+        `;
+
     }else if(t.customer_edited){
-        note = `<div class="ticket-note edited">✏️ Vom Kunden bearbeitet<br><b>Änderung:</b> ${t.edit_note || "-"}</div>`;
+
+        note = `
+        <div class="ticket-note edited">
+            ✏️ Vom Kunden bearbeitet
+            <br>
+            <b>Änderung:</b> ${t.edit_note || "-"}
+        </div>
+        `;
     }
 
     html += `
-    <div class="tracksy-ticket-card">
+    <div
+        class="tracksy-ticket-card"
+        data-title="${(t.title || "").toLowerCase()}"
+        data-project="${(t.project || "").toLowerCase()}"
+        data-customer="${(t.customer_name || "").toLowerCase()}"
+        data-status="${status.toLowerCase()}"
+        data-priority="${priority.toLowerCase()}"
+    >
+
         <div class="tracksy-ticket-head">
+
             <div>
+                <small class="ticket-number">
+                    #${t.id}
+                </small>
+
                 <h3>${t.title || "-"}</h3>
-                <p>${t.project || "-"} · ${t.source || "-"}</p>
+
+                <p>
+                    📁 ${t.project || "-"}
+                    ·
+                    🌐 ${t.source || "-"}
+                </p>
             </div>
 
             <span class="ticket-status-badge ${statusClass}">
-                ${t.status || "Offen"}
+                ${status}
             </span>
+
         </div>
 
         <div class="ticket-badge-row">
-            <span>👤 ${t.customer_name || "-"}</span>
-            <span class="${priorityClass}">Priorität: ${priority}</span>
-            <span>📅 ${t.created_at || "-"}</span>
+
+            <span>
+                👤 ${t.customer_name || "-"}
+            </span>
+
+            <span class="${priorityClass}">
+                ${priority}
+            </span>
+
+            <span>
+                📅 ${t.created_at || "-"}
+            </span>
+
         </div>
 
-        <p class="ticket-message">${cleanMessage}</p>
+        <p class="ticket-message">
+            ${cleanMessage}
+        </p>
 
         ${note}
 
         <div class="ticket-action-row">
-            <button onclick="changeTicketStatus(${t.id}, 'Offen')">Offen</button>
-            <button onclick="changeTicketStatus(${t.id}, 'In Arbeit')">In Arbeit</button>
-            <button onclick="changeTicketStatus(${t.id}, 'Erledigt')">Erledigt</button>
-            <button class="danger-btn" onclick="deleteTicket(${t.id})">🗑️ Löschen</button>
+
+            <button
+                onclick="changeTicketStatus(${t.id}, 'Offen')"
+                title="Ticket öffnen"
+            >
+                Offen
+            </button>
+
+            <button
+                onclick="changeTicketStatus(${t.id}, 'In Arbeit')"
+                title="Ticket bearbeiten"
+            >
+                In Arbeit
+            </button>
+
+            <button
+                onclick="changeTicketStatus(${t.id}, 'Erledigt')"
+                title="Ticket erledigen"
+            >
+                Erledigt
+            </button>
+
+            <button
+                class="danger-btn"
+                onclick="deleteTicket(${t.id})"
+                title="Ticket löschen"
+            >
+                🗑️ Löschen
+            </button>
+
         </div>
+
     </div>
     `;
 });
 
-html += `</div>`;
+html += `
+    </div>
+
+    <div
+        id="ticketEmptyState"
+        class="ticket-empty-state"
+        style="display:none;"
+    >
+        🔍 Keine passenden Tickets gefunden
+    </div>
+
+</div>
+`;
 
 content.innerHTML = html;
 return;
@@ -1520,6 +1726,79 @@ return;
 
 }
 
+}
+
+function filterTickets(){
+
+let searchInput = document.getElementById("ticketSearch");
+let statusInput = document.getElementById("ticketStatusFilter");
+let priorityInput = document.getElementById("ticketPriorityFilter");
+
+if(!searchInput || !statusInput || !priorityInput){
+    return;
+}
+
+let search = searchInput.value.toLowerCase().trim();
+let status = statusInput.value.toLowerCase();
+let priority = priorityInput.value.toLowerCase();
+
+let cards = document.querySelectorAll(".tracksy-ticket-card");
+
+let visibleCount = 0;
+
+cards.forEach(card => {
+
+    let title = card.dataset.title || "";
+    let project = card.dataset.project || "";
+    let customer = card.dataset.customer || "";
+    let cardStatus = card.dataset.status || "";
+    let cardPriority = card.dataset.priority || "";
+
+    let matchesSearch =
+        !search ||
+        title.includes(search) ||
+        project.includes(search) ||
+        customer.includes(search);
+
+    let matchesStatus =
+        !status ||
+        cardStatus.includes(status);
+
+    let matchesPriority =
+        !priority ||
+        cardPriority === priority;
+
+    let visible =
+        matchesSearch &&
+        matchesStatus &&
+        matchesPriority;
+
+    card.style.display = visible ? "" : "none";
+
+    if(visible){
+        visibleCount++;
+    }
+});
+
+let emptyState = document.getElementById("ticketEmptyState");
+
+if(emptyState){
+    emptyState.style.display =
+        visibleCount === 0 ? "block" : "none";
+}
+}
+
+function resetTicketFilters(){
+
+let search = document.getElementById("ticketSearch");
+let status = document.getElementById("ticketStatusFilter");
+let priority = document.getElementById("ticketPriorityFilter");
+
+if(search) search.value = "";
+if(status) status.value = "";
+if(priority) priority.value = "";
+
+filterTickets();
 }
 
 async function openDocument(id, hasPassword){
