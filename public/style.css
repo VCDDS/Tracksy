@@ -1,122 +1,176 @@
 /* =========================================================
-   TRACKSY STYLE.CSS
+   TRACKSY NEW DESIGN 2026
+   Komplett ersetzen in: style.css
 ========================================================= */
 
 :root{
-    --bg-image:url("/tracksy-wallpaper.png");
-    --bg-dark:rgba(0,0,0,0.75);
-    --bg-card:rgba(15,23,42,0.92);
-    --bg-input:#111827;
-    --bg-button:#1f2937;
-    --bg-button-hover:#374151;
-    --cyan:rgb(255, 255, 255);
-    --white:white;
-    --red:#ef4444;
-    --red-hover:#dc2626;
+    --bg-main:#070b18;
+    --bg-soft:#0f172a;
+    --bg-card:rgba(15,23,42,0.82);
+    --bg-card-strong:rgba(17,24,39,0.95);
+    --glass:rgba(255,255,255,0.08);
+
+    --primary:#38bdf8;
+    --primary-strong:#2563eb;
+    --accent:#8b5cf6;
     --green:#22c55e;
-    --blue:#2563eb;
-    --blue-hover:#1d4ed8;
-    --radius-small:8px;
-    --radius-medium:10px;
-    --radius-large:14px;
-    --topbar-height:95px;
-    --content-padding:20px;
-    --font-main:Arial,sans-serif;
-    --font-size-normal:14px;
-    --font-size-mobile:15px;
+    --red:#ef4444;
+    --orange:#f59e0b;
+    --text:#f8fafc;
+    --muted:#94a3b8;
+
+    --radius:18px;
+    --radius-sm:12px;
+    --shadow:0 20px 60px rgba(0,0,0,0.35);
+
+    --topbar-height:96px;
+    --content-padding:26px;
+
+    --font-main:Inter, Arial, sans-serif;
 }
 
-*{box-sizing:border-box;}
+*{
+    box-sizing:border-box;
+}
 
 html,body{
     margin:0;
     width:100%;
-    height:100%;
-    overflow:hidden;
+    min-height:100%;
 }
 
 body{
     font-family:var(--font-main);
-    color:var(--white);
-    background:var(--bg-image) no-repeat center center fixed;
-    background-size:cover;
+    color:var(--text);
+    background:
+        radial-gradient(circle at top left, rgba(56,189,248,0.20), transparent 35%),
+        radial-gradient(circle at top right, rgba(139,92,246,0.22), transparent 35%),
+        linear-gradient(135deg,#020617,#0f172a 55%,#020617);
+    background-attachment:fixed;
+    overflow:hidden;
 }
 
+/* ================= NAVIGATION ================= */
+
 .topbar{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    min-height:var(--topbar-height);
+    z-index:1000;
+
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap:8px;
-    padding:7px 10px;
-    background:rgba(15,23,42,0.95);
-    border-bottom:1px solid rgba(255,255,255,0.12);
+    gap:14px;
     flex-wrap:wrap;
+
+    padding:14px 22px;
+    background:rgba(2,6,23,0.82);
+    backdrop-filter:blur(18px);
+    border-bottom:1px solid rgba(255,255,255,0.10);
+    box-shadow:0 10px 40px rgba(0,0,0,0.35);
 }
 
-.nav-left,.nav-right{
+.nav-left,
+.nav-right{
     display:flex;
     align-items:center;
-    gap:6px;
+    gap:10px;
     flex-wrap:wrap;
 }
 
 .nav-right{
     margin-left:auto;
-    font-size:12px;
 }
 
 .logo{
-    font-weight:bold;
-    font-size:16px;
-    margin-right:6px;
-    white-space:nowrap;
+    font-size:22px;
+    font-weight:800;
+    letter-spacing:0.3px;
+    color:white;
+    padding:10px 14px;
+    border-radius:999px;
+    background:linear-gradient(135deg,rgba(56,189,248,0.22),rgba(139,92,246,0.20));
+    border:1px solid rgba(255,255,255,0.12);
 }
 
-button,.admin-btn{
-    background:var(--bg-button);
-    color:var(--white);
+button,
+.admin-btn,
+.manual-btn{
     border:none;
-    border-radius:var(--radius-small);
-    padding:8px 12px;
     cursor:pointer;
-    transition:0.2s;
+    color:white;
+    border-radius:999px;
+    padding:10px 16px;
+    font-weight:700;
+    font-size:14px;
+    background:linear-gradient(135deg,#1e293b,#334155);
+    box-shadow:0 8px 22px rgba(0,0,0,0.22);
+    transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
 }
 
-button:hover,.admin-btn:hover{background:var(--bg-button-hover);}
-.logout-btn{background:var(--red);}
-.logout-btn:hover{background:var(--red-hover);}
-.start-btn{background:var(--green);}
-.stop-btn{background:var(--red);}
-
-.topbar button,.admin-btn{
-    height:30px;
-    padding:0 8px;
-    font-size:12px;
-    white-space:nowrap;
+button:hover,
+.admin-btn:hover,
+.manual-btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 14px 30px rgba(0,0,0,0.35);
 }
 
-.dropdown{position:relative;}
+.start-btn{
+    background:linear-gradient(135deg,#22c55e,#15803d);
+}
+
+.stop-btn,
+.logout-btn,
+.danger-btn{
+    background:linear-gradient(135deg,#ef4444,#991b1b);
+}
+
+.user,
+#datetime{
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.10);
+    color:white;
+    padding:10px 14px;
+    border-radius:999px;
+    font-weight:700;
+}
+
+/* ================= DROPDOWN ================= */
+
+.dropdown{
+    position:relative;
+}
 
 .dropdown-content{
     display:none;
     position:absolute;
-    top:100%;
+    top:48px;
     left:0;
-    min-width:240px;
-    background:rgba(0,0,0,0.95);
-    border-radius:var(--radius-medium);
+    min-width:260px;
+    background:rgba(15,23,42,0.98);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:18px;
     overflow:hidden;
-    z-index:999999;
+    box-shadow:var(--shadow);
+    z-index:9999;
 }
 
 .dropdown-content a{
     display:block;
-    padding:12px 14px;
-    color:var(--cyan);
+    padding:14px 16px;
+    color:white;
     text-decoration:none;
+    font-weight:700;
 }
 
-.dropdown-content a:hover{background:rgba(0,255,255,0.15);}
+.dropdown-content a:hover{
+    background:rgba(56,189,248,0.16);
+}
+
+/* ================= CONTENT ================= */
 
 #content{
     position:fixed;
@@ -124,45 +178,86 @@ button:hover,.admin-btn:hover{background:var(--bg-button-hover);}
     left:0;
     right:0;
     bottom:0;
-    overflow-y:auto;
-    overflow-x:hidden;
+    overflow:auto;
     padding:var(--content-padding);
+}
+
+h2{
+    display:inline-block;
+    margin:0 0 22px 0;
+    padding:12px 22px;
+    border-radius:999px;
+    background:linear-gradient(135deg,rgba(37,99,235,0.95),rgba(139,92,246,0.95));
+    box-shadow:0 12px 35px rgba(37,99,235,0.32);
+    color:white;
+}
+
+h3{
+    color:#7dd3fc;
+}
+
+p{
+    color:var(--text);
+}
+
+/* ================= BOXEN ================= */
+
+.center-box,
+.chart-box,
+.clean-card,
+.tracksy-ticket-card,
+.modal-box{
+    background:var(--bg-card);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    backdrop-filter:blur(16px);
 }
 
 .center-box{
     width:100%;
-    max-width:520px;
-    margin:30px auto;
-    background:var(--bg-dark);
-    padding:20px;
-    border-radius:var(--radius-large);
+    max-width:760px;
+    margin:26px auto;
+    padding:28px;
     text-align:center;
 }
 
-.running-box{
+.running-box,
+.online-box{
     background:rgba(255,255,255,0.08);
-    padding:10px;
-    border-radius:var(--radius-medium);
-    margin-bottom:14px;
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:16px;
+    padding:16px;
+    margin-bottom:18px;
 }
 
-.chart-box{
-    max-width:700px;
-    margin:25px auto;
-    padding:20px;
-    background:rgba(0,0,0,0.65);
-    border-radius:var(--radius-large);
+.online-box{
+    border-color:rgba(34,197,94,0.35);
+    box-shadow:0 0 24px rgba(34,197,94,0.12);
 }
 
-input,select,textarea{
+/* ================= FORMULARE ================= */
+
+input,
+select,
+textarea{
     width:100%;
-    margin-bottom:12px;
-    padding:12px;
+    margin-bottom:14px;
+    padding:14px 16px;
     border:none;
-    border-radius:var(--radius-medium);
-    background:var(--bg-input);
+    outline:none;
+    border-radius:14px;
+    background:rgba(15,23,42,0.95);
+    border:1px solid rgba(255,255,255,0.12);
     color:white;
-    font-size:var(--font-size-normal);
+    font-size:15px;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(56,189,248,0.18);
 }
 
 textarea{
@@ -170,63 +265,89 @@ textarea{
     resize:vertical;
 }
 
+/* ================= TABELLEN ================= */
+
 table{
     width:100%;
-    border-collapse:collapse;
-    background:var(--bg-card);
-    border-radius:var(--radius-large);
+    border-collapse:separate;
+    border-spacing:0;
     overflow:hidden;
+    background:var(--bg-card);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
 }
 
 th{
-    background:rgba(0,255,255,0.12);
-    color:var(--cyan);
-    padding:12px;
+    background:linear-gradient(135deg,rgba(14,165,233,0.35),rgba(59,130,246,0.25));
+    color:white;
+    padding:16px;
     text-align:left;
 }
 
 td{
-    padding:12px;
+    padding:15px 16px;
     border-top:1px solid rgba(255,255,255,0.08);
 }
 
-tr:hover td{background:rgba(255,255,255,0.04);}
-
-h2,h3{color:var(--cyan);}
-
-.user,#datetime{
-    background:rgba(255,255,255,0.08);
-    padding:8px 12px;
-    border-radius:var(--radius-medium);
+tr:hover td{
+    background:rgba(255,255,255,0.045);
 }
 
-#datetime{
-    text-align:center;
-    font-size:13px;
+/* ================= ADMIN GRID ================= */
+
+.admin-clean-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:22px;
 }
+
+.clean-card{
+    padding:22px;
+    overflow:auto;
+}
+
+/* ================= CHARTS ================= */
+
+.chart-box{
+    max-width:900px;
+    margin:26px auto;
+    padding:24px;
+}
+
+canvas{
+    max-width:100%;
+}
+
+/* ================= MODAL ================= */
 
 .modal{
     display:none;
     position:fixed;
     inset:0;
-    justify-content:center;
     align-items:center;
-    background:rgba(0,0,0,0.8);
-    z-index:999999;
+    justify-content:center;
+    background:rgba(2,6,23,0.82);
+    backdrop-filter:blur(12px);
+    z-index:99999;
 }
 
 .modal-box{
-    width:90%;
-    max-width:500px;
-    background:#0f172a;
-    padding:20px;
-    border-radius:var(--radius-large);
+    width:92%;
+    max-width:560px;
+    padding:26px;
 }
+
+/* ================= KALENDER ================= */
 
 .calendar-day{
     cursor:pointer;
+    height:95px;
     vertical-align:top;
-    height:90px;
+}
+
+.calendar-day:hover{
+    background:rgba(56,189,248,0.12);
 }
 
 .calendar-dot{
@@ -235,325 +356,359 @@ h2,h3{color:var(--cyan);}
     height:9px;
     background:var(--green);
     border-radius:50%;
-    margin:2px;
+    margin:3px;
 }
 
-canvas{max-width:100%;}
+/* ================= CHAT ================= */
 
-.online-box{
-    background:rgba(255,255,255,0.08);
-    padding:10px;
-    border-radius:10px;
-    margin-bottom:15px;
-    text-align:left;
-    font-size:14px;
-    border:1px solid rgba(34,197,94,0.3);
+.chat-box{
+    max-width:850px;
+    margin:24px auto;
 }
 
-.dev-footer{
-    position:fixed;
-    bottom:8px;
-    right:12px;
-    color:rgba(255,255,255,0.45);
-    font-size:12px;
-    z-index:999;
-}
-
-.admin-clean-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-    gap:20px;
-    margin-top:20px;
-}
-
-.clean-card{
-    background:rgba(255,255,255,0.05);
-    border:1px solid rgba(255,255,255,0.08);
+.chat-message{
+    padding:16px;
+    margin-bottom:14px;
     border-radius:18px;
-    padding:18px;
-    overflow:auto;
+    border:1px solid rgba(255,255,255,0.10);
 }
 
-.danger-btn{
-    background:#dc2626;
-    color:white;
+.chat-own{
+    background:rgba(34,197,94,0.16);
 }
 
-.danger-btn:hover{background:#ef4444;}
+.chat-other{
+    background:rgba(59,130,246,0.16);
+}
+
+/* ================= BADGES ================= */
 
 .suggestion-badge{
     display:inline-block;
     margin-left:6px;
-    padding:2px 6px;
+    padding:3px 8px;
     background:#ef4444;
     color:white;
     border-radius:999px;
     font-size:10px;
-    font-weight:bold;
+    font-weight:900;
     animation:pulseBadge 1.2s infinite;
 }
 
 @keyframes pulseBadge{
     0%{transform:scale(1);}
-    50%{transform:scale(1.15);}
+    50%{transform:scale(1.18);}
     100%{transform:scale(1);}
 }
 
-.chat-box{
-    max-width:750px;
-    margin:20px auto;
+/* ================= FOOTER ================= */
+
+.dev-footer{
+    position:fixed;
+    right:16px;
+    bottom:10px;
+    color:rgba(255,255,255,0.40);
+    font-size:12px;
+    z-index:999;
 }
 
-.chat-message{
-    background:rgba(255,255,255,0.08);
+/* ================= MANUAL BUTTON ================= */
+
+.manual-btn{
+    display:inline-block;
+    margin-top:12px;
+    text-decoration:none;
+    background:linear-gradient(135deg,#2563eb,#06b6d4);
+}
+
+/* ================= PROJEKTÜBERSICHT ================= */
+
+.admin-project-summary{
+    margin:22px auto;
+    padding:22px;
+    max-width:850px;
+    background:rgba(15,23,42,0.78);
+    border:1px solid rgba(56,189,248,0.26);
+    border-radius:22px;
+    box-shadow:0 0 35px rgba(56,189,248,0.15);
+}
+
+/* ================= TICKETS ================= */
+
+.ticket-admin-grid{
+    display:grid;
+    gap:20px;
+    margin-top:20px;
+}
+
+.tracksy-ticket-card{
+    padding:22px;
+}
+
+.tracksy-ticket-head{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    align-items:flex-start;
+}
+
+.ticket-badge-row,
+.ticket-action-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin:14px 0;
+}
+
+.ticket-badge-row span,
+.ticket-status-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:92px;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:800;
+}
+
+.ticket-priority-high,
+.ticket-status-open{
+    background:linear-gradient(135deg,#ef4444,#991b1b);
+    color:white;
+}
+
+.ticket-priority-normal{
+    background:linear-gradient(135deg,#f59e0b,#92400e);
+    color:white;
+}
+
+.ticket-priority-low,
+.ticket-status-done{
+    background:linear-gradient(135deg,#22c55e,#166534);
+    color:white;
+}
+
+.ticket-status-progress{
+    background:linear-gradient(135deg,#38bdf8,#1d4ed8);
+    color:white;
+}
+
+.ticket-status-deleted{
+    background:linear-gradient(135deg,#64748b,#334155);
+    color:white;
+}
+
+.ticket-message{
+    line-height:1.6;
+}
+
+.ticket-note{
+    margin-top:12px;
+    padding:14px;
     border-radius:14px;
-    padding:12px;
-    margin-bottom:12px;
 }
 
-.chat-own{
-    margin-left:auto;
-    background:rgba(34,197,94,0.18);
+.ticket-note.deleted{
+    background:rgba(239,68,68,0.14);
 }
 
-.chat-other{
-    margin-right:auto;
-    background:rgba(59,130,246,0.18);
+.ticket-note.edited{
+    background:rgba(245,158,11,0.14);
 }
 
 /* =========================================================
-   MOBILE FIX FINAL
+   TABLET
 ========================================================= */
 
-@media (max-width:768px){
+@media (max-width:1024px){
 
     :root{
-        --topbar-height:330px;
-        --content-padding:8px;
-    }
-
-    body{
-        font-size:15px;
+        --topbar-height:150px;
+        --content-padding:18px;
     }
 
     .topbar{
-        flex-direction:column;
         align-items:stretch;
-        padding:8px;
-        gap:7px;
     }
 
     .nav-left{
+        width:100%;
         display:grid;
-        grid-template-columns:repeat(3,1fr);
-        gap:6px;
-        width:100%;
+        grid-template-columns:repeat(4,1fr);
+        gap:10px;
     }
 
-    .logo{
-        grid-column:1 / -1;
-        text-align:center;
-        margin:0;
-        font-size:18px;
-    }
-
+    .logo,
     #adminMenu{
-        grid-column:1 / -1;
-        width:100%;
-    }
-
-    .topbar button,
-    .admin-btn{
-        width:100%;
-        min-height:34px;
-        height:34px;
-        font-size:12px;
-        padding:0 6px;
+        grid-column:span 2;
     }
 
     .nav-right{
         width:100%;
         display:grid;
+        grid-template-columns:1fr 1fr 1fr;
+        gap:10px;
+    }
+
+    .nav-right > *{
+        width:100%;
+        text-align:center;
+    }
+
+    button,
+    .admin-btn{
+        width:100%;
+    }
+}
+
+/* =========================================================
+   HANDY
+========================================================= */
+
+@media (max-width:768px){
+
+    :root{
+        --topbar-height:360px;
+        --content-padding:12px;
+    }
+
+    body{
+        overflow:hidden;
+    }
+
+    .topbar{
+        padding:12px;
+        gap:10px;
+    }
+
+    .nav-left{
+        grid-template-columns:repeat(2,1fr);
+        gap:9px;
+    }
+
+    .logo,
+    #adminMenu{
+        grid-column:1 / -1;
+        text-align:center;
+    }
+
+    .logo{
+        font-size:24px;
+        justify-content:center;
+    }
+
+    .topbar button,
+    .admin-btn{
+        min-height:46px;
+        font-size:15px;
+        padding:10px 8px;
+    }
+
+    .nav-right{
         grid-template-columns:1fr;
-        gap:6px;
-        font-size:12px;
     }
 
     #datetime,
     .user{
         width:100%;
         text-align:center;
-        min-height:34px;
-        font-size:12px;
-        padding:8px;
+        border-radius:16px;
     }
 
     .logout-btn{
-        width:100%;
-        min-height:44px !important;
-        height:44px !important;
-        font-size:14px !important;
-        border-radius:12px !important;
-        margin-bottom:10px;
+        min-height:54px;
+        font-size:17px;
+        border-radius:18px;
     }
 
     .dropdown-content{
         position:static;
         width:100%;
-        margin-top:6px;
+        margin-top:8px;
     }
 
     #content{
         top:var(--topbar-height);
-        padding:8px;
-        overflow-y:auto;
-        overflow-x:hidden;
+        padding:12px;
     }
 
     .center-box,
+    .chart-box,
     .clean-card,
-    .modal-box,
-    .suggestion-card{
+    .tracksy-ticket-card{
         width:100%;
         max-width:100%;
-        margin:8px auto 16px auto;
-        padding:14px 10px;
-        overflow:hidden;
+        margin:12px auto 18px auto;
+        padding:18px;
     }
 
-    .running-box{
-        font-size:14px;
-        padding:10px 8px;
-        line-height:1.35;
-        margin-bottom:12px;
-    }
-
-    .center-box select{
-        height:46px;
-        font-size:15px;
-        margin-bottom:12px;
-    }
-
-    .center-box button{
-        min-width:0;
-        min-height:44px;
-        padding:9px 12px;
-        font-size:15px;
-        border-radius:10px;
+    h2{
+        font-size:24px;
+        padding:12px 24px;
+        margin-bottom:18px;
     }
 
     table{
         display:block;
-        width:100%;
         overflow-x:auto;
         white-space:nowrap;
     }
 
+    th,
+    td{
+        padding:13px;
+    }
+
     .chart-box{
-        width:100%;
-        max-width:100%;
-        margin:8px auto 16px auto;
-        padding:14px 10px 18px 10px !important;
-        overflow-x:auto !important;
-        overflow-y:hidden !important;
+        overflow-x:auto;
     }
 
     .chart-box canvas{
-        min-width:720px !important;
-        height:360px !important;
+        min-width:720px;
+        min-height:340px;
     }
 
-    h2{
-        display:inline-block;
-        padding:10px 20px;
-        background:rgba(0,0,0,0.65);
-        border:1px solid rgba(255, 255, 255, 0.733);
-        border-radius:12px;
-        backdrop-filter:blur(6px);
-        margin-bottom:20px;
+    .tracksy-ticket-head{
+        flex-direction:column;
     }
 
-    h3{
-        font-size:20px;
-        line-height:1.2;
+    .ticket-action-row button{
+        width:100%;
     }
 
-    .online-box{
-        font-size:14px;
-        line-height:1.35;
-        padding:9px;
-        margin-bottom:12px;
-        word-break:break-word;
+    .dev-footer{
+        display:none;
     }
 }
+
+/* =========================================================
+   KLEINE HANDYS
+========================================================= */
 
 @media (max-width:420px){
 
     :root{
-        --topbar-height:345px;
-        --content-padding:7px;
-    }
-
-    .topbar{
-        padding:7px;
-        gap:6px;
+        --topbar-height:385px;
+        --content-padding:10px;
     }
 
     .nav-left{
-        gap:5px;
+        grid-template-columns:repeat(2,1fr);
     }
 
     .topbar button,
     .admin-btn{
-        min-height:33px;
-        height:33px;
-        font-size:12px;
-    }
-
-    #datetime,
-    .user{
-        min-height:33px;
-        font-size:12px;
-    }
-
-    .logout-btn{
-        min-height:46px !important;
-        height:46px !important;
-        font-size:14px !important;
-        margin-bottom:14px;
-    }
-
-    #content{
-        top:345px;
-        padding:7px;
+        min-height:44px;
+        font-size:14px;
     }
 
     .center-box{
-        margin:8px auto 14px auto;
-        padding:12px 8px;
+        padding:16px 12px;
     }
 
-    .center-box button{
-        min-height:42px;
-        font-size:14px;
-        padding:8px 10px;
-    }
-
-    .chart-box{
-        margin:8px auto 14px auto;
-        padding:10px 6px;
-    }
-
-    .chart-box canvas{
-        min-width:760px !important;
-        height:380px !important;
-    }
-
-    .dev-footer{
-        position:static;
-        text-align:center;
-        margin:14px 0 8px 0;
-        font-size:11px;
+    h2{
+        font-size:22px;
     }
 }
 
@@ -615,169 +770,7 @@ canvas{max-width:100%;}
     h3,
     p{
         color:black !important;
+        background:none !important;
+        box-shadow:none !important;
     }
-}
-h2{
-    display:inline-block;
-    padding:10px 20px;
-    background:rgba(25, 0, 255, 0.644);
-    border:1px solid rgba(255,255,255,0.15);
-    border-radius:20px;
-    backdrop-filter:blur(10px);
-    margin-bottom:20px;
-}
-
-.manual-btn{
-    display: inline-block;
-    margin-top: 12px;
-    padding: 10px 18px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #2563eb, #06b6d4);
-    color: white;
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.manual-btn:hover{
-    transform: scale(1.03);
-    opacity: 0.9;
-}
-.admin-project-summary{
-    margin: 18px auto;
-    padding: 15px;
-    max-width: 650px;
-    background: rgba(0, 0, 0, 0.45);
-    border: 1px solid rgba(0, 200, 255, 0.35);
-    border-radius: 14px;
-    box-shadow: 0 0 18px rgba(0, 200, 255, 0.18);
-}
-
-.admin-project-summary h3{
-    margin-top: 0;
-    color: #38bdf8;
-}
-
-/* ===== TRACKSY TICKETS ===== */
-
-.ticket-admin-grid {
-    display: grid;
-    gap: 18px;
-    margin-top: 20px;
-}
-
-.tracksy-ticket-card {
-    background: #17243d;
-    border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 16px;
-    padding: 18px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.28);
-}
-
-.tracksy-ticket-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 14px;
-}
-
-.tracksy-ticket-head h3 {
-    margin: 0;
-}
-
-.ticket-badge-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 14px 0;
-}
-
-.ticket-badge-row span,
-.ticket-status-badge {
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    font-weight: 700;
-}
-
-.ticket-priority-high {
-    background: rgba(255,70,70,0.18);
-    color: #ff6b6b;
-}
-
-.ticket-priority-normal {
-    background: rgba(255,193,7,0.18);
-    color: #ffd45c;
-}
-
-.ticket-priority-low {
-    background: rgba(46,204,113,0.18);
-    color: #5ee39a;
-}
-
-.ticket-status-open {
-    background: rgba(255,70,70,0.18);
-    color: #ff6b6b;
-}
-
-.ticket-status-progress {
-    background: rgba(59,130,246,0.18);
-    color: #7db4ff;
-}
-
-.ticket-status-done {
-    background: rgba(46,204,113,0.18);
-    color: #5ee39a;
-}
-
-.ticket-status-deleted {
-    background: rgba(148,163,184,0.18);
-    color: #cbd5e1;
-}
-
-.ticket-message {
-    line-height: 1.5;
-}
-
-.ticket-note {
-    margin-top: 12px;
-    padding: 12px;
-    border-radius: 12px;
-}
-
-.ticket-note.deleted {
-    background: rgba(255,70,70,0.12);
-}
-
-.ticket-note.edited {
-    background: rgba(255,193,7,0.12);
-}
-
-.ticket-action-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 14px;
-}
-.ticket-status-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 90px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 700;
-    color: white;
-    box-shadow: 0 0 12px rgba(0,0,0,0.35);
-}
-
-.ticket-status-open {
-    background: linear-gradient(135deg, #ef4444, #991b1b);
-}
-
-.ticket-status-progress {
-    background: linear-gradient(135deg, #38bdf8, #1d4ed8);
-}
-
-.ticket-status-done {
-    background: linear-gradient(135deg, #22c55e, #166534);
 }
