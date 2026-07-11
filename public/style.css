@@ -66,6 +66,9 @@ body{
     flex-direction:column;
     justify-content:space-between;
 
+    overflow-y:auto;
+    overflow-x:hidden;
+
     padding:22px 18px;
     background:rgba(5,10,22,0.96);
     border-right:1px solid var(--border);
@@ -76,7 +79,14 @@ body{
     display:flex;
     flex-direction:column;
     gap:10px;
+
     width:100%;
+    flex:1;
+
+    overflow-y:auto;
+    overflow-x:hidden;
+
+    min-height:0;
 }
 
 .logo{
