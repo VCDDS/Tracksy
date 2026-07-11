@@ -25,6 +25,8 @@
                 <a href="#" onclick="loadPage('adminDaten'); closeAdminDropdown(); return false;">🧹 Daten bereinigen</a>
                 <a href="#" onclick="loadPage('zeitenKorrigieren'); closeAdminDropdown(); return false;">🛠️ Zeiten korrigieren</a>
                 <a href="#" onclick="loadPage('benutzerVerwaltung'); closeAdminDropdown(); return false;">👤 Benutzer verwalten</a>
+                <a href="#" onclick="loadPage('dienstplaeneAdmin'); closeAdminDropdown(); return false;">📅 Dienstpläne verwalten</a>
+                <a href="#" onclick="loadPage('arbeitsplanungAdmin'); closeAdminDropdown(); return false;">📋 Arbeitsplanung verwalten</a>
                 <a href="#" onclick="printOrPDF(); closeAdminDropdown(); return false;">🖨️ Drucken/PDF speichern</a>
             </div>
         </div>
@@ -43,6 +45,11 @@
             <span id="documentBadge" class="suggestion-badge" style="display:none;">NEW</span>
             </button>
         <button onclick="loadPage('kalender')">📅 <span>Kalender</span></button>
+        <button onclick="loadPage('dienstplaene')">📅 <span>Mein Dienstplan</span></button>
+
+        <button onclick="loadPage('arbeitsplanung')">
+            📋 <span>Meine Arbeitsplanung</span>
+        </button>
         <button onclick="loadPage('notizen')">✏️ <span>Notizen</span></button>
         <button onclick="loadPage('vorschlaege')">
             💡 <span>Vorschläge</span>
@@ -84,12 +91,21 @@
         <button onclick="loadPage('adminDaten'); toggleMobileMenu()">🧹 Daten bereinigen</button>
         <button onclick="loadPage('zeitenKorrigieren'); toggleMobileMenu()">🛠️ Zeiten korrigieren</button>
         <button onclick="loadPage('benutzerVerwaltung'); toggleMobileMenu()">👤 Benutzer verwalten</button>
+        <button onclick="loadPage('dienstplaeneAdmin'); toggleMobileMenu()">📅 Dienstpläne verwalten</button>
+        <button onclick="loadPage('arbeitsplanungAdmin'); toggleMobileMenu()">📋 Arbeitsplanung verwalten</button>
     </div>
     <button onclick="loadPage('zeiten'); toggleMobileMenu()">⌛ Zeiten</button>
     <button onclick="loadPage('auswertung'); toggleMobileMenu()">📊 Auswertung</button>
     <button onclick="loadPage('report'); toggleMobileMenu()">💻 Report</button>
     <button onclick="loadPage('dokumente'); toggleMobileMenu()">📄 Dokumente</button>
     <button onclick="loadPage('kalender'); toggleMobileMenu()">📅 Kalender</button>
+    <button onclick="loadPage('dienstplaene'); toggleMobileMenu()">
+        📅 Mein Dienstplan
+    </button>
+    
+    <button onclick="loadPage('arbeitsplanung'); toggleMobileMenu()">
+        📋 Meine Arbeitsplanung
+    </button>
     <button onclick="loadPage('notizen'); toggleMobileMenu()">✏️ Notizen</button>
     <button onclick="loadPage('vorschlaege'); toggleMobileMenu()">💡 Vorschläge</button>
     <button onclick="loadPage('benutzer'); toggleMobileMenu()">👤 Benutzer</button>
@@ -98,7 +114,7 @@
 
 <footer class="dev-footer">
     Powered by D.Schulteis <-TRACKSY-> 
-    v3.0.0 - Last Update 05.07.2026 
+    v3.1.0 – Dienstpläne & Arbeitsplanung-Last Update 12.07.2026 
     visualcode.dev © 04.2026
 </footer>
 
@@ -159,10 +175,6 @@ document.getElementById("datetime").textContent =
 setInterval(updateDateTime, 1000);
 
 updateDateTime();
-
-if(!isAdmin){
-    document.getElementById("adminMenu").style.display = "none";
-}
 
 if(!isAdmin){
     const adminMenu = document.getElementById("adminMenu");
@@ -1247,6 +1259,392 @@ html += `
         </div>
     </section>
 
+</div>
+`;
+
+content.innerHTML = html;
+return;
+}
+
+if(page === "dienstplaeneAdmin"){
+
+if(!isAdmin){
+    loadPage("start");
+    return;
+}
+
+let users = await apiGet("/users");
+let shiftplans = await apiGet(
+    "/shiftplans/" + encodeURIComponent(currentUser) + "?admin=true"
+);
+
+let selectableUsers = users.filter(u => {
+    let role = u.role || (u.is_admin ? "admin" : "user");
+    return role === "admin" || role === "user";
+});
+
+content.innerHTML = `
+<div class="shiftplan-page">
+
+    <h2>📅 Dienstpläne verwalten</h2>
+
+    <div class="shiftplan-create-card">
+        <h3>Neuen Dienstplan hochladen</h3>
+
+        <input
+            id="shiftplanTitle"
+            placeholder="Titel, z. B. Dienstplan Juli 2026"
+        >
+
+        <textarea
+            id="shiftplanDescription"
+            placeholder="Beschreibung"
+        ></textarea>
+
+        <select id="shiftplanUser">
+            <option value="">Mitarbeiter auswählen</option>
+
+            ${selectableUsers.map(u => `
+                <option value="${u.username}">
+                    ${u.username}
+                </option>
+            `).join("")}
+        </select>
+
+        <label>Zeitraum von</label>
+        <input id="shiftplanStart" type="date">
+
+        <label>Zeitraum bis</label>
+        <input id="shiftplanEnd" type="date">
+
+        <input
+            id="shiftplanFile"
+            type="file"
+            accept=".pdf,application/pdf"
+        >
+
+        <button onclick="uploadShiftplan()">
+            📤 Dienstplan hochladen
+        </button>
+    </div>
+
+    <div class="shiftplan-grid">
+
+        ${shiftplans.length === 0
+            ? `<div class="shiftplan-empty">Noch keine Dienstpläne vorhanden.</div>`
+            : shiftplans.map(plan => `
+                <div class="shiftplan-card">
+
+                    <div class="shiftplan-card-head">
+                        <div>
+                            <small>#${plan.id}</small>
+                            <h3>${plan.title}</h3>
+                        </div>
+
+                        <span>👤 ${plan.assigned_to}</span>
+                    </div>
+
+                    <p>${plan.description || "Keine Beschreibung"}</p>
+
+                    <div class="shiftplan-meta">
+                        <span>📅 ${plan.period_start || "-"} bis ${plan.period_end || "-"}</span>
+                        <span>📄 ${plan.originalname}</span>
+                        <span>⬆️ ${plan.uploaded_by}</span>
+                    </div>
+
+                    <div class="shiftplan-actions">
+                        <button onclick="openShiftplan(${plan.id})">
+                            📄 Öffnen
+                        </button>
+
+                        <button onclick="editShiftplan(${plan.id})">
+                            ✏️ Bearbeiten
+                        </button>
+
+                        <button
+                            class="danger-btn"
+                            onclick="deleteShiftplan(${plan.id})"
+                        >
+                            🗑️ Löschen
+                        </button>
+                    </div>
+
+                </div>
+            `).join("")
+        }
+
+    </div>
+</div>
+`;
+
+return;
+}
+
+if(page === "dienstplaene"){
+
+let plans = await apiGet(
+    "/shiftplans/" + encodeURIComponent(currentUser)
+);
+
+let html = `
+<div class="shiftplan-user-page">
+
+    <h2>📅 Mein Dienstplan</h2>
+
+    <div class="shiftplan-grid">
+`;
+
+if(plans.length === 0){
+
+    html += `
+    <div class="shiftplan-empty">
+        <h3>Kein Dienstplan vorhanden</h3>
+        <p>Dir wurde aktuell kein Dienstplan zugewiesen.</p>
+    </div>
+    `;
+
+}else{
+
+    plans.forEach(plan => {
+
+        html += `
+        <div class="shiftplan-card">
+
+            <div class="shiftplan-card-head">
+
+                <div>
+                    <h3>${plan.title}</h3>
+                    <small>
+                        ${plan.period_start} bis ${plan.period_end}
+                    </small>
+                </div>
+
+            </div>
+
+            <p>
+                ${plan.description || "Keine Beschreibung"}
+            </p>
+
+            <div class="shiftplan-actions">
+
+                <button onclick="openShiftplan(${plan.id})">
+                    📄 Dienstplan öffnen
+                </button>
+
+            </div>
+
+        </div>
+        `;
+    });
+}
+
+html += `
+    </div>
+</div>
+`;
+
+content.innerHTML = html;
+
+return;
+}
+
+if(page === "arbeitsplanungAdmin"){
+
+if(!isAdmin){
+    loadPage("start");
+    return;
+}
+
+let users = await apiGet("/users");
+let orders = await apiGet(
+    "/work-orders/" + encodeURIComponent(currentUser) + "?admin=true"
+);
+
+let selectableUsers = users.filter(u=>{
+    let role = u.role || (u.is_admin ? "admin" : "user");
+    return role === "admin" || role === "user";
+});
+
+content.innerHTML = `
+<div class="workorder-page">
+
+    <h2>📋 Arbeitsplanung</h2>
+
+    <div class="workorder-create">
+
+        <input
+            id="workTitle"
+            placeholder="Überschrift"
+        >
+
+        <select id="workUser">
+
+            <option value="">
+                Bearbeiter auswählen
+            </option>
+
+            ${selectableUsers.map(u=>`
+                <option value="${u.username}">
+                    ${u.username}
+                </option>
+            `).join("")}
+
+        </select>
+
+        <input
+            id="workDate"
+            type="date"
+        >
+
+        <textarea
+            id="workText"
+            rows="12"
+            placeholder="Arbeitsauftrag hier schreiben oder hineinkopieren..."
+        ></textarea>
+
+        <button onclick="createWorkOrder()">
+            💾 Arbeitsauftrag speichern
+        </button>
+
+    </div>
+
+    <div class="workorder-grid">
+
+    ${
+        orders.map(o=>`
+
+        <div class="workorder-card">
+
+            <div class="workorder-head">
+
+                <div>
+
+                    <h3>${o.title}</h3>
+
+                    <small>
+                        👤 ${o.assigned_to}
+                    </small>
+
+                </div>
+
+                <span>
+                    ${o.work_date}
+                </span>
+
+            </div>
+
+            <div class="workorder-text">
+                ${o.description}
+            </div>
+
+            <div class="workorder-actions">
+
+                <button onclick="editWorkOrder(${o.id})">
+                    ✏️ Bearbeiten
+                </button>
+
+                <button
+                    class="danger-btn"
+                    onclick="deleteWorkOrder(${o.id})">
+                    🗑️ Löschen
+                </button>
+
+            </div>
+
+        </div>
+
+        `).join("")
+    }
+
+    </div>
+
+</div>
+`;
+
+return;
+}
+
+if(page === "arbeitsplanung"){
+
+let orders = await apiGet(
+    "/work-orders/" + encodeURIComponent(currentUser)
+);
+
+let html = `
+<div class="workorder-user-page">
+
+    <h2>📋 Meine Arbeitsplanung</h2>
+
+    <div class="workorder-grid">
+`;
+
+if(orders.length === 0){
+
+    html += `
+    <div class="workorder-empty">
+        <h3>Keine Arbeitsaufträge vorhanden</h3>
+        <p>Dir wurde aktuell keine Arbeitsplanung zugewiesen.</p>
+    </div>
+    `;
+
+}else{
+
+    orders.forEach(order => {
+
+        let statusClass = "work-status-open";
+
+        if((order.status || "").toLowerCase() === "in arbeit"){
+            statusClass = "work-status-progress";
+        }
+
+        if((order.status || "").toLowerCase() === "erledigt"){
+            statusClass = "work-status-done";
+        }
+
+        html += `
+        <div class="workorder-card">
+
+            <div class="workorder-head">
+
+                <div>
+                    <small>#${order.id}</small>
+                    <h3>${order.title || "-"}</h3>
+                    <p>📅 ${order.work_date || "-"}</p>
+                </div>
+
+                <span class="work-status-badge ${statusClass}">
+                    ${order.status || "Offen"}
+                </span>
+
+            </div>
+
+            <div class="workorder-text">
+                ${order.description || "-"}
+            </div>
+
+            <div class="workorder-actions">
+
+                <button onclick="changeWorkStatus(${order.id}, 'Offen')">
+                    Offen
+                </button>
+
+                <button onclick="changeWorkStatus(${order.id}, 'In Arbeit')">
+                    In Arbeit
+                </button>
+
+                <button onclick="changeWorkStatus(${order.id}, 'Erledigt')">
+                    Erledigt
+                </button>
+
+            </div>
+
+        </div>
+        `;
+    });
+}
+
+html += `
+    </div>
 </div>
 `;
 
@@ -3296,7 +3694,235 @@ if(badge){
 }
 }
 
+async function openShiftplan(id){
 
+let res = await fetch("/open-shiftplan",{
+    method:"POST",
+    headers:{
+        "Content-Type":"application/json"
+    },
+    body:JSON.stringify({id})
+});
+
+let data = await res.json();
+
+if(!data.success){
+    alert(data.message);
+    return;
+}
+
+window.open(data.url,"_blank");
+}
+
+async function uploadShiftplan(){
+
+let title = document.getElementById("shiftplanTitle").value.trim();
+let description = document.getElementById("shiftplanDescription").value.trim();
+let assignedTo = document.getElementById("shiftplanUser").value;
+let periodStart = document.getElementById("shiftplanStart").value;
+let periodEnd = document.getElementById("shiftplanEnd").value;
+let fileInput = document.getElementById("shiftplanFile");
+let file = fileInput.files[0];
+
+if(!title || !assignedTo || !periodStart || !periodEnd || !file){
+    alert("Bitte Titel, Mitarbeiter, Zeitraum und PDF ausfüllen.");
+    return;
+}
+
+if(file.type !== "application/pdf"){
+    alert("Es sind nur PDF-Dateien erlaubt.");
+    return;
+}
+
+let formData = new FormData();
+
+formData.append("pdf", file);
+formData.append("title", title);
+formData.append("description", description);
+formData.append("assignedTo", assignedTo);
+formData.append("periodStart", periodStart);
+formData.append("periodEnd", periodEnd);
+formData.append("uploadedBy", currentUser);
+
+let res = await fetch("/upload-shiftplan", {
+    method: "POST",
+    body: formData
+});
+
+let msg = await res.text();
+
+alert(msg);
+
+if(msg === "Dienstplan hochgeladen"){
+    loadPage("dienstplaeneAdmin");
+}
+}
+
+async function editShiftplan(id){
+
+let plans = await apiGet(
+    "/shiftplans/" + encodeURIComponent(currentUser) + "?admin=true"
+);
+
+let plan = plans.find(p => p.id === id);
+
+if(!plan){
+    alert("Dienstplan nicht gefunden.");
+    return;
+}
+
+let title = prompt("Titel:", plan.title || "");
+if(title === null) return;
+
+let description = prompt(
+    "Beschreibung:",
+    plan.description || ""
+);
+if(description === null) return;
+
+let assignedTo = prompt(
+    "Mitarbeiter:",
+    plan.assigned_to || ""
+);
+if(assignedTo === null) return;
+
+let periodStart = prompt(
+    "Zeitraum von – JJJJ-MM-TT:",
+    plan.period_start || ""
+);
+if(periodStart === null) return;
+
+let periodEnd = prompt(
+    "Zeitraum bis – JJJJ-MM-TT:",
+    plan.period_end || ""
+);
+if(periodEnd === null) return;
+
+if(!title.trim() || !assignedTo.trim() || !periodStart || !periodEnd){
+    alert("Titel, Mitarbeiter und Zeitraum sind erforderlich.");
+    return;
+}
+
+let msg = await apiPost("/edit-shiftplan", {
+    id,
+    title: title.trim(),
+    description: description.trim(),
+    assignedTo: assignedTo.trim(),
+    periodStart,
+    periodEnd
+});
+
+alert(msg);
+loadPage("dienstplaeneAdmin");
+}
+
+async function deleteShiftplan(id){
+
+if(!confirm("Dienstplan wirklich löschen?")){
+    return;
+}
+
+let msg = await apiPost("/delete-shiftplan", {
+    id
+});
+
+alert(msg);
+loadPage("dienstplaeneAdmin");
+}
+
+async function createWorkOrder(){
+
+let title = document.getElementById("workTitle").value.trim();
+let assignedTo = document.getElementById("workUser").value;
+let workDate = document.getElementById("workDate").value;
+let description = document.getElementById("workText").value.trim();
+
+if(!title || !assignedTo || !workDate || !description){
+    alert("Bitte alle Felder ausfüllen");
+    return;
+}
+
+let msg = await apiPost("/create-work-order", {
+    workDate,
+    title,
+    description,
+    assignedTo,
+    project: "",
+    priority: "Normal",
+    status: "Offen",
+    note: "",
+    createdBy: currentUser
+});
+
+alert(msg);
+loadPage("arbeitsplanungAdmin");
+}
+
+async function editWorkOrder(id){
+
+let orders = await apiGet(
+    "/work-orders/" + encodeURIComponent(currentUser) + "?admin=true"
+);
+
+let order = orders.find(o => o.id === id);
+
+if(!order){
+    alert("Arbeitsauftrag nicht gefunden");
+    return;
+}
+
+let title = prompt("Überschrift:", order.title || "");
+if(title === null) return;
+
+let assignedTo = prompt("Bearbeiter:", order.assigned_to || "");
+if(assignedTo === null) return;
+
+let workDate = prompt("Datum im Format JJJJ-MM-TT:", order.work_date || "");
+if(workDate === null) return;
+
+let description = prompt("Arbeitsauftrag:", order.description || "");
+if(description === null) return;
+
+let msg = await apiPost("/edit-work-order", {
+    id,
+    workDate,
+    title,
+    description,
+    assignedTo,
+    project: order.project || "",
+    priority: order.priority || "Normal",
+    status: order.status || "Offen",
+    note: order.note || ""
+});
+
+alert(msg);
+loadPage("arbeitsplanungAdmin");
+}
+
+async function deleteWorkOrder(id){
+
+if(!confirm("Arbeitsauftrag wirklich löschen?")){
+    return;
+}
+
+let msg = await apiPost("/delete-work-order", {
+    id
+});
+
+alert(msg);
+loadPage("arbeitsplanungAdmin");
+}
+
+async function changeWorkStatus(id, status){
+
+let msg = await apiPost("/update-work-order-status", {
+    id,
+    status
+});
+
+alert(msg);
+loadPage("arbeitsplanung");
+}
 
 checkNewSuggestions();
 checkNewMessages();

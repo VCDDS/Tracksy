@@ -2275,6 +2275,257 @@ canvas{
         background:linear-gradient(135deg,#7c3aed,#2563eb);
     }
 }
+
+/* =========================
+   DIENSTPLÄNE
+========================= */
+
+.shiftplan-page,
+.shiftplan-user-page{
+    max-width:1180px;
+    margin:0 auto;
+}
+
+.shiftplan-create-card,
+.shiftplan-card,
+.shiftplan-empty{
+    background:linear-gradient(
+        145deg,
+        rgba(15,26,46,0.96),
+        rgba(8,15,30,0.96)
+    );
+    border:1px solid var(--border);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+}
+
+.shiftplan-create-card{
+    padding:22px;
+    margin-bottom:22px;
+}
+
+.shiftplan-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:20px;
+}
+
+.shiftplan-card{
+    padding:20px;
+}
+
+.shiftplan-card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:14px;
+    margin-bottom:14px;
+}
+
+.shiftplan-card-head h3{
+    margin:5px 0 0;
+}
+
+.shiftplan-card-head small{
+    color:var(--cyan);
+    font-weight:900;
+}
+
+.shiftplan-card-head > span{
+    padding:7px 11px;
+    border-radius:999px;
+    background:rgba(37,99,235,0.16);
+    border:1px solid rgba(59,130,246,0.24);
+    color:#93c5fd;
+    font-size:12px;
+    font-weight:800;
+}
+
+.shiftplan-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:14px 0;
+}
+
+.shiftplan-meta span{
+    padding:7px 10px;
+    border-radius:999px;
+    background:rgba(255,255,255,0.06);
+    color:#cbd5e1;
+    font-size:12px;
+    font-weight:700;
+}
+
+.shiftplan-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:16px;
+}
+
+.shiftplan-empty{
+    padding:24px;
+    text-align:center;
+    color:var(--muted);
+}
+
+/* =========================
+   ARBEITSPLANUNG
+========================= */
+
+.workorder-page,
+.workorder-user-page{
+    max-width:1180px;
+    margin:0 auto;
+}
+
+.workorder-create-card,
+.workorder-card,
+.workorder-empty{
+    background:linear-gradient(
+        145deg,
+        rgba(15,26,46,0.96),
+        rgba(8,15,30,0.96)
+    );
+    border:1px solid var(--border);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+}
+
+.workorder-create-card{
+    padding:22px;
+    margin-bottom:22px;
+}
+
+.workorder-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:20px;
+}
+
+.workorder-card{
+    padding:20px;
+}
+
+.workorder-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:14px;
+    margin-bottom:14px;
+}
+
+.workorder-head h3{
+    margin:5px 0;
+}
+
+.workorder-head small{
+    color:var(--cyan);
+    font-weight:900;
+}
+
+.workorder-head p{
+    margin:5px 0 0;
+    color:var(--muted);
+}
+
+.workorder-head > span{
+    padding:7px 11px;
+    border-radius:999px;
+    background:rgba(37,99,235,0.16);
+    border:1px solid rgba(59,130,246,0.24);
+    color:#93c5fd;
+    font-size:12px;
+    font-weight:800;
+    white-space:nowrap;
+}
+
+.workorder-text{
+    min-height:120px;
+    padding:16px;
+    border-radius:16px;
+    background:rgba(2,6,23,0.42);
+    border:1px solid rgba(255,255,255,0.08);
+    color:#e2e8f0;
+    line-height:1.6;
+    white-space:pre-wrap;
+    word-break:break-word;
+}
+
+.workorder-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:16px;
+}
+
+.workorder-empty{
+    padding:24px;
+    text-align:center;
+    color:var(--muted);
+}
+
+/* =========================
+   HANDY
+========================= */
+
+@media (max-width:768px){
+
+    .shiftplan-grid,
+    .workorder-grid{
+        grid-template-columns:1fr;
+    }
+
+    .shiftplan-create-card,
+    .shiftplan-card,
+    .workorder-create-card,
+    .workorder-card{
+        padding:16px;
+    }
+
+    .shiftplan-card-head,
+    .workorder-head{
+        flex-direction:column;
+    }
+
+    .shiftplan-actions,
+    .workorder-actions{
+        display:grid;
+        grid-template-columns:1fr;
+    }
+
+    .shiftplan-actions button,
+    .workorder-actions button{
+        width:100%;
+    }
+}
+
+.work-status-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:7px 12px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:900;
+    white-space:nowrap;
+}
+
+.work-status-open{
+    background:linear-gradient(135deg,#ef4444,#991b1b);
+    color:white;
+}
+
+.work-status-progress{
+    background:linear-gradient(135deg,#38bdf8,#1d4ed8);
+    color:white;
+}
+
+.work-status-done{
+    background:linear-gradient(135deg,#22c55e,#166534);
+    color:white;
+}
 /* =========================
    PRINT / PDF
 ========================= */

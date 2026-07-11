@@ -58,6 +58,19 @@ const upload = multer({
     }
 });
 
+const shiftplanUpload = multer({
+    storage,
+    limits: { fileSize: 50 * 1024 * 1024 },
+
+    fileFilter: function(req, file, cb){
+        if(file.mimetype !== "application/pdf"){
+            return cb(new Error("Nur PDF-Dateien erlaubt"));
+        }
+
+        cb(null, true);
+    }
+});
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -336,7 +349,38 @@ await pool.query(`
         parent_comment_id INTEGER DEFAULT NULL
     )
 `);
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS shiftplans (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        assigned_to TEXT NOT NULL,
+        period_start TEXT NOT NULL,
+        period_end TEXT NOT NULL,
+        filename TEXT NOT NULL,
+        originalname TEXT NOT NULL,
+        uploaded_by TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    `);
 
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS work_orders (
+            id SERIAL PRIMARY KEY,
+            work_date TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            assigned_to TEXT NOT NULL,
+            project TEXT DEFAULT '',
+            priority TEXT DEFAULT 'Normal',
+            status TEXT DEFAULT 'Offen',
+            note TEXT DEFAULT '',
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT DEFAULT ''
+        )
+    `);
+    
 await pool.query(`
     ALTER TABLE suggestion_comments
     ADD COLUMN IF NOT EXISTS parent_comment_id INTEGER DEFAULT NULL
@@ -1595,6 +1639,416 @@ app.post("/delete-ticket", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Ticket löschen fehlgeschlagen");
+    }
+});
+
+/* SHIFTPLANS */
+
+app.get("/shiftplans/:username", async (req, res) => {
+    try{
+        const username = req.params.username;
+        const admin = req.query.admin === "true";
+
+        const result = admin
+            ? await pool.query(
+                "SELECT * FROM shiftplans ORDER BY period_start DESC, id DESC"
+            )
+            : await pool.query(
+                `SELECT * FROM shiftplans
+                 WHERE assigned_to = $1
+                 ORDER BY period_start DESC, id DESC`,
+                [username]
+            );
+
+        res.json(result.rows);
+
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
+});
+
+app.post("/upload-shiftplan", shiftplanUpload.single("pdf"), async (req, res) => {
+    try{
+        if(!req.file){
+            return res.send("Keine PDF ausgewählt");
+        }
+
+        const {
+            title,
+            description,
+            assignedTo,
+            periodStart,
+            periodEnd,
+            uploadedBy
+        } = req.body;
+
+        if(!title || !assignedTo || !periodStart || !periodEnd){
+            fs.unlinkSync(req.file.path);
+            return res.send("Pflichtfelder fehlen");
+        }
+
+        const fileBuffer = fs.readFileSync(req.file.path);
+
+        const safeName = req.file.originalname.replace(
+            /[^a-zA-Z0-9._-]/g,
+            "_"
+        );
+
+        const filename =
+            "dienstplaene/" +
+            Date.now() +
+            "-" +
+            safeName;
+
+        const { error } = await supabase.storage
+            .from("tracksy-pdfs")
+            .upload(filename, fileBuffer, {
+                contentType: "application/pdf"
+            });
+
+        fs.unlinkSync(req.file.path);
+
+        if(error){
+            console.log(error);
+            return res.send("Dienstplan Upload fehlgeschlagen");
+        }
+
+        await pool.query(
+            `INSERT INTO shiftplans
+            (
+                title,
+                description,
+                assigned_to,
+                period_start,
+                period_end,
+                filename,
+                originalname,
+                uploaded_by,
+                created_at
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [
+                title.trim(),
+                description || "",
+                assignedTo,
+                periodStart,
+                periodEnd,
+                filename,
+                req.file.originalname,
+                uploadedBy,
+                new Date().toLocaleString("de-DE", {
+                    timeZone: "Europe/Berlin"
+                })
+            ]
+        );
+
+        res.send("Dienstplan hochgeladen");
+
+    }catch(err){
+        console.log(err);
+        res.send("Dienstplan Upload fehlgeschlagen");
+    }
+});
+
+app.post("/open-shiftplan", async (req, res) => {
+    try{
+        const { id } = req.body;
+
+        const result = await pool.query(
+            "SELECT * FROM shiftplans WHERE id = $1",
+            [id]
+        );
+
+        if(result.rows.length === 0){
+            return res.json({
+                success:false,
+                message:"Dienstplan nicht gefunden"
+            });
+        }
+
+        const shiftplan = result.rows[0];
+
+        const { data, error } = await supabase.storage
+            .from("tracksy-pdfs")
+            .createSignedUrl(shiftplan.filename, 60);
+
+        if(error){
+            console.log(error);
+
+            return res.json({
+                success:false,
+                message:"Dienstplan konnte nicht geöffnet werden"
+            });
+        }
+
+        res.json({
+            success:true,
+            url:data.signedUrl
+        });
+
+    }catch(err){
+        console.log(err);
+
+        res.json({
+            success:false,
+            message:"Serverfehler"
+        });
+    }
+});
+
+app.post("/edit-shiftplan", async (req, res) => {
+    try{
+        const {
+            id,
+            title,
+            description,
+            assignedTo,
+            periodStart,
+            periodEnd
+        } = req.body;
+
+        await pool.query(
+            `UPDATE shiftplans
+             SET title = $1,
+                 description = $2,
+                 assigned_to = $3,
+                 period_start = $4,
+                 period_end = $5
+             WHERE id = $6`,
+            [
+                title.trim(),
+                description || "",
+                assignedTo,
+                periodStart,
+                periodEnd,
+                id
+            ]
+        );
+
+        res.send("Dienstplan geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Dienstplan konnte nicht geändert werden");
+    }
+});
+
+app.post("/delete-shiftplan", async (req, res) => {
+    try{
+        const { id } = req.body;
+
+        const result = await pool.query(
+            "SELECT * FROM shiftplans WHERE id = $1",
+            [id]
+        );
+
+        if(result.rows.length === 0){
+            return res.send("Dienstplan nicht gefunden");
+        }
+
+        const shiftplan = result.rows[0];
+
+        await supabase.storage
+            .from("tracksy-pdfs")
+            .remove([shiftplan.filename]);
+
+        await pool.query(
+            "DELETE FROM shiftplans WHERE id = $1",
+            [id]
+        );
+
+        res.send("Dienstplan gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Dienstplan konnte nicht gelöscht werden");
+    }
+});
+
+/* WORK ORDERS */
+
+app.get("/work-orders/:username", async (req, res) => {
+    try{
+        const username = req.params.username;
+        const admin = req.query.admin === "true";
+
+        const result = admin
+            ? await pool.query(
+                `SELECT * FROM work_orders
+                 ORDER BY work_date DESC, id DESC`
+            )
+            : await pool.query(
+                `SELECT * FROM work_orders
+                 WHERE assigned_to = $1
+                 ORDER BY work_date DESC, id DESC`,
+                [username]
+            );
+
+        res.json(result.rows);
+
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
+});
+
+app.post("/create-work-order", async (req, res) => {
+    try{
+        const {
+            workDate,
+            title,
+            description,
+            assignedTo,
+            project,
+            priority,
+            status,
+            note,
+            createdBy
+        } = req.body;
+
+        if(!workDate || !title || !description || !assignedTo || !createdBy){
+            return res.send("Pflichtfelder fehlen");
+        }
+
+        await pool.query(
+            `INSERT INTO work_orders (
+                work_date,
+                title,
+                description,
+                assigned_to,
+                project,
+                priority,
+                status,
+                note,
+                created_by,
+                created_at,
+                updated_at
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            [
+                workDate,
+                title.trim(),
+                description.trim(),
+                assignedTo,
+                project || "",
+                priority || "Normal",
+                status || "Offen",
+                note || "",
+                createdBy,
+                new Date().toLocaleString("de-DE", {
+                    timeZone:"Europe/Berlin"
+                }),
+                ""
+            ]
+        );
+
+        res.send("Arbeitsauftrag erstellt");
+
+    }catch(err){
+        console.log(err);
+        res.send("Arbeitsauftrag konnte nicht erstellt werden");
+    }
+});
+
+app.post("/edit-work-order", async (req, res) => {
+    try{
+        const {
+            id,
+            workDate,
+            title,
+            description,
+            assignedTo,
+            project,
+            priority,
+            status,
+            note
+        } = req.body;
+
+        if(!id || !workDate || !title || !description || !assignedTo){
+            return res.send("Pflichtfelder fehlen");
+        }
+
+        await pool.query(
+            `UPDATE work_orders
+             SET work_date = $1,
+                 title = $2,
+                 description = $3,
+                 assigned_to = $4,
+                 project = $5,
+                 priority = $6,
+                 status = $7,
+                 note = $8,
+                 updated_at = $9
+             WHERE id = $10`,
+            [
+                workDate,
+                title.trim(),
+                description.trim(),
+                assignedTo,
+                project || "",
+                priority || "Normal",
+                status || "Offen",
+                note || "",
+                new Date().toLocaleString("de-DE", {
+                    timeZone:"Europe/Berlin"
+                }),
+                id
+            ]
+        );
+
+        res.send("Arbeitsauftrag geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Arbeitsauftrag konnte nicht geändert werden");
+    }
+});
+
+app.post("/update-work-order-status", async (req, res) => {
+    try{
+        const { id, status } = req.body;
+
+        if(!id || !["Offen", "In Arbeit", "Erledigt"].includes(status)){
+            return res.send("Ungültiger Status");
+        }
+
+        await pool.query(
+            `UPDATE work_orders
+             SET status = $1,
+                 updated_at = $2
+             WHERE id = $3`,
+            [
+                status,
+                new Date().toLocaleString("de-DE", {
+                    timeZone:"Europe/Berlin"
+                }),
+                id
+            ]
+        );
+
+        res.send("Status geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Status konnte nicht geändert werden");
+    }
+});
+
+app.post("/delete-work-order", async (req, res) => {
+    try{
+        const { id } = req.body;
+
+        await pool.query(
+            "DELETE FROM work_orders WHERE id = $1",
+            [id]
+        );
+
+        res.send("Arbeitsauftrag gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Arbeitsauftrag konnte nicht gelöscht werden");
     }
 });
 
