@@ -366,6 +366,28 @@ await pool.query(`
             updated_at TEXT DEFAULT ''
         )
     `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS work_schedule (
+            id SERIAL PRIMARY KEY,
+            assigned_to TEXT NOT NULL,
+            plan_date TEXT NOT NULL,
+            project TEXT NOT NULL,
+            category TEXT DEFAULT 'Neue Funktion',
+            title TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            estimated_minutes INTEGER DEFAULT 0,
+            actual_minutes INTEGER DEFAULT 0,
+            priority TEXT DEFAULT 'Normal',
+            status TEXT DEFAULT 'Geplant',
+            linked_ticket_id INTEGER DEFAULT NULL,
+            linked_report_id INTEGER DEFAULT NULL,
+            sort_order INTEGER DEFAULT 0,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT DEFAULT ''
+        )
+    `);
     
 await pool.query(`
     ALTER TABLE suggestion_comments
@@ -1562,24 +1584,72 @@ app.get("/tickets", async (req, res) => {
 
 app.post("/create-ticket", async (req, res) => {
     try{
-        const { project, source, customerName, customerEmail, title, message } = req.body;
+        const {
+            project,
+            source,
+            customerName,
+            customerEmail,
+            title,
+            message,
+            priority
+        } = req.body;
 
         if(!project || !title || !message){
             return res.send("Ticket Daten fehlen");
         }
 
+        const allowedPriorities = ["Niedrig", "Normal", "Hoch"];
+
+        const legacyPriorityMatch = message.match(
+            /(?:^|\n)\s*Priorität:\s*(Niedrig|Normal|Hoch)\s*(?:\n|$)/i
+        );
+
+        let finalPriority = allowedPriorities.includes(priority)
+            ? priority
+            : "Normal";
+
+        if(!allowedPriorities.includes(priority) && legacyPriorityMatch){
+            const foundPriority = legacyPriorityMatch[1].toLowerCase();
+
+            if(foundPriority === "hoch"){
+                finalPriority = "Hoch";
+            }else if(foundPriority === "niedrig"){
+                finalPriority = "Niedrig";
+            }else{
+                finalPriority = "Normal";
+            }
+        }
+
+        const cleanMessage = message
+            .replace(
+                /(?:^|\n)\s*Priorität:\s*(Niedrig|Normal|Hoch)\s*(?:\n|$)/gi,
+                "\n"
+            )
+            .trim();
+
         await pool.query(
-            `INSERT INTO tickets 
-            (project, source, customer_name, customer_email, title, message, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            `INSERT INTO tickets (
+                project,
+                source,
+                customer_name,
+                customer_email,
+                title,
+                message,
+                priority,
+                created_at
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
             [
                 project,
                 source || "",
                 customerName || "",
                 customerEmail || "",
                 title.trim(),
-                message.trim(),
-                new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })
+                cleanMessage,
+                finalPriority,
+                new Date().toLocaleString("de-DE", {
+                    timeZone: "Europe/Berlin"
+                })
             ]
         );
 
@@ -2095,6 +2165,141 @@ app.post("/delete-work-order", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Arbeitsauftrag konnte nicht gelöscht werden");
+    }
+});
+
+app.get("/work-schedule/:username", async (req, res) => {
+    try{
+        const username = req.params.username;
+        const admin = req.query.admin === "true";
+
+        const result = admin
+            ? await pool.query(
+                `SELECT *
+                 FROM work_schedule
+                 ORDER BY plan_date ASC, sort_order ASC, id ASC`
+            )
+            : await pool.query(
+                `SELECT *
+                 FROM work_schedule
+                 WHERE assigned_to = $1
+                 ORDER BY plan_date ASC, sort_order ASC, id ASC`,
+                [username]
+            );
+
+        res.json(result.rows);
+
+    }catch(err){
+        console.log(err);
+        res.json([]);
+    }
+});
+
+app.post("/create-work-schedule", async (req, res) => {
+    try{
+        const {
+            assignedTo,
+            planDate,
+            project,
+            category,
+            title,
+            description,
+            estimatedMinutes,
+            priority,
+            createdBy
+        } = req.body;
+
+        if(
+            !assignedTo ||
+            !planDate ||
+            !project ||
+            !title ||
+            !createdBy
+        ){
+            return res.send("Pflichtfelder fehlen");
+        }
+
+        await pool.query(
+            `INSERT INTO work_schedule (
+                assigned_to,
+                plan_date,
+                project,
+                category,
+                title,
+                description,
+                estimated_minutes,
+                priority,
+                created_by,
+                created_at
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [
+                assignedTo,
+                planDate,
+                project,
+                category || "Neue Funktion",
+                title.trim(),
+                description || "",
+                parseInt(estimatedMinutes) || 0,
+                priority || "Normal",
+                createdBy,
+                new Date().toLocaleString("de-DE", {
+                    timeZone:"Europe/Berlin"
+                })
+            ]
+        );
+
+        res.send("Arbeitsplanung gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Arbeitsplanung konnte nicht gespeichert werden");
+    }
+});
+
+app.post("/update-work-schedule-status", async (req, res) => {
+    try{
+
+        const { id, status } = req.body;
+
+        await pool.query(
+            `UPDATE work_schedule
+             SET status = $1,
+                 updated_at = $2
+             WHERE id = $3`,
+            [
+                status,
+                new Date().toLocaleString("de-DE", {
+                    timeZone: "Europe/Berlin"
+                }),
+                id
+            ]
+        );
+
+        res.send("Status gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Fehler");
+    }
+});
+
+app.post("/delete-work-schedule", async (req, res) => {
+    try{
+
+        const { id } = req.body;
+
+        await pool.query(
+            `DELETE FROM work_schedule
+             WHERE id = $1`,
+            [id]
+        );
+
+        res.send("Eintrag gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Fehler");
     }
 });
 

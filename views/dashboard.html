@@ -47,8 +47,8 @@
         <button onclick="loadPage('kalender')">📅 <span>Kalender</span></button>
         <button onclick="loadPage('dienstplaene')">📅 <span>Mein Dienstplan</span></button>
 
-        <button onclick="loadPage('arbeitsplanung')">
-            📋 <span>Meine Arbeitsplanung</span>
+        <button onclick="loadPage('arbeitsplanungV2')">
+            📋 <span>Entwicklungsplanung</span>
         </button>
         <button onclick="loadPage('notizen')">✏️ <span>Notizen</span></button>
         <button onclick="loadPage('vorschlaege')">
@@ -103,8 +103,8 @@
         📅 Mein Dienstplan
     </button>
     
-    <button onclick="loadPage('arbeitsplanung'); toggleMobileMenu()">
-        📋 Meine Arbeitsplanung
+    <button onclick="loadPage('arbeitsplanungV2'); toggleMobileMenu()">
+        📋 Entwicklungsplanung
     </button>
     <button onclick="loadPage('notizen'); toggleMobileMenu()">✏️ Notizen</button>
     <button onclick="loadPage('vorschlaege'); toggleMobileMenu()">💡 Vorschläge</button>
@@ -114,7 +114,7 @@
 
 <footer class="dev-footer">
     Powered by D.Schulteis <-TRACKSY-> 
-    v3.1.0 – Dienstpläne & Arbeitsplanung-Last Update 12.07.2026 
+    v3.2.0 – Entwicklungsplanung & Internes Ticketsystem-Last Update 13.07.2026 
     visualcode.dev © 04.2026
 </footer>
 
@@ -667,18 +667,20 @@ tickets.forEach(t => {
     let priority = t.priority || "Normal";
 let cleanMessage = t.message || "-";
 
-    const priorityMatch = cleanMessage.match(/Priorität:\\s*(.*)/);
+const priorityMatch = cleanMessage.match(
+    /(?:^|\n)\s*Priorität:\s*(Niedrig|Normal|Hoch)\s*(?:\n|$)/i
+);
 
-    if(priorityMatch && !t.priority){
-        priority = priorityMatch[1]
-            .split("\\n")[0]
-            .trim();
+if(priorityMatch){
+    priority = priorityMatch[1];
 
-        cleanMessage = cleanMessage.replace(
-            /Priorität:\\s*.*\\n\\n?/,
-            ""
-        );
-    }
+    cleanMessage = cleanMessage
+        .replace(
+            /(?:^|\n)\s*Priorität:\s*(Niedrig|Normal|Hoch)\s*(?:\n|$)/gi,
+            "\n"
+        )
+        .trim();
+}
 
     let priorityClass = "ticket-priority-normal";
 
@@ -1698,6 +1700,110 @@ html += `
 `;
 
 content.innerHTML = html;
+return;
+}
+
+if(page === "arbeitsplanungV2"){
+
+let plans = await apiGet(
+    "/work-schedule/" +
+    encodeURIComponent(currentUser)
+);
+
+let projects = await apiGet("/projects");
+
+let shiftplans = await apiGet(
+    "/shiftplans/" +
+    encodeURIComponent(currentUser)
+);
+
+content.innerHTML = `
+<div class="planner-v2">
+
+    <div class="planner-header">
+
+        <div>
+            <h2>📋 Entwicklungsplanung</h2>
+            <p>Plane deine Arbeiten bis zu vier Wochen im Voraus.</p>
+        </div>
+
+        <button onclick="openPlannerCreate()">
+            ➕ Planung hinzufügen
+        </button>
+
+    </div>
+
+    <div id="plannerCreateBox"
+         class="planner-create-box"
+         style="display:none;">
+
+        <h3>Neue Entwicklungsplanung</h3>
+
+        <div class="planner-form-grid">
+
+            <input id="plannerDate" type="date">
+
+            <select id="plannerProject"></select>
+
+            <select id="plannerCategory">
+                <option>Neue Funktion</option>
+                <option>Bugfix</option>
+                <option>Verbesserung</option>
+                <option>Planung</option>
+            </select>
+
+            <select id="plannerPriority">
+                <option>Niedrig</option>
+                <option selected>Normal</option>
+                <option>Hoch</option>
+            </select>
+
+            <input
+                id="plannerMinutes"
+                type="number"
+                value="60"
+                min="5"
+            >
+
+            <input
+                id="plannerTitle"
+                placeholder="Titel"
+            >
+
+        </div>
+
+        <textarea
+            id="plannerDescription"
+            placeholder="Beschreibung"
+        ></textarea>
+
+        <div class="planner-buttons">
+
+            <button onclick="savePlannerEntry()">
+                💾 Speichern
+            </button>
+
+            <button onclick="closePlannerBox()">
+                Abbrechen
+            </button>
+
+        </div>
+
+    </div>
+
+    <div id="plannerTimeline"
+         class="planner-timeline">
+    </div>
+
+</div>
+`;
+
+renderPlannerWeeks(
+    plans,
+    projects,
+    shiftplans
+);
+
 return;
 }
 
@@ -4016,6 +4122,180 @@ setInterval(checkNewSuggestions, 10000);
 setInterval(checkNewMessages, 10000);
 setInterval(checkNewDocuments, 10000);
 setInterval(checkNewProjects, 10000);
+
+function renderPlannerWeeks(
+    plans,
+    projects,
+    shiftplans
+){
+
+const timeline = document.getElementById("plannerTimeline");
+
+if(!timeline){
+    return;
+}
+
+let html = "";
+const today = new Date();
+
+for(let w = 0; w < 4; w++){
+
+    let weekStart = new Date(today);
+    weekStart.setDate(today.getDate() + (w * 7));
+
+    let weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+
+    html += `
+    <div class="planner-week">
+
+        <div class="planner-week-head">
+            <h3>Woche ${w + 1}</h3>
+
+            <span>
+                ${weekStart.toLocaleDateString("de-DE")}
+                -
+                ${weekEnd.toLocaleDateString("de-DE")}
+            </span>
+        </div>
+
+        <div class="planner-days">
+    `;
+
+    for(let d = 0; d < 7; d++){
+
+        let day = new Date(weekStart);
+        day.setDate(weekStart.getDate() + d);
+
+        let date =
+            day.getFullYear() + "-" +
+            String(day.getMonth() + 1).padStart(2, "0") + "-" +
+            String(day.getDate()).padStart(2, "0");
+
+        let dayPlans = plans.filter(p => p.plan_date === date);
+
+        html += `
+        <div class="planner-day">
+
+            <div class="planner-day-head">
+                ${day.toLocaleDateString("de-DE", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "2-digit"
+                })}
+            </div>
+
+            <div class="planner-day-content">
+
+                ${
+                    dayPlans.length === 0
+                    ? `
+                        <div class="planner-empty">
+                            Keine Planung
+                        </div>
+                    `
+                    : dayPlans.map(p => `
+                        <div class="planner-task">
+
+                            <strong>${p.project}</strong>
+
+                            <div>${p.title}</div>
+
+                            <small>
+                                ${p.estimated_minutes} Min.
+                            </small>
+
+                        </div>
+                    `).join("")
+                }
+
+            </div>
+
+        </div>
+        `;
+    }
+
+    html += `
+        </div>
+    </div>
+    `;
+}
+
+timeline.innerHTML = html;
+}
+
+async function openPlannerCreate(){
+
+document.getElementById("plannerCreateBox").style.display="block";
+
+document.getElementById("plannerDate").value=
+    new Date().toISOString().split("T")[0];
+
+const projects=await apiGet("/projects");
+
+const select=document.getElementById("plannerProject");
+
+select.innerHTML="";
+
+projects.forEach(project=>{
+
+    select.innerHTML+=`
+        <option value="${project.name}">
+            ${project.name}
+        </option>
+    `;
+
+});
+
+}
+
+function closePlannerBox(){
+
+const box = document.getElementById("plannerCreateBox");
+
+if(box){
+    box.style.display = "none";
+}
+
+}
+
+async function savePlannerEntry(){
+
+const msg=await apiPost("/create-work-schedule",{
+
+    assignedTo:currentUser,
+
+    planDate:
+    document.getElementById("plannerDate").value,
+
+    project:
+    document.getElementById("plannerProject").value,
+
+    category:
+    document.getElementById("plannerCategory").value,
+
+    title:
+    document.getElementById("plannerTitle").value,
+
+    description:
+    document.getElementById("plannerDescription").value,
+
+    estimatedMinutes:
+    document.getElementById("plannerMinutes").value,
+
+    priority:
+    document.getElementById("plannerPriority").value,
+
+    createdBy:currentUser
+
+});
+
+alert(msg);
+
+loadPage("arbeitsplanungV2");
+
+}
+
 
 loadPage("start");
 </script>
