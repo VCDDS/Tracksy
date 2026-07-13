@@ -351,6 +351,16 @@ await pool.query(`
     `);
 
     await pool.query(`
+        ALTER TABLE shiftplans
+        ADD COLUMN IF NOT EXISTS planner_data JSONB DEFAULT '[]'
+    `);
+    
+    await pool.query(`
+        ALTER TABLE shiftplans
+        ADD COLUMN IF NOT EXISTS updated_at TEXT DEFAULT ''
+    `);
+
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS work_orders (
             id SERIAL PRIMARY KEY,
             work_date TEXT NOT NULL,
@@ -2065,6 +2075,64 @@ app.post("/create-work-order", async (req, res) => {
         console.log(err);
         res.send("Arbeitsauftrag konnte nicht erstellt werden");
     }
+});
+
+app.post("/save-shift-planner", async (req, res) => {
+
+    try{
+
+        const {
+            assigned_to,
+            period_start,
+            period_end,
+            days,
+            uploaded_by
+        } = req.body;
+
+        await pool.query(
+            `
+            INSERT INTO shiftplans
+            (
+                title,
+                description,
+                assigned_to,
+                period_start,
+                period_end,
+                filename,
+                originalname,
+                uploaded_by,
+                created_at,
+                planner_data,
+                updated_at
+            )
+            VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+            `,
+            [
+                "Dienstplan " + period_start + " bis " + period_end,
+                "",
+                assigned_to,
+                period_start,
+                period_end,
+                "",
+                "",
+                uploaded_by || "System",
+                new Date().toLocaleString("de-DE", {
+                    timeZone: "Europe/Berlin"
+                }),
+                JSON.stringify(days || []),
+                ""
+            ]
+        );
+
+        res.send("Dienstplan gespeichert.");
+
+    }catch(err){
+
+        console.error(err);
+        res.status(500).send("Fehler beim Speichern.");
+
+    }
+
 });
 
 app.post("/edit-work-order", async (req, res) => {

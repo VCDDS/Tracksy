@@ -26,7 +26,7 @@
                 <a href="#" onclick="loadPage('zeitenKorrigieren'); closeAdminDropdown(); return false;">🛠️ Zeiten korrigieren</a>
                 <a href="#" onclick="loadPage('benutzerVerwaltung'); closeAdminDropdown(); return false;">👤 Benutzer verwalten</a>
                 <a href="#" onclick="loadPage('dienstplaeneAdmin'); closeAdminDropdown(); return false;">📅 Dienstpläne verwalten</a>
-                <a href="#" onclick="loadPage('arbeitsplanungAdmin'); closeAdminDropdown(); return false;">📋 Arbeitsplanung verwalten</a>
+                <a href="#" onclick="loadPage('entwicklungsplanungAdmin'); closeAdminDropdown(); return false;">💻 Entwicklungsplanung</a>
                 <a href="#" onclick="printOrPDF(); closeAdminDropdown(); return false;">🖨️ Drucken/PDF speichern</a>
             </div>
         </div>
@@ -47,8 +47,8 @@
         <button onclick="loadPage('kalender')">📅 <span>Kalender</span></button>
         <button onclick="loadPage('dienstplaene')">📅 <span>Mein Dienstplan</span></button>
 
-        <button onclick="loadPage('arbeitsplanungV2')">
-            📋 <span>Entwicklungsplanung</span>
+        <button onclick="loadPage('meineAufgaben')">
+            📋 <span>Meine Entwicklungsaufgaben</span>
         </button>
         <button onclick="loadPage('notizen')">✏️ <span>Notizen</span></button>
         <button onclick="loadPage('vorschlaege')">
@@ -92,7 +92,7 @@
         <button onclick="loadPage('zeitenKorrigieren'); toggleMobileMenu()">🛠️ Zeiten korrigieren</button>
         <button onclick="loadPage('benutzerVerwaltung'); toggleMobileMenu()">👤 Benutzer verwalten</button>
         <button onclick="loadPage('dienstplaeneAdmin'); toggleMobileMenu()">📅 Dienstpläne verwalten</button>
-        <button onclick="loadPage('arbeitsplanungAdmin'); toggleMobileMenu()">📋 Arbeitsplanung verwalten</button>
+        <button onclick="loadPage('entwicklungsplanungAdmin'); toggleMobileMenu()">💻 Entwicklungsplanung</button>
     </div>
     <button onclick="loadPage('zeiten'); toggleMobileMenu()">⌛ Zeiten</button>
     <button onclick="loadPage('auswertung'); toggleMobileMenu()">📊 Auswertung</button>
@@ -103,8 +103,8 @@
         📅 Mein Dienstplan
     </button>
     
-    <button onclick="loadPage('arbeitsplanungV2'); toggleMobileMenu()">
-        📋 Entwicklungsplanung
+    <button onclick="loadPage('meineAufgaben'); toggleMobileMenu()">
+        📋 Meine Entwicklungsaufgaben
     </button>
     <button onclick="loadPage('notizen'); toggleMobileMenu()">✏️ Notizen</button>
     <button onclick="loadPage('vorschlaege'); toggleMobileMenu()">💡 Vorschläge</button>
@@ -1337,22 +1337,27 @@ let selectableUsers = users.filter(u => {
 content.innerHTML = `
 <div class="shiftplan-page">
 
-    <h2>📅 Dienstpläne verwalten</h2>
+    <h2>📅 Dienstplan verwalten</h2>
+
+    <p class="page-description">
+        Plane hier Arbeitszeiten, Termine und Abwesenheiten für bis zu vier Wochen.
+        Der jeweilige Benutzer sieht die Planung anschließend unter
+        <b>„Mein Dienstplan“</b>.
+    </p>
 
     <div class="shiftplan-create-card">
-        <h3>Neuen Dienstplan hochladen</h3>
 
-        <input
-            id="shiftplanTitle"
-            placeholder="Titel, z. B. Dienstplan Juli 2026"
-        >
+        <h3>Planung vorbereiten</h3>
 
-        <textarea
-            id="shiftplanDescription"
-            placeholder="Beschreibung"
-        ></textarea>
+        <label for="shiftUser">
+            Mitarbeiter
+        </label>
 
-        <select id="shiftplanUser">
+        <small>
+            Wähle den Benutzer oder Administrator aus, für den der Dienstplan erstellt wird.
+        </small>
+
+        <select id="shiftUser">
             <option value="">Mitarbeiter auswählen</option>
 
             ${selectableUsers.map(u => `
@@ -1362,69 +1367,40 @@ content.innerHTML = `
             `).join("")}
         </select>
 
-        <label>Zeitraum von</label>
-        <input id="shiftplanStart" type="date">
+        <label for="shiftStart">
+            Planungsbeginn
+        </label>
 
-        <label>Zeitraum bis</label>
-        <input id="shiftplanEnd" type="date">
+        <small>
+            Wähle den ersten Tag des Dienstplans.
+        </small>
 
         <input
-            id="shiftplanFile"
-            type="file"
-            accept=".pdf,application/pdf"
+            id="shiftStart"
+            type="date"
         >
 
-        <button onclick="uploadShiftplan()">
-            📤 Dienstplan hochladen
+        <label for="shiftEnd">
+            Planungsende
+        </label>
+
+        <small>
+            Der Zeitraum darf maximal vier Wochen umfassen.
+        </small>
+
+        <input
+            id="shiftEnd"
+            type="date"
+        >
+
+        <button onclick="loadShiftPlanner()">
+            📅 Planung öffnen
         </button>
-    </div>
-
-    <div class="shiftplan-grid">
-
-        ${shiftplans.length === 0
-            ? `<div class="shiftplan-empty">Noch keine Dienstpläne vorhanden.</div>`
-            : shiftplans.map(plan => `
-                <div class="shiftplan-card">
-
-                    <div class="shiftplan-card-head">
-                        <div>
-                            <small>#${plan.id}</small>
-                            <h3>${plan.title}</h3>
-                        </div>
-
-                        <span>👤 ${plan.assigned_to}</span>
-                    </div>
-
-                    <p>${plan.description || "Keine Beschreibung"}</p>
-
-                    <div class="shiftplan-meta">
-                        <span>📅 ${plan.period_start || "-"} bis ${plan.period_end || "-"}</span>
-                        <span>📄 ${plan.originalname}</span>
-                        <span>⬆️ ${plan.uploaded_by}</span>
-                    </div>
-
-                    <div class="shiftplan-actions">
-                        <button onclick="openShiftplan(${plan.id})">
-                            📄 Öffnen
-                        </button>
-
-                        <button onclick="editShiftplan(${plan.id})">
-                            ✏️ Bearbeiten
-                        </button>
-
-                        <button
-                            class="danger-btn"
-                            onclick="deleteShiftplan(${plan.id})"
-                        >
-                            🗑️ Löschen
-                        </button>
-                    </div>
-
-                </div>
-            `).join("")
-        }
 
     </div>
+
+    <div id="shiftPlanner"></div>
+
 </div>
 `;
 
@@ -1442,6 +1418,10 @@ let html = `
 
     <h2>📅 Mein Dienstplan</h2>
 
+    <p class="page-description">
+        Hier siehst du deine geplanten Arbeitszeiten, Termine und Hinweise.
+    </p>
+
     <div class="shiftplan-grid">
 `;
 
@@ -1458,32 +1438,103 @@ if(plans.length === 0){
 
     plans.forEach(plan => {
 
+        let plannerDays = [];
+
+        if(Array.isArray(plan.planner_data)){
+            plannerDays = plan.planner_data;
+        }else if(typeof plan.planner_data === "string"){
+            try{
+                plannerDays = JSON.parse(plan.planner_data);
+            }catch{
+                plannerDays = [];
+            }
+        }
+
         html += `
         <div class="shiftplan-card">
 
             <div class="shiftplan-card-head">
-
                 <div>
-                    <h3>${plan.title}</h3>
+                    <h3>${plan.title || "Dienstplan"}</h3>
                     <small>
-                        ${plan.period_start} bis ${plan.period_end}
+                        ${plan.period_start || "-"} bis ${plan.period_end || "-"}
                     </small>
                 </div>
+            </div>
+        `;
+
+        if(plannerDays.length > 0){
+
+            html += `
+            <div class="shiftplan-day-list">
+
+                ${plannerDays.map(day => `
+
+                    <div class="shiftplan-day-entry">
+
+                        <div class="shiftplan-day-head">
+
+                            <strong>
+                                ${new Date(day.date + "T00:00:00").toLocaleDateString("de-DE", {
+                                    weekday: "long",
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric"
+                                })}
+                            </strong>
+
+                            <span>
+                                ${day.status || "Arbeit"}
+                            </span>
+
+                        </div>
+
+                        <div class="shiftplan-day-details">
+
+                            <p>
+                                <b>Arbeitszeit:</b>
+                                ${day.work || "-"}
+                            </p>
+
+                            <p>
+                                <b>Termin:</b>
+                                ${day.appointment || "-"}
+                            </p>
+
+                            <p>
+                                <b>Hinweis:</b>
+                                ${day.note || "-"}
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                `).join("")}
 
             </div>
+            `;
 
-            <p>
-                ${plan.description || "Keine Beschreibung"}
-            </p>
+        }else if(plan.filename){
 
+            html += `
             <div class="shiftplan-actions">
 
                 <button onclick="openShiftplan(${plan.id})">
-                    📄 Dienstplan öffnen
+                    📄 Alten PDF-Dienstplan öffnen
                 </button>
 
             </div>
+            `;
 
+        }else{
+
+            html += `
+            <p>Für diesen Dienstplan sind keine Einträge vorhanden.</p>
+            `;
+        }
+
+        html += `
         </div>
         `;
     });
@@ -1499,7 +1550,7 @@ content.innerHTML = html;
 return;
 }
 
-if(page === "arbeitsplanungAdmin"){
+if(page === "entwicklungsplanungAdmin"){
 
 if(!isAdmin){
     loadPage("start");
@@ -1519,7 +1570,13 @@ let selectableUsers = users.filter(u=>{
 content.innerHTML = `
 <div class="workorder-page">
 
-    <h2>📋 Arbeitsplanung</h2>
+    <h2>💻 Entwicklungsplanung</h2>
+
+<p class="page-description">
+Plane hier Entwicklungsaufgaben für Administratoren und Benutzer.
+Alle zugewiesenen Aufgaben erscheinen automatisch im Bereich
+<b>„Meine Entwicklungsaufgaben“</b> des jeweiligen Benutzers.
+</p>
 
     <div class="workorder-create">
 
@@ -1615,7 +1672,7 @@ content.innerHTML = `
 return;
 }
 
-if(page === "arbeitsplanung"){
+if(page === "meineAufgaben"){
 
 let orders = await apiGet(
     "/work-orders/" + encodeURIComponent(currentUser)
@@ -1624,7 +1681,12 @@ let orders = await apiGet(
 let html = `
 <div class="workorder-user-page">
 
-    <h2>📋 Meine Arbeitsplanung</h2>
+   <h2>📋 Meine Entwicklungsaufgaben</h2>
+
+<p class="page-description">
+Hier findest du alle Entwicklungsaufgaben, die dir von einem Administrator zugewiesen wurden.
+Aktualisiere den Status während der Bearbeitung.
+</p>
 
     <div class="workorder-grid">
 `;
@@ -1700,110 +1762,6 @@ html += `
 `;
 
 content.innerHTML = html;
-return;
-}
-
-if(page === "arbeitsplanungV2"){
-
-let plans = await apiGet(
-    "/work-schedule/" +
-    encodeURIComponent(currentUser)
-);
-
-let projects = await apiGet("/projects");
-
-let shiftplans = await apiGet(
-    "/shiftplans/" +
-    encodeURIComponent(currentUser)
-);
-
-content.innerHTML = `
-<div class="planner-v2">
-
-    <div class="planner-header">
-
-        <div>
-            <h2>📋 Entwicklungsplanung</h2>
-            <p>Plane deine Arbeiten bis zu vier Wochen im Voraus.</p>
-        </div>
-
-        <button onclick="openPlannerCreate()">
-            ➕ Planung hinzufügen
-        </button>
-
-    </div>
-
-    <div id="plannerCreateBox"
-         class="planner-create-box"
-         style="display:none;">
-
-        <h3>Neue Entwicklungsplanung</h3>
-
-        <div class="planner-form-grid">
-
-            <input id="plannerDate" type="date">
-
-            <select id="plannerProject"></select>
-
-            <select id="plannerCategory">
-                <option>Neue Funktion</option>
-                <option>Bugfix</option>
-                <option>Verbesserung</option>
-                <option>Planung</option>
-            </select>
-
-            <select id="plannerPriority">
-                <option>Niedrig</option>
-                <option selected>Normal</option>
-                <option>Hoch</option>
-            </select>
-
-            <input
-                id="plannerMinutes"
-                type="number"
-                value="60"
-                min="5"
-            >
-
-            <input
-                id="plannerTitle"
-                placeholder="Titel"
-            >
-
-        </div>
-
-        <textarea
-            id="plannerDescription"
-            placeholder="Beschreibung"
-        ></textarea>
-
-        <div class="planner-buttons">
-
-            <button onclick="savePlannerEntry()">
-                💾 Speichern
-            </button>
-
-            <button onclick="closePlannerBox()">
-                Abbrechen
-            </button>
-
-        </div>
-
-    </div>
-
-    <div id="plannerTimeline"
-         class="planner-timeline">
-    </div>
-
-</div>
-`;
-
-renderPlannerWeeks(
-    plans,
-    projects,
-    shiftplans
-);
-
 return;
 }
 
@@ -3883,6 +3841,157 @@ if(badge){
 }
 }
 
+function loadShiftPlanner(){
+
+const user = document.getElementById("shiftUser").value;
+const start = document.getElementById("shiftStart").value;
+const end = document.getElementById("shiftEnd").value;
+
+if(!user){
+    alert("Bitte Mitarbeiter auswählen.");
+    return;
+}
+
+if(!start || !end){
+    alert("Bitte Planungsbeginn und Planungsende auswählen.");
+    return;
+}
+
+const startDate = new Date(start);
+const endDate = new Date(end);
+
+const diffDays = Math.ceil(
+    (endDate - startDate) / (1000 * 60 * 60 * 24)
+) + 1;
+
+if(endDate < startDate){
+    alert("Das Enddatum darf nicht vor dem Startdatum liegen.");
+    return;
+}
+
+if(diffDays > 28){
+    alert("Der Dienstplan darf maximal 4 Wochen umfassen.");
+    return;
+}
+
+const planner = document.getElementById("shiftPlanner");
+
+planner.innerHTML = `
+    <div class="shift-planner-card">
+
+        <div class="shift-planner-head">
+            <div>
+                <h3>📅 Dienstplan für ${user}</h3>
+                <p>${start} bis ${end}</p>
+            </div>
+        </div>
+
+        <div id="shiftPlannerDays"></div>
+
+        <button onclick="saveShiftPlanner()">
+            💾 Dienstplan speichern
+        </button>
+
+    </div>
+`;
+
+renderShiftPlannerDays(start, end);
+}
+
+function renderShiftPlannerDays(start, end){
+
+const container = document.getElementById("shiftPlannerDays");
+
+if(!container){
+    return;
+}
+
+let currentDate = new Date(start + "T00:00:00");
+const endDate = new Date(end + "T00:00:00");
+
+let html = "";
+
+while(currentDate <= endDate){
+
+    const dateValue =
+        currentDate.getFullYear() + "-" +
+        String(currentDate.getMonth() + 1).padStart(2, "0") + "-" +
+        String(currentDate.getDate()).padStart(2, "0");
+
+    const displayDate = currentDate.toLocaleDateString("de-DE", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
+
+    html += `
+        <div class="shift-planner-day" data-date="${dateValue}">
+
+            <h4>${displayDate}</h4>
+
+            <label>
+                Arbeitszeit
+                <small>
+                    Schicht oder Arbeitszeit, zum Beispiel 06:00 bis 14:00.
+                </small>
+            </label>
+
+            <input
+                class="shift-work-time"
+                type="text"
+                placeholder="z. B. Frühschicht 06:00 – 14:00"
+            >
+
+            <label>
+                Termin
+                <small>
+                    Wichtige Termine oder feste Verpflichtungen an diesem Tag.
+                </small>
+            </label>
+
+            <input
+                class="shift-appointment"
+                type="text"
+                placeholder="z. B. Arzttermin 15:30 Uhr"
+            >
+
+            <label>
+                Status
+                <small>
+                    Frei, Urlaub, Krank oder regulärer Arbeitstag.
+                </small>
+            </label>
+
+            <select class="shift-day-status">
+                <option value="Arbeit">Arbeit</option>
+                <option value="Frei">Frei</option>
+                <option value="Urlaub">Urlaub</option>
+                <option value="Krank">Krank</option>
+                <option value="Termin">Nur Termin</option>
+            </select>
+
+            <label>
+                Hinweis
+                <small>
+                    Zusätzliche Informationen für den jeweiligen Benutzer.
+                </small>
+            </label>
+
+            <textarea
+                class="shift-note"
+                placeholder="Zusätzlicher Hinweis"
+            ></textarea>
+
+        </div>
+    `;
+
+    currentDate.setDate(currentDate.getDate() + 1);
+}
+
+container.innerHTML = html;
+}
+
 async function openShiftplan(id){
 
 let res = await fetch("/open-shiftplan",{
@@ -3903,48 +4012,61 @@ if(!data.success){
 window.open(data.url,"_blank");
 }
 
-async function uploadShiftplan(){
+async function saveShiftPlanner(){
 
-let title = document.getElementById("shiftplanTitle").value.trim();
-let description = document.getElementById("shiftplanDescription").value.trim();
-let assignedTo = document.getElementById("shiftplanUser").value;
-let periodStart = document.getElementById("shiftplanStart").value;
-let periodEnd = document.getElementById("shiftplanEnd").value;
-let fileInput = document.getElementById("shiftplanFile");
-let file = fileInput.files[0];
+const assigned_to =
+    document.getElementById("shiftUser").value;
 
-if(!title || !assignedTo || !periodStart || !periodEnd || !file){
-    alert("Bitte Titel, Mitarbeiter, Zeitraum und PDF ausfüllen.");
-    return;
-}
+const period_start =
+    document.getElementById("shiftStart").value;
 
-if(file.type !== "application/pdf"){
-    alert("Es sind nur PDF-Dateien erlaubt.");
-    return;
-}
+const period_end =
+    document.getElementById("shiftEnd").value;
 
-let formData = new FormData();
+const days = [];
 
-formData.append("pdf", file);
-formData.append("title", title);
-formData.append("description", description);
-formData.append("assignedTo", assignedTo);
-formData.append("periodStart", periodStart);
-formData.append("periodEnd", periodEnd);
-formData.append("uploadedBy", currentUser);
+document
+    .querySelectorAll(".shift-planner-day")
+    .forEach(day => {
 
-let res = await fetch("/upload-shiftplan", {
-    method: "POST",
-    body: formData
-});
+        days.push({
 
-let msg = await res.text();
+            date:
+                day.dataset.date,
+
+            work:
+                day.querySelector(".shift-work-time").value,
+
+            appointment:
+                day.querySelector(".shift-appointment").value,
+
+            status:
+                day.querySelector(".shift-day-status").value,
+
+            note:
+                day.querySelector(".shift-note").value
+
+        });
+
+    });
+
+    const msg = await apiPost(
+    "/save-shift-planner",
+    {
+        assigned_to,
+        period_start,
+        period_end,
+        days,
+        uploaded_by: currentUser
+    }
+);
 
 alert(msg);
 
-if(msg === "Dienstplan hochgeladen"){
+if(msg === "Dienstplan gespeichert."){
     loadPage("dienstplaeneAdmin");
 }
+
 }
 
 async function editShiftplan(id){
@@ -4044,7 +4166,7 @@ let msg = await apiPost("/create-work-order", {
 });
 
 alert(msg);
-loadPage("arbeitsplanungAdmin");
+loadPage("entwicklungsplanungAdmin");
 }
 
 async function editWorkOrder(id){
@@ -4085,7 +4207,7 @@ let msg = await apiPost("/edit-work-order", {
 });
 
 alert(msg);
-loadPage("arbeitsplanungAdmin");
+loadPage("entwicklungsplanungAdmin");
 }
 
 async function deleteWorkOrder(id){
@@ -4099,7 +4221,7 @@ let msg = await apiPost("/delete-work-order", {
 });
 
 alert(msg);
-loadPage("arbeitsplanungAdmin");
+loadPage("entwicklungsplanungAdmin");
 }
 
 async function changeWorkStatus(id, status){
@@ -4110,7 +4232,7 @@ let msg = await apiPost("/update-work-order-status", {
 });
 
 alert(msg);
-loadPage("arbeitsplanung");
+loadPage("meineAufgaben");
 }
 
 checkNewSuggestions();
@@ -4292,7 +4414,7 @@ const msg=await apiPost("/create-work-schedule",{
 
 alert(msg);
 
-loadPage("arbeitsplanungV2");
+loadPage("entwicklungsplanung");
 
 }
 
