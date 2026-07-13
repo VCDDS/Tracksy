@@ -199,6 +199,31 @@ async function initDatabase(){
     `);
 
     await pool.query(`
+        CREATE TABLE IF NOT EXISTS tickets (
+            id SERIAL PRIMARY KEY,
+            project TEXT NOT NULL,
+            source TEXT DEFAULT '',
+            customer_name TEXT DEFAULT '',
+            customer_email TEXT DEFAULT '',
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            priority TEXT DEFAULT 'Normal',
+            status TEXT DEFAULT 'Offen',
+            created_at TEXT NOT NULL,
+            customer_deleted BOOLEAN DEFAULT false,
+            delete_reason TEXT DEFAULT '',
+            customer_edited BOOLEAN DEFAULT false,
+            edit_note TEXT DEFAULT '',
+            updated_at TEXT DEFAULT ''
+        )
+    `);
+    
+    await pool.query(`
+        ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'Normal'
+    `);
+    
+    await pool.query(`
         ALTER TABLE tickets
         ADD COLUMN IF NOT EXISTS customer_deleted BOOLEAN DEFAULT false
     `);
@@ -221,45 +246,6 @@ async function initDatabase(){
     await pool.query(`
         ALTER TABLE tickets
         ADD COLUMN IF NOT EXISTS updated_at TEXT DEFAULT ''
-    `); 
-
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS tickets (
-            id SERIAL PRIMARY KEY,
-            project TEXT NOT NULL,
-            source TEXT DEFAULT '',
-            customer_name TEXT DEFAULT '',
-            customer_email TEXT DEFAULT '',
-            title TEXT NOT NULL,
-            message TEXT NOT NULL,
-            status TEXT DEFAULT 'Offen',
-            created_at TEXT NOT NULL
-        )
-    `);
-
-    await pool.query(`
-        ALTER TABLE tickets
-        ADD COLUMN IF NOT EXISTS source TEXT DEFAULT ''
-    `);
-    
-    await pool.query(`
-        ALTER TABLE tickets
-        ADD COLUMN IF NOT EXISTS customer_name TEXT DEFAULT ''
-    `);
-    
-    await pool.query(`
-        ALTER TABLE tickets
-        ADD COLUMN IF NOT EXISTS customer_email TEXT DEFAULT ''
-    `);
-    
-    await pool.query(`
-        ALTER TABLE tickets
-        ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Offen'
-    `);
-    
-    await pool.query(`
-        ALTER TABLE tickets
-        ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT ''
     `);
 
     await pool.query(`
@@ -1499,6 +1485,66 @@ app.post("/delete-suggestion-comment", async (req, res) => {
 });
 
 /* TICKETS */
+
+app.post("/create-tracksy-ticket", async (req, res) => {
+    try{
+        const {
+            username,
+            userRole,
+            title,
+            message,
+            priority
+        } = req.body;
+
+        if(userRole !== "admin" && userRole !== "user"){
+            return res.send("Keine Berechtigung");
+        }
+
+        if(!username || !title || !message){
+            return res.send("Bitte alle Pflichtfelder ausfüllen");
+        }
+
+        const allowedPriorities = ["Niedrig", "Normal", "Hoch"];
+
+        const finalPriority = allowedPriorities.includes(priority)
+            ? priority
+            : "Normal";
+
+        await pool.query(
+            `INSERT INTO tickets (
+                project,
+                source,
+                customer_name,
+                customer_email,
+                title,
+                message,
+                priority,
+                status,
+                created_at
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [
+                "Tracksy",
+                "Tracksy intern",
+                username,
+                "",
+                title.trim(),
+                message.trim(),
+                finalPriority,
+                "Offen",
+                new Date().toLocaleString("de-DE", {
+                    timeZone:"Europe/Berlin"
+                })
+            ]
+        );
+
+        res.send("Tracksy-Ticket erstellt");
+
+    }catch(err){
+        console.log(err);
+        res.send("Tracksy-Ticket konnte nicht erstellt werden");
+    }
+});
 
 app.get("/tickets", async (req, res) => {
     try{

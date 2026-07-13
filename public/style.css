@@ -2536,6 +2536,100 @@ canvas{
     background:linear-gradient(135deg,#22c55e,#166534);
     color:white;
 }
+
+/* =========================
+   TRACKSY TICKET ERSTELLEN
+========================= */
+
+.tracksy-ticket-create{
+    margin-bottom:24px;
+    padding:22px;
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(124,58,237,0.18),
+            transparent 38%
+        ),
+        linear-gradient(
+            145deg,
+            rgba(15,26,46,0.98),
+            rgba(8,15,30,0.98)
+        );
+    border:1px solid var(--border);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+}
+
+.tracksy-ticket-create-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:18px;
+}
+
+.tracksy-ticket-create-head h3{
+    margin:0 0 6px;
+    color:white;
+}
+
+.tracksy-ticket-create-head p{
+    margin:0;
+    color:var(--muted);
+}
+
+.tracksy-ticket-create-head > span{
+    padding:7px 11px;
+    border-radius:999px;
+    background:rgba(124,58,237,0.18);
+    border:1px solid rgba(167,139,250,0.26);
+    color:#ddd6fe;
+    font-size:12px;
+    font-weight:800;
+    white-space:nowrap;
+}
+
+.tracksy-ticket-create-form{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:12px;
+}
+
+.tracksy-ticket-create-form input,
+.tracksy-ticket-create-form select{
+    margin:0;
+}
+
+.tracksy-ticket-create-form textarea{
+    grid-column:1 / -1;
+    margin:0;
+    min-height:120px;
+}
+
+.tracksy-ticket-create-btn{
+    grid-column:1 / -1;
+    background:linear-gradient(135deg,#7c3aed,#2563eb);
+}
+
+@media (max-width:768px){
+
+    .tracksy-ticket-create{
+        padding:16px;
+    }
+
+    .tracksy-ticket-create-head{
+        flex-direction:column;
+    }
+
+    .tracksy-ticket-create-form{
+        grid-template-columns:1fr;
+    }
+
+    .tracksy-ticket-create-form textarea,
+    .tracksy-ticket-create-btn{
+        grid-column:auto;
+    }
+}
 /* =========================
    PRINT / PDF
 ========================= */

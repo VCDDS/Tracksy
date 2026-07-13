@@ -508,6 +508,53 @@ if(page === "tickets"){
 
 let tickets = await apiGet("/tickets");
 
+let tracksyTicketForm = "";
+
+if(userRole === "admin" || userRole === "user"){
+    tracksyTicketForm = `
+        <section class="tracksy-ticket-create">
+
+            <div class="tracksy-ticket-create-head">
+                <div>
+                    <h3>➕ Tracksy-Ticket erstellen</h3>
+                    <p>Internen Fehler, Wunsch oder Entwicklungsauftrag melden.</p>
+                </div>
+
+                <span>Nur Admin und Benutzer</span>
+            </div>
+
+            <div class="tracksy-ticket-create-form">
+
+                <input
+                    id="tracksyTicketTitle"
+                    maxlength="120"
+                    placeholder="Titel des Tickets"
+                >
+
+                <select id="tracksyTicketPriority">
+                    <option value="Niedrig">Priorität: Niedrig</option>
+                    <option value="Normal" selected>Priorität: Normal</option>
+                    <option value="Hoch">Priorität: Hoch</option>
+                </select>
+
+                <textarea
+                    id="tracksyTicketMessage"
+                    placeholder="Ticket genau beschreiben"
+                ></textarea>
+
+                <button
+                    class="tracksy-ticket-create-btn"
+                    onclick="createTracksyTicket()"
+                >
+                    🎫 Ticket erstellen
+                </button>
+
+            </div>
+
+        </section>
+    `;
+}
+
 let totalTickets = tickets.length;
 
 let openTickets = tickets.filter(t =>
@@ -528,6 +575,8 @@ let deletedTickets = tickets.filter(t =>
 
 let html = `
 <div class="ticket-page">
+
+    ${tracksyTicketForm}
 
     <div class="ticket-page-head">
         <div>
@@ -615,12 +664,12 @@ let html = `
 
 tickets.forEach(t => {
 
-    let priority = "Normal";
-    let cleanMessage = t.message || "-";
+    let priority = t.priority || "Normal";
+let cleanMessage = t.message || "-";
 
     const priorityMatch = cleanMessage.match(/Priorität:\\s*(.*)/);
 
-    if(priorityMatch){
+    if(priorityMatch && !t.priority){
         priority = priorityMatch[1]
             .split("\\n")[0]
             .trim();
@@ -3518,6 +3567,40 @@ box.innerHTML = users
 }
 
 setInterval(loadOnlineUsers, 5000);
+
+async function createTracksyTicket(){
+
+let titleInput = document.getElementById("tracksyTicketTitle");
+let messageInput = document.getElementById("tracksyTicketMessage");
+let priorityInput = document.getElementById("tracksyTicketPriority");
+
+if(!titleInput || !messageInput || !priorityInput){
+    return;
+}
+
+let title = titleInput.value.trim();
+let message = messageInput.value.trim();
+let priority = priorityInput.value;
+
+if(!title || !message){
+    alert("Titel und Beschreibung ausfüllen");
+    return;
+}
+
+let result = await apiPost("/create-tracksy-ticket", {
+    username: currentUser,
+    userRole,
+    title,
+    message,
+    priority
+});
+
+alert(result);
+
+if(result === "Tracksy-Ticket erstellt"){
+    loadPage("tickets");
+}
+}
 
 async function changeTicketStatus(id, status){
 
