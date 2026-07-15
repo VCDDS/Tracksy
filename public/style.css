@@ -3285,3 +3285,86 @@ canvas{
         flex-direction:column;
     }
 }
+/* =====================================================
+   VERTRAGSDATEN
+===================================================== */
+
+.service-contract-card{
+
+    margin:24px 0;
+
+    padding:24px;
+
+    border-radius:18px;
+
+    background:linear-gradient(145deg,#1a2133,#141b2c);
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.service-contract-card h3{
+
+    margin:0 0 22px;
+
+    color:#fff;
+
+}
+
+.service-contract-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+
+    gap:18px;
+
+}
+
+.service-contract-grid label{
+
+    display:block;
+
+    margin-bottom:8px;
+
+    color:#9fb3d9;
+
+    font-size:13px;
+
+    font-weight:600;
+
+}
+
+.service-contract-grid input{
+
+    width:100%;
+
+    padding:12px 14px;
+
+    border-radius:12px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    background:#0f1626;
+
+    color:#fff;
+
+    outline:none;
+
+    transition:.2s;
+
+}
+
+.service-contract-grid input:focus{
+
+    border-color:#6b5cff;
+
+    box-shadow:0 0 0 3px rgba(107,92,255,.18);
+
+}
+
+.service-contract-card .primary-btn{
+
+    margin-top:24px;
+
+}
