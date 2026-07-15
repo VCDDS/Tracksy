@@ -2488,52 +2488,6 @@ app.post("/update-service-payment", async (req, res) => {
     }
 });
 
-app.post("/save-contract-information", async (req, res) => {
-
-    const {
-        project,
-        contract_start,
-        first_payment,
-        subscription_start,
-        payment_recipient,
-        payment_iban,
-        payment_reference
-    } = req.body;
-
-    try{
-
-        await pool.query(`
-            UPDATE service_tariffs
-            SET
-                contract_start = $1,
-                first_payment = $2,
-                subscription_start = $3,
-                payment_recipient = $4,
-                payment_iban = $5,
-                payment_reference = $6,
-                updated_at = NOW()
-            WHERE project = $7
-        `,[
-            contract_start,
-            first_payment,
-            subscription_start,
-            payment_recipient,
-            payment_iban,
-            payment_reference,
-            project
-        ]);
-
-        res.send("Vertragsdaten gespeichert");
-
-    }catch(err){
-
-        console.error(err);
-        res.status(500).send("Fehler beim Speichern");
-
-    }
-
-});
-
 /* History löschen */
 
 app.post("/clear-service-history", async (req, res) => {
