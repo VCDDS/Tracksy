@@ -26,7 +26,7 @@
 
     --sidebar-width:220px;
     --topbar-height:64px;
-    --font-main:Arial, sans-serif;
+    --font-main: "Space Grotesk", sans-serif;
 }
 
 *{
@@ -43,7 +43,16 @@ body{
 
 body{
     font-family:var(--font-main);
+    font-weight:400;
+    line-height:1.6;
+    letter-spacing:0.01em;
+
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    text-rendering:optimizeLegibility;
+
     color:var(--text);
+
     background:
         radial-gradient(circle at 20% 10%, rgba(37,99,235,0.25), transparent 32%),
         radial-gradient(circle at 85% 90%, rgba(124,58,237,0.25), transparent 35%),
@@ -69,6 +78,9 @@ body{
     overflow-y:auto;
     overflow-x:hidden;
 
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+
     padding:22px 18px;
     background:rgba(5,10,22,0.96);
     border-right:1px solid var(--border);
@@ -85,6 +97,9 @@ body{
 
     overflow-y:auto;
     overflow-x:hidden;
+
+    scrollbar-width:none;
+    -ms-overflow-style:none;
 
     min-height:0;
 }
@@ -3367,4 +3382,17 @@ canvas{
 
     margin-top:24px;
 
+}
+.topbar::-webkit-scrollbar,
+.nav-left::-webkit-scrollbar{
+    width:0;
+    height:0;
+    display:none;
+}
+h1,
+h2,
+h3,
+h4{
+    font-weight:700;
+    letter-spacing:-0.02em;
 }
