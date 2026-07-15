@@ -4544,36 +4544,121 @@ content.innerHTML = `
 
                 <div class="service-status-overview">
 
-                    <div>
-                        <span>Status</span>
-                        <strong>${service.status || "Offline"}</strong>
-                    </div>
+    <div>
+        <span>Status</span>
+        <strong>${service.status || "Offline"}</strong>
+    </div>
 
-                    <div>
-                        <span>Aktueller Tarif</span>
-                        <strong>${service.tariff || "Keiner"}</strong>
-                    </div>
+    <div>
+        <span>Aktueller Tarif</span>
+        <strong>${service.tariff || "Keiner"}</strong>
+    </div>
 
-                    <div>
-                        <span>Abrechnung</span>
-                        <strong>${service.billing_cycle || "-"}</strong>
-                    </div>
+    <div>
+        <span>Abrechnung</span>
+        <strong>${service.billing_cycle || "-"}</strong>
+    </div>
 
-                    <div>
-                        <span>Gebuchte Zusatzleistungen</span>
+</div>
 
-                        <strong>
-                            ${
-                                activeAddons.length === 0
-                                ? "Keine"
-                                : activeAddons
-                                    .map(addon => addon.title)
-                                    .join(", ")
-                            }
-                        </strong>
-                    </div>
+<section class="service-contract-card">
 
-                </div>
+    <h3>📄 Vertragsdaten</h3>
+
+    <div class="service-contract-grid">
+
+        <div>
+            <label>📅 Vertragsbeginn</label>
+
+            <input
+                type="date"
+                id="contractStart-${service.project}"
+                value="${service.contract_start || ""}"
+            >
+        </div>
+
+        <div>
+            <label>💰 Erste Zahlung am</label>
+
+            <input
+                type="date"
+                id="firstPayment-${service.project}"
+                value="${service.first_payment || ""}"
+            >
+        </div>
+
+        <div>
+            <label>🔄 Abo-Beginn</label>
+
+            <input
+                type="date"
+                id="subscriptionStart-${service.project}"
+                value="${service.subscription_start || ""}"
+            >
+        </div>
+
+    </div>
+
+    <h3 style="margin-top:28px;">
+        🏦 Zahlungsinformationen
+    </h3>
+
+    <div class="service-contract-grid">
+
+        <div>
+            <label>Empfänger</label>
+
+            <input
+                id="paymentRecipient-${service.project}"
+                value="${service.payment_recipient || ""}"
+            >
+        </div>
+
+        <div>
+            <label>IBAN</label>
+
+            <input
+                id="paymentIban-${service.project}"
+                value="${service.payment_iban || ""}"
+            >
+        </div>
+
+        <div>
+            <label>Verwendungszweck</label>
+
+            <input
+                id="paymentReference-${service.project}"
+                value="${service.payment_reference || ""}"
+            >
+        </div>
+
+    </div>
+
+    <button
+        class="primary-btn"
+        onclick="saveContractInformation('${service.project}')"
+    >
+        💾 Vertragsdaten speichern
+    </button>
+
+</section>
+                    <div class="service-status-overview">
+
+    <div>
+        <span>Gebuchte Zusatzleistungen</span>
+
+        <strong>
+            ${
+                activeAddons.length === 0
+                ? "Keine"
+                : activeAddons
+                    .map(addon => addon.title)
+                    .join(", ")
+            }
+        </strong>
+    </div>
+
+</div>
 
                 <section class="service-active-plan">
 
@@ -5059,38 +5144,50 @@ content.innerHTML = `
 `;
 }
 
-async function saveServiceTariff(){
+async function saveContractInformation(project){
 
-const result = await apiPost("/save-service-tariff", {
-
-    project:
-        document.getElementById("serviceProject").value,
-
-    status:
-        document.getElementById("serviceStatus").value,
-
-    tariff:
-        document.getElementById("serviceTariff").value,
-
-    support_active:
-        document.getElementById("serviceSupport").value === "true",
-
-    billing_cycle:
-        document.getElementById("serviceBilling").value,
+const body = {
+    project,
 
     contract_start:
-        document.getElementById("serviceContractStart").value,
+        document.getElementById(
+            `contractStart-${project}`
+        ).value,
 
-    next_invoice:
-        document.getElementById("serviceNextInvoice").value
+    first_payment:
+        document.getElementById(
+            `firstPayment-${project}`
+        ).value,
 
-});
+    subscription_start:
+        document.getElementById(
+            `subscriptionStart-${project}`
+        ).value,
+
+    payment_recipient:
+        document.getElementById(
+            `paymentRecipient-${project}`
+        ).value,
+
+    payment_iban:
+        document.getElementById(
+            `paymentIban-${project}`
+        ).value,
+
+    payment_reference:
+        document.getElementById(
+            `paymentReference-${project}`
+        ).value
+};
+
+const result = await apiPost(
+    "/save-contract-information",
+    body
+);
 
 alert(result);
 
-if(result === "Gespeichert"){
-    showServiceTariffs();
-}
+showServiceTariffs();
 }
 
 loadPage("start");

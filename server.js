@@ -222,17 +222,53 @@ async function initDatabase(){
         CREATE TABLE IF NOT EXISTS service_tariffs (
             id SERIAL PRIMARY KEY,
             project TEXT NOT NULL UNIQUE,
+    
             status TEXT DEFAULT 'Offline',
             tariff TEXT DEFAULT 'Keiner',
+    
             support_active BOOLEAN DEFAULT false,
             billing_cycle TEXT DEFAULT '',
+    
             contract_start TEXT DEFAULT '',
+            first_payment TEXT DEFAULT '',
+            subscription_start TEXT DEFAULT '',
+    
+            payment_recipient TEXT DEFAULT '',
+            payment_iban TEXT DEFAULT '',
+            payment_reference TEXT DEFAULT '',
+    
             next_invoice TEXT DEFAULT '',
+    
             open_amount NUMERIC(10,2) DEFAULT 0,
             payment_status TEXT DEFAULT 'Beglichen',
+    
             updated_at TEXT DEFAULT ''
         )
     `);
+    await pool.query(`
+    ALTER TABLE service_tariffs
+    ADD COLUMN IF NOT EXISTS first_payment TEXT DEFAULT ''
+`);
+
+await pool.query(`
+    ALTER TABLE service_tariffs
+    ADD COLUMN IF NOT EXISTS subscription_start TEXT DEFAULT ''
+`);
+
+await pool.query(`
+    ALTER TABLE service_tariffs
+    ADD COLUMN IF NOT EXISTS payment_recipient TEXT DEFAULT ''
+`);
+
+await pool.query(`
+    ALTER TABLE service_tariffs
+    ADD COLUMN IF NOT EXISTS payment_iban TEXT DEFAULT ''
+`);
+
+await pool.query(`
+    ALTER TABLE service_tariffs
+    ADD COLUMN IF NOT EXISTS payment_reference TEXT DEFAULT ''
+`);
     
     await pool.query(`
         ALTER TABLE service_tariffs
@@ -243,7 +279,10 @@ async function initDatabase(){
         ALTER TABLE service_tariffs
         ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'Beglichen'
     `);
-    
+    await pool.query(`
+        ALTER TABLE service_tariffs
+        ADD COLUMN IF NOT EXISTS contract_start TEXT DEFAULT ''
+    `);
     await pool.query(`
         CREATE TABLE IF NOT EXISTS service_requests (
             id SERIAL PRIMARY KEY,
@@ -1807,18 +1846,35 @@ app.get("/service-status/:project", async (req, res) => {
         res.json({
 
             ...(tariff.rows[0] || {
+        
                 project,
-                status:"Offline",
-                tariff:"Keiner",
-                support_active:false,
-                billing_cycle:""
+        
+                status: "Offline",
+                tariff: "Keiner",
+        
+                support_active: false,
+                billing_cycle: "",
+        
+                contract_start: "",
+                first_payment: "",
+                subscription_start: "",
+        
+                payment_recipient: "",
+                payment_iban: "",
+                payment_reference: "",
+        
+                next_invoice: "",
+        
+                open_amount: 0,
+                payment_status: "Beglichen"
+        
             }),
-
+        
             pending_request:
                 pending.rows.length
                     ? pending.rows[0]
                     : null
-
+        
         });
 
     }catch(err){
@@ -1826,11 +1882,28 @@ app.get("/service-status/:project", async (req, res) => {
         console.log(err);
 
         res.json({
-            status:"Offline",
-            tariff:"Keiner",
-            support_active:false,
-            billing_cycle:"",
-            pending_request:null
+
+            status: "Offline",
+            tariff: "Keiner",
+        
+            support_active: false,
+            billing_cycle: "",
+        
+            contract_start: "",
+            first_payment: "",
+            subscription_start: "",
+        
+            payment_recipient: "",
+            payment_iban: "",
+            payment_reference: "",
+        
+            next_invoice: "",
+        
+            open_amount: 0,
+            payment_status: "Beglichen",
+        
+            pending_request: null
+        
         });
 
     }
@@ -2219,6 +2292,80 @@ app.post("/service-request-action", async (req, res) => {
     }
 });
 
+app.post("/save-contract-information", async (req, res) => {
+
+    try{
+
+        const{
+
+            project,
+
+            contract_start,
+            first_payment,
+            subscription_start,
+
+            payment_recipient,
+            payment_iban,
+            payment_reference
+
+        } = req.body;
+
+        if(!project){
+            return res.send("Projekt fehlt");
+        }
+
+        await pool.query(`
+            INSERT INTO service_tariffs (
+                project,
+                contract_start,
+                first_payment,
+                subscription_start,
+                payment_recipient,
+                payment_iban,
+                payment_reference,
+                updated_at
+            )
+            VALUES ($8,$1,$2,$3,$4,$5,$6,$7)
+        
+            ON CONFLICT (project)
+            DO UPDATE SET
+                contract_start = EXCLUDED.contract_start,
+                first_payment = EXCLUDED.first_payment,
+                subscription_start = EXCLUDED.subscription_start,
+                payment_recipient = EXCLUDED.payment_recipient,
+                payment_iban = EXCLUDED.payment_iban,
+                payment_reference = EXCLUDED.payment_reference,
+                updated_at = EXCLUDED.updated_at
+        `, [
+
+            contract_start,
+            first_payment,
+            subscription_start,
+
+            payment_recipient,
+            payment_iban,
+            payment_reference,
+
+            new Date().toLocaleString("de-DE",{
+                timeZone:"Europe/Berlin"
+            }),
+
+            project
+
+        ]);
+
+        res.send("Vertragsdaten gespeichert");
+
+    }catch(err){
+
+        console.log(err);
+
+        res.send("Speichern fehlgeschlagen");
+
+    }
+
+});
+
 /* Status Online / Offline */
 
 app.post("/update-service-status", async (req, res) => {
@@ -2339,6 +2486,52 @@ app.post("/update-service-payment", async (req, res) => {
         console.log(err);
         res.send("Zahlung konnte nicht gespeichert werden");
     }
+});
+
+app.post("/save-contract-information", async (req, res) => {
+
+    const {
+        project,
+        contract_start,
+        first_payment,
+        subscription_start,
+        payment_recipient,
+        payment_iban,
+        payment_reference
+    } = req.body;
+
+    try{
+
+        await pool.query(`
+            UPDATE service_tariffs
+            SET
+                contract_start = $1,
+                first_payment = $2,
+                subscription_start = $3,
+                payment_recipient = $4,
+                payment_iban = $5,
+                payment_reference = $6,
+                updated_at = NOW()
+            WHERE project = $7
+        `,[
+            contract_start,
+            first_payment,
+            subscription_start,
+            payment_recipient,
+            payment_iban,
+            payment_reference,
+            project
+        ]);
+
+        res.send("Vertragsdaten gespeichert");
+
+    }catch(err){
+
+        console.error(err);
+        res.status(500).send("Fehler beim Speichern");
+
+    }
+
 });
 
 /* History löschen */
