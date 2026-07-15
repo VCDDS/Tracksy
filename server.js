@@ -245,6 +245,31 @@ async function initDatabase(){
             updated_at TEXT DEFAULT ''
         )
     `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS service_packages (
+            id SERIAL PRIMARY KEY,
+            tariff TEXT NOT NULL UNIQUE,
+            monthly_price NUMERIC(10,2) DEFAULT 0,
+            yearly_price NUMERIC(10,2) DEFAULT 0,
+            status TEXT DEFAULT 'available',
+            updated_at TEXT DEFAULT ''
+        )
+    `);
+
+    await pool.query(`
+        INSERT INTO service_packages
+            (tariff, monthly_price, yearly_price)
+    
+        VALUES
+            ('Lite', 5.90, 59.00),
+            ('Normal', 11.90, 119.00),
+            ('Premium', 17.90, 179.00)
+    
+        ON CONFLICT (tariff)
+        DO NOTHING
+    `);
+
     await pool.query(`
     ALTER TABLE service_tariffs
     ADD COLUMN IF NOT EXISTS first_payment TEXT DEFAULT ''
@@ -3366,6 +3391,29 @@ app.post("/delete-document", async (req, res) => {
 app.use((err, req, res, next) => {
     console.log(err);
     res.status(500).send("Server Fehler");
+});
+app.get("/service-packages", async (req, res) => {
+
+    try{
+
+        const result = await pool.query(`
+            SELECT *
+            FROM service_packages
+            ORDER BY id
+        `);
+
+        res.json(result.rows);
+
+    }catch(error){
+
+        console.error(error);
+
+        res.status(500).json({
+            error:"Fehler beim Laden der Tarife."
+        });
+
+    }
+
 });
 
 app.listen(process.env.PORT || 3000, () => {
