@@ -516,6 +516,12 @@ if(page === "tickets"){
 
 let tickets = await apiGet("/tickets");
 
+tickets = tickets.filter(ticket =>
+    !(ticket.status || "")
+        .toLowerCase()
+        .includes("gelöscht")
+);
+
 let tracksyTicketForm = "";
 
 if(userRole === "admin" || userRole === "user"){
@@ -859,8 +865,8 @@ const deletedTickets = tickets.filter(ticket =>
 );
 
 const cancelledContracts = management.tariffs.filter(service =>
-    (service.status || "").toLowerCase() === "cancelled" ||
-    (service.tariff || "").toLowerCase() === "keiner"
+    (service.status || "").toLowerCase() === "gekündigt" ||
+    (service.status || "").toLowerCase() === "cancelled"
 );
 
 content.innerHTML = `
@@ -4537,6 +4543,11 @@ const management = await apiGet("/service-management");
 servicePackages = await apiGet("/service-packages");
 serviceAddons = await apiGet("/service-addons");
 
+const activeServiceTariffs = management.tariffs.filter(service =>
+    (service.status || "").toLowerCase() !== "gekündigt" &&
+    (service.status || "").toLowerCase() !== "cancelled"
+);
+
 content.innerHTML = `
 <div class="service-page">
 
@@ -4829,13 +4840,13 @@ content.innerHTML = `
 </section>
 
     ${
-        management.tariffs.length === 0
+        activeServiceTariffs.length === 0
         ? `
             <div class="service-empty">
                 Noch keine Serviceverträge vorhanden.
             </div>
         `
-        : management.tariffs.map(service => {
+        : activeServiceTariffs.map(service => {
 
             const activeAddons = management.requests.filter(request =>
                 request.project === service.project &&
@@ -5458,45 +5469,51 @@ const yearlyPrice =
         `yearlyPrice-${id}`
     ).value;
 
+const offerEnabled =
+    document.getElementById(
+        `offerEnabled-${id}`
+    ).checked;
+
+const offerName =
+    document.getElementById(
+        `offerName-${id}`
+    ).value;
+
+const offerMonthlyPrice =
+    document.getElementById(
+        `offerMonthlyPrice-${id}`
+    ).value;
+
+const offerYearlyPrice =
+    document.getElementById(
+        `offerYearlyPrice-${id}`
+    ).value;
+
+const offerUseEndDate =
+    document.getElementById(
+        `offerUseEndDate-${id}`
+    ).checked;
+
+const offerEndDate =
+    document.getElementById(
+        `offerEndDate-${id}`
+    ).value;
+
 const result = await apiPost(
     "/save-service-package",
     {
         id,
         monthly_price: monthlyPrice,
         yearly_price: yearlyPrice,
-        status
-    }
-);
-
-alert(result);
-
-showServiceTariffs();
-}
-
-async function saveServicePackageStatus(id){
-
-const status =
-    document.getElementById(
-        `servicePackageStatus-${id}`
-    ).value;
-
-const monthlyPrice =
-    document.getElementById(
-        `monthlyPrice-${id}`
-    ).value;
-
-const yearlyPrice =
-    document.getElementById(
-        `yearlyPrice-${id}`
-    ).value;
-
-const result = await apiPost(
-    "/save-service-package",
-    {
-        id,
-        monthly_price: monthlyPrice,
-        yearly_price: yearlyPrice,
-        status
+        status,
+        offer_enabled: offerEnabled,
+        offer_name: offerName,
+        offer_monthly_price: offerMonthlyPrice,
+        offer_yearly_price: offerYearlyPrice,
+        offer_use_end_date: offerUseEndDate,
+        offer_end_date: offerUseEndDate
+            ? offerEndDate
+            : ""
     }
 );
 

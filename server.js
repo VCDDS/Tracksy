@@ -226,6 +226,9 @@ async function initDatabase(){
             status TEXT DEFAULT 'Offline',
             tariff TEXT DEFAULT 'Keiner',
     
+            previous_tariff TEXT DEFAULT '',
+            previous_billing_cycle TEXT DEFAULT '',
+    
             support_active BOOLEAN DEFAULT false,
             billing_cycle TEXT DEFAULT '',
     
@@ -244,6 +247,15 @@ async function initDatabase(){
     
             updated_at TEXT DEFAULT ''
         )
+    `);
+    await pool.query(`
+        ALTER TABLE service_tariffs
+        ADD COLUMN IF NOT EXISTS previous_tariff TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE service_tariffs
+        ADD COLUMN IF NOT EXISTS previous_billing_cycle TEXT DEFAULT ''
     `);
 
     await pool.query(`
@@ -1850,6 +1862,7 @@ app.get("/service-management", async (req, res) => {
         const tariffs = await pool.query(`
             SELECT *
             FROM service_tariffs
+            WHERE status != 'Gekündigt'
             ORDER BY project ASC
         `);
 
@@ -2672,16 +2685,17 @@ app.post("/delete-ticket", async (req, res) => {
     try{
         const { id } = req.body;
 
-        await pool.query(
-            "DELETE FROM tickets WHERE id = $1",
-            [id]
-        );
+        await pool.query(`
+            UPDATE tickets
+            SET status = 'Gelöscht'
+            WHERE id = $1
+        `, [id]);
 
-        res.send("Ticket gelöscht");
+        res.send("Ticket archiviert");
 
     }catch(err){
         console.log(err);
-        res.send("Ticket löschen fehlgeschlagen");
+        res.status(500).send("Ticket konnte nicht archiviert werden");
     }
 });
 
@@ -3465,13 +3479,15 @@ app.post("/terminate-service-contract", async (req, res) => {
 
         await pool.query(`
             UPDATE service_tariffs
-            SET
-                status = 'Gekündigt',
-                tariff = 'Keiner',
-                support_active = false,
-                billing_cycle = '',
-                updated_at = $1
-            WHERE id = $2
+SET
+    status = 'Gekündigt',
+    previous_tariff = tariff,
+    previous_billing_cycle = billing_cycle,
+    tariff = 'Keiner',
+    support_active = false,
+    billing_cycle = '',
+    updated_at = $1
+WHERE id = $2
         `, [
             now,
             id
@@ -3512,10 +3528,43 @@ app.post("/terminate-service-contract", async (req, res) => {
     }
 });
 
-app.post("/terminate-service-contract", async (req, res) => {
-
+app.post("/restore-ticket", async (req, res) => {
     try{
+        const { id } = req.body;
 
+        await pool.query(`
+            UPDATE tickets
+            SET status = 'Offen'
+            WHERE id = $1
+        `, [id]);
+
+        res.send("Ticket wiederhergestellt");
+
+    }catch(err){
+        console.log(err);
+        res.status(500).send("Wiederherstellung fehlgeschlagen");
+    }
+});
+
+app.post("/delete-ticket-final", async (req, res) => {
+    try{
+        const { id } = req.body;
+
+        await pool.query(
+            "DELETE FROM tickets WHERE id = $1",
+            [id]
+        );
+
+        res.send("Ticket endgültig gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.status(500).send("Endgültiges Löschen fehlgeschlagen");
+    }
+});
+
+app.post("/restore-service-contract", async (req, res) => {
+    try{
         const { id } = req.body;
 
         const result = await pool.query(
@@ -3527,32 +3576,57 @@ app.post("/terminate-service-contract", async (req, res) => {
             return res.send("Vertrag nicht gefunden");
         }
 
+        const service = result.rows[0];
+
+        if(!service.previous_tariff){
+            return res.send("Kein vorheriger Tarif gespeichert");
+        }
+
+        const now = new Date().toLocaleString("de-DE", {
+            timeZone: "Europe/Berlin"
+        });
+
         await pool.query(`
             UPDATE service_tariffs
             SET
-                tariff = 'Keiner',
-                status = 'cancelled',
-                support_active = false,
-                billing_cycle = NULL
-            WHERE id = $1
-        `, [id]);
+                status = 'Online',
+                tariff = previous_tariff,
+                billing_cycle = previous_billing_cycle,
+                support_active = true,
+                updated_at = $1
+            WHERE id = $2
+        `, [
+            now,
+            id
+        ]);
 
-        res.send("Vertrag erfolgreich gekündigt.");
+        await pool.query(`
+            INSERT INTO service_history (
+                project,
+                action,
+                details,
+                created_at
+            )
+            VALUES ($1,$2,$3,$4)
+        `, [
+            service.project,
+            "Vertrag wiederhergestellt",
+            `${service.previous_tariff} – ${service.previous_billing_cycle || "Keine Abrechnung"}`,
+            now
+        ]);
 
-    }catch(error){
+        res.send("Vertrag wiederhergestellt");
 
-        console.error(error);
-
-        res.status(500).send("Kündigung fehlgeschlagen.");
-
+    }catch(err){
+        console.log(err);
+        res.status(500).send(
+            "Vertrag konnte nicht wiederhergestellt werden"
+        );
     }
-
 });
 
 app.get("/service-packages", async (req, res) => {
-
     try{
-
         const result = await pool.query(`
             SELECT *
             FROM service_packages
@@ -3562,15 +3636,12 @@ app.get("/service-packages", async (req, res) => {
         res.json(result.rows);
 
     }catch(error){
-
         console.error(error);
 
         res.status(500).json({
-            error:"Fehler beim Laden der Tarife."
+            error: "Fehler beim Laden der Tarife."
         });
-
     }
-
 });
 
 app.post("/save-service-package", async (req, res) => {
