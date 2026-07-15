@@ -5475,6 +5475,65 @@ alert(result);
 showServiceTariffs();
 }
 
+async function saveServicePackageStatus(id){
+
+const status =
+    document.getElementById(
+        `servicePackageStatus-${id}`
+    ).value;
+
+const monthlyPrice =
+    document.getElementById(
+        `monthlyPrice-${id}`
+    ).value;
+
+const yearlyPrice =
+    document.getElementById(
+        `yearlyPrice-${id}`
+    ).value;
+
+const result = await apiPost(
+    "/save-service-package",
+    {
+        id,
+        monthly_price: monthlyPrice,
+        yearly_price: yearlyPrice,
+        status
+    }
+);
+
+alert(result);
+
+showServiceTariffs();
+}
+
+async function saveServiceAddon(id){
+
+const priceInput =
+    document.getElementById(`addonPrice-${id}`);
+
+const statusSelect =
+    document.getElementById(`addonStatus-${id}`);
+
+if(!priceInput || !statusSelect){
+    alert("Zusatzleistung konnte nicht gefunden werden.");
+    return;
+}
+
+const result = await apiPost(
+    "/save-service-addon",
+    {
+        id,
+        price_once: Number(priceInput.value) || 0,
+        status: statusSelect.value
+    }
+);
+
+alert(result);
+
+showServiceTariffs();
+}
+
 loadPage("start");
 </script>
 
