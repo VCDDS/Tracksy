@@ -26,7 +26,7 @@
 
     --sidebar-width:220px;
     --topbar-height:64px;
-    --font-main: "Space Grotesk", sans-serif;
+    --font-main: "Inter", sans-serif;
 }
 
 *{
@@ -3414,4 +3414,719 @@ h3,
 h4{
     font-weight:700;
     letter-spacing:-0.02em;
+}
+/* =====================================================
+   TRACKSY – MOBILE KOMPLETTÜBERARBEITUNG
+===================================================== */
+
+@media (max-width:768px){
+
+    :root{
+        --topbar-height:56px;
+        --radius:14px;
+        --shadow:0 10px 26px rgba(0,0,0,.30);
+    }
+
+    body{
+        font-size:14px;
+        line-height:1.45;
+        letter-spacing:0;
+    }
+
+    /* =========================
+       MOBILE KOPFZEILE
+    ========================= */
+
+    .topbar{
+        height:56px;
+        min-height:56px;
+        padding:8px 14px;
+
+        grid-template-columns:40px 1fr 40px;
+
+        background:rgba(5,10,22,.97);
+        box-shadow:0 6px 20px rgba(0,0,0,.28);
+    }
+
+    .topbar::after{
+        font-size:18px;
+    }
+
+    .logo{
+        font-size:20px;
+        font-weight:800;
+    }
+
+    /* =========================
+       INHALT
+    ========================= */
+
+    #content{
+        top:56px;
+        left:0;
+        right:0;
+        bottom:58px;
+
+        padding:12px;
+        overflow-y:auto;
+        overflow-x:hidden;
+    }
+
+    h1{
+        font-size:23px;
+        line-height:1.2;
+    }
+
+    h2{
+        display:block;
+        width:100%;
+
+        margin:0 0 14px;
+        padding:0;
+
+        font-size:21px;
+        line-height:1.25;
+
+        background:none;
+        box-shadow:none;
+    }
+
+    h3{
+        font-size:17px;
+        line-height:1.3;
+    }
+
+    h4{
+        font-size:15px;
+    }
+
+    p{
+        font-size:13px;
+        line-height:1.5;
+    }
+
+    /* =========================
+       FORMULARE
+    ========================= */
+
+    input,
+    select,
+    textarea{
+        margin-bottom:10px;
+        padding:11px 12px;
+
+        border-radius:11px;
+        font-size:14px;
+    }
+
+    textarea{
+        min-height:105px;
+    }
+
+    button,
+    .manual-btn{
+        min-height:40px;
+        padding:9px 12px;
+
+        border-radius:11px;
+
+        font-size:13px;
+        font-weight:700;
+    }
+
+    /* =========================
+       KARTEN GLOBAL
+    ========================= */
+
+    .center-box,
+    .chart-box,
+    .clean-card,
+    .tracksy-ticket-card,
+    .admin-project-summary,
+    .dashboard-hero,
+    .dashboard-live,
+    .dash-card,
+    .dashboard-panel,
+    .analysis-summary > div,
+    .analysis-card,
+    .report-summary > div,
+    .report-card,
+    .suggestion-create-card,
+    .suggestion-card,
+    .cleanup-stat,
+    .cleanup-section,
+    .project-stat-card,
+    .project-create-card,
+    .project-list-section,
+    .project-manage-card,
+    .time-edit-summary > div,
+    .time-edit-card,
+    .shiftplan-create-card,
+    .shiftplan-card,
+    .workorder-create-card,
+    .workorder-card,
+    .tracksy-ticket-create,
+    .service-page-head,
+    .service-project,
+    .service-active-plan,
+    .service-section,
+    .service-contract-card{
+        margin-bottom:12px;
+        padding:14px;
+
+        border-radius:15px;
+
+        box-shadow:0 8px 22px rgba(0,0,0,.24);
+    }
+
+    /* =========================
+       DASHBOARD START
+    ========================= */
+
+    .dashboard-shell{
+        width:100%;
+        max-width:none;
+    }
+
+    .dashboard-hero{
+        display:block;
+        margin-bottom:12px;
+    }
+
+    .dashboard-hero h1{
+        font-size:22px;
+    }
+
+    .dashboard-hero p{
+        margin-bottom:0;
+        font-size:13px;
+    }
+
+    .dashboard-kicker{
+        margin-bottom:5px;
+        font-size:11px;
+    }
+
+    .dashboard-logo{
+        display:none;
+    }
+
+    .dashboard-grid{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px;
+        margin-bottom:12px;
+    }
+
+    .dash-card{
+        min-height:105px;
+        padding:13px;
+    }
+
+    .dash-card span,
+    .dashboard-live span{
+        font-size:11px;
+    }
+
+    .dash-card strong,
+    .dashboard-live strong{
+        margin-top:5px;
+        font-size:16px;
+    }
+
+    .dash-card small{
+        margin-top:4px;
+        font-size:11px;
+    }
+
+    .dash-card button{
+        width:100%;
+        margin-top:10px;
+    }
+
+    .dashboard-workspace{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:10px;
+    }
+
+    .dashboard-actions{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:8px;
+    }
+
+    .quick-grid{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:8px;
+    }
+
+    /* =========================
+       TICKETS
+    ========================= */
+
+    .ticket-page{
+        width:100%;
+    }
+
+    .tracksy-ticket-create{
+        padding:14px;
+    }
+
+    .tracksy-ticket-create-head{
+        gap:8px;
+        margin-bottom:12px;
+    }
+
+    .tracksy-ticket-create-head > span{
+        padding:5px 8px;
+        font-size:10px;
+    }
+
+    .ticket-stat-grid{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:8px;
+        margin-bottom:12px;
+    }
+
+    .ticket-stat-card{
+        padding:12px;
+        border-radius:13px;
+    }
+
+    .ticket-stat-icon{
+        font-size:19px;
+    }
+
+    .ticket-stat-card strong{
+        font-size:17px;
+    }
+
+    .ticket-stat-card small{
+        font-size:10px;
+    }
+
+    .ticket-filter-bar{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:8px;
+        margin-bottom:12px;
+    }
+
+    .ticket-admin-grid{
+        grid-template-columns:1fr;
+        gap:10px;
+        margin-top:10px;
+    }
+
+    .tracksy-ticket-card{
+        padding:14px;
+    }
+
+    .tracksy-ticket-head{
+        gap:8px;
+        margin-bottom:10px;
+    }
+
+    .tracksy-ticket-head h3{
+        font-size:16px;
+    }
+
+    .ticket-status-badge{
+        min-width:auto;
+        padding:5px 9px;
+        font-size:10px;
+    }
+
+    .ticket-badge-row{
+        gap:5px;
+        margin-bottom:10px;
+    }
+
+    .ticket-badge-row span{
+        padding:5px 7px;
+        font-size:10px;
+    }
+
+    .ticket-message{
+        padding:11px;
+        font-size:13px;
+        line-height:1.5;
+    }
+
+    .ticket-action-row{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:7px;
+        margin-top:12px;
+    }
+
+    .ticket-action-row button{
+        min-height:38px;
+        font-size:11px;
+    }
+
+    /* =========================
+       REPORT / VORSCHLÄGE
+    ========================= */
+
+    .report-summary,
+    .report-grid,
+    .suggestion-grid,
+    .analysis-summary,
+    .analysis-grid{
+        grid-template-columns:1fr;
+        gap:10px;
+    }
+
+    .report-summary strong,
+    .analysis-summary strong{
+        font-size:20px;
+    }
+
+    .report-text,
+    .suggestion-text{
+        min-height:0;
+        padding:12px;
+        font-size:13px;
+    }
+
+    .report-card-head,
+    .suggestion-head{
+        gap:8px;
+    }
+
+    .report-card-head span,
+    .suggestion-head span{
+        padding:5px 8px;
+        font-size:10px;
+    }
+
+    .suggestion-vote-row{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:7px;
+    }
+
+    .suggestion-comment,
+    .suggestion-reply{
+        padding:11px;
+        border-radius:12px;
+    }
+
+    /* =========================
+       PROJEKTE / DATEN / ZEITEN
+    ========================= */
+
+    .project-admin-summary,
+    .cleanup-summary,
+    .time-edit-summary{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:8px;
+        margin-bottom:12px;
+    }
+
+    .project-stat-card,
+    .cleanup-stat,
+    .time-edit-summary > div{
+        padding:12px;
+    }
+
+    .project-stat-card strong,
+    .cleanup-stat strong,
+    .time-edit-summary strong{
+        margin:4px 0;
+        font-size:19px;
+    }
+
+    .project-create-form{
+        gap:8px;
+    }
+
+    .project-admin-grid,
+    .time-edit-grid{
+        gap:10px;
+    }
+
+    .project-manage-head,
+    .time-edit-card-head{
+        gap:8px;
+    }
+
+    .project-task-list,
+    .project-current-status,
+    .project-suggestion-setting{
+        margin-top:10px;
+        padding:11px;
+    }
+
+    .project-manage-actions{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:7px;
+        margin-top:10px;
+    }
+
+    .cleanup-section-head{
+        gap:10px;
+        margin-bottom:12px;
+    }
+
+    .cleanup-item{
+        padding:12px;
+        gap:8px;
+        border-radius:12px;
+    }
+
+    .time-meta-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:7px;
+    }
+
+    .time-meta-grid div{
+        padding:9px;
+        border-radius:10px;
+    }
+
+    /* =========================
+       DIENSTPLAN / AUFGABEN
+    ========================= */
+
+    .shiftplan-grid,
+    .workorder-grid{
+        gap:10px;
+    }
+
+    .shiftplan-card-head,
+    .workorder-head{
+        gap:8px;
+    }
+
+    .workorder-text{
+        min-height:0;
+        padding:11px;
+        font-size:13px;
+    }
+
+    .shiftplan-actions,
+    .workorder-actions{
+        gap:7px;
+        margin-top:10px;
+    }
+
+    /* =========================
+       SERVICE & TARIFE
+    ========================= */
+
+    .service-page{
+        padding:0;
+    }
+
+    .service-page-head{
+        margin-bottom:12px;
+    }
+
+    .service-page-head h2{
+        margin:0 0 5px;
+        font-size:21px;
+    }
+
+    .service-project{
+        margin-bottom:12px;
+    }
+
+    .service-project-head{
+        gap:10px;
+        margin-bottom:12px;
+    }
+
+    .service-project-head h2{
+        padding:10px 12px;
+        font-size:17px;
+        border-radius:12px;
+    }
+
+    .service-project-head select{
+        min-width:0;
+        padding:10px 12px;
+    }
+
+    .service-status-overview{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:8px;
+        margin-bottom:12px;
+    }
+
+    .service-status-overview > div{
+        min-height:78px;
+        padding:11px;
+        border-radius:12px;
+    }
+
+    .service-status-overview span{
+        margin-bottom:5px;
+        font-size:10px;
+    }
+
+    .service-status-overview strong{
+        font-size:14px;
+    }
+
+    .service-contract-grid,
+    .service-benefit-grid,
+    .service-management-grid{
+        grid-template-columns:1fr;
+        gap:8px;
+    }
+
+    .service-contract-card h3,
+    .service-section h3{
+        margin-bottom:12px;
+        font-size:16px;
+    }
+
+    .service-active-plan-head{
+        gap:8px;
+        margin-bottom:12px;
+    }
+
+    .service-active-plan-head h3{
+        font-size:18px;
+    }
+
+    .service-active-plan-head > span{
+        padding:6px 10px;
+        font-size:11px;
+    }
+
+    .service-benefit-item{
+        padding:10px;
+        border-radius:11px;
+    }
+
+    .service-benefit-item strong{
+        font-size:12px;
+    }
+
+    .service-request{
+        padding:12px;
+        border-radius:12px;
+    }
+
+    .service-request-head{
+        gap:8px;
+    }
+
+    .service-request-actions{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:7px;
+    }
+
+    .service-history-entry{
+        padding:11px 12px 11px 15px;
+    }
+
+    /* =========================
+       TABELLEN
+    ========================= */
+
+    table{
+        border-radius:13px;
+        font-size:12px;
+    }
+
+    th,
+    td{
+        padding:9px 10px;
+    }
+
+    /* =========================
+       MOBILE MENÜ
+    ========================= */
+
+    .mobile-menu{
+        left:8px;
+        right:8px;
+        top:64px;
+        bottom:66px;
+
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:7px;
+
+        padding:10px;
+
+        border-radius:16px;
+    }
+
+    .mobile-menu button{
+        min-height:40px;
+        padding:8px 7px;
+
+        border-radius:10px;
+
+        font-size:12px;
+        line-height:1.25;
+    }
+
+    .mobile-admin-menu{
+        gap:7px;
+        padding-bottom:8px;
+        margin-bottom:4px;
+    }
+
+    .mobile-bottom-nav{
+        height:58px;
+    }
+
+    .mobile-bottom-nav button{
+        min-height:58px;
+        padding:4px 2px;
+        font-size:17px;
+    }
+
+    .mobile-bottom-nav button span{
+        margin-top:1px;
+        font-size:9px;
+    }
+
+    .dev-footer{
+        display:none;
+    }
+}
+
+/* =====================================================
+   SEHR KLEINE HANDYS
+===================================================== */
+
+@media (max-width:420px){
+
+    #content{
+        padding:10px;
+    }
+
+    .dashboard-grid,
+    .ticket-stat-grid,
+    .project-admin-summary,
+    .cleanup-summary,
+    .time-edit-summary,
+    .service-status-overview{
+        grid-template-columns:1fr;
+    }
+
+    .dashboard-actions,
+    .quick-grid,
+    .ticket-action-row,
+    .project-manage-actions,
+    .service-request-actions{
+        grid-template-columns:1fr;
+    }
+
+    .mobile-menu{
+        grid-template-columns:1fr;
+    }
+
+    .mobile-menu button{
+        min-height:38px;
+    }
 }
