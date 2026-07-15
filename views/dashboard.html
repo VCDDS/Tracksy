@@ -120,7 +120,7 @@
 
 <footer class="dev-footer">
     Powered by D.Schulteis <-TRACKSY-> 
-    v3.2.0 – Entwicklungsplanung & Internes Ticketsystem-Last Update 13.07.2026 
+    v3.3.0 – Service & Tarife-Last Update 15.07.2026 
     visualcode.dev © 04.2026
 </footer>
 
@@ -162,6 +162,7 @@ const content = document.getElementById("content");
 
 let currentUser = localStorage.getItem("username") || "Gast";
 let servicePackages = [];
+let serviceAddons = [];
 let isAdmin = localStorage.getItem("isAdmin") === "true";
 let userRole = localStorage.getItem("userRole") || (isAdmin ? "admin" : "user");
 let assignedProject = localStorage.getItem("assignedProject") || "";
@@ -4465,6 +4466,7 @@ currentPage = "serviceTariffs";
 
 const management = await apiGet("/service-management");
 servicePackages = await apiGet("/service-packages");
+serviceAddons = await apiGet("/service-addons");
 
 content.innerHTML = `
 <div class="service-page">
@@ -4482,10 +4484,10 @@ content.innerHTML = `
 
     <div class="service-package-management-head">
         <div>
-            <small>Globale Einstellungen</small>
-            <h3>📦 Tarifverfügbarkeit</h3>
+            <small>Globale Verwaltung</small>
+            <h3>📦 Tarife & Angebote</h3>
             <p>
-                Diese Einstellung gilt automatisch für alle verbundenen Webseiten.
+                Preise, Verfügbarkeit und Sonderangebote zentral verwalten.
             </p>
         </div>
     </div>
@@ -4496,61 +4498,257 @@ content.innerHTML = `
 
             <article class="service-package-card">
 
-                <div>
-                    <small>Tarif</small>
-                    <h4>${packageItem.tariff}</h4>
+                <div class="service-package-card-head">
+
+                    <div>
+                        <small>Betreuungstarif</small>
+                        <h4>${packageItem.tariff}</h4>
+                    </div>
+
+                    <span class="service-package-status status-${packageItem.status}">
+                        ${
+                            packageItem.status === "available"
+                                ? "🟢 Verfügbar"
+                                : packageItem.status === "waiting"
+                                    ? "🟡 Warteliste"
+                                    : "🔴 Nicht verfügbar"
+                        }
+                    </span>
+
                 </div>
 
-<label>Monatspreis</label>
+                <div class="service-package-price-grid">
 
-<input
-    type="number"
-    step="0.01"
-    id="monthlyPrice-${packageItem.id}"
-    value="${packageItem.monthly_price}"
->
+                    <label>
+                        Monatspreis
+                        <input
+                            type="number"
+                            step="0.01"
+                            id="monthlyPrice-${packageItem.id}"
+                            value="${packageItem.monthly_price}"
+                        >
+                    </label>
 
-<label>Jahrespreis</label>
+                    <label>
+                        Jahrespreis
+                        <input
+                            type="number"
+                            step="0.01"
+                            id="yearlyPrice-${packageItem.id}"
+                            value="${packageItem.yearly_price}"
+                        >
+                    </label>
 
-<input
-    type="number"
-    step="0.01"
-    id="yearlyPrice-${packageItem.id}"
-    value="${packageItem.yearly_price}"
->
+                </div>
 
-                <label>Status</label>
+                <label>
+                    Verfügbarkeit
 
-                <select id="servicePackageStatus-${packageItem.id}">
-                    <option
-                        value="available"
-                        ${packageItem.status === "available" ? "selected" : ""}
-                    >
-                        🟢 Verfügbar
-                    </option>
+                    <select id="servicePackageStatus-${packageItem.id}">
+                        <option
+                            value="available"
+                            ${packageItem.status === "available" ? "selected" : ""}
+                        >
+                            🟢 Verfügbar
+                        </option>
 
-                    <option
-                        value="waiting"
-                        ${packageItem.status === "waiting" ? "selected" : ""}
-                    >
-                        🟡 Warteliste
-                    </option>
+                        <option
+                            value="waiting"
+                            ${packageItem.status === "waiting" ? "selected" : ""}
+                        >
+                            🟡 Warteliste
+                        </option>
 
-                    <option
-                        value="unavailable"
-                        ${packageItem.status === "unavailable" ? "selected" : ""}
-                    >
-                        🔴 Nicht verfügbar
-                    </option>
-                </select>
+                        <option
+                            value="unavailable"
+                            ${packageItem.status === "unavailable" ? "selected" : ""}
+                        >
+                            🔴 Nicht verfügbar
+                        </option>
+                    </select>
+                </label>
+
+                <div class="service-offer-box">
+
+                    <label class="service-switch-row">
+
+                        <span>
+                            <strong>🏷️ Sonderangebot</strong>
+                            <small>Angebot aktivieren</small>
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            id="offerEnabled-${packageItem.id}"
+                            ${packageItem.offer_enabled ? "checked" : ""}
+                        >
+
+                    </label>
+
+                    <label>
+                        Angebotsname
+
+                        <input
+                            id="offerName-${packageItem.id}"
+                            value="${packageItem.offer_name || ""}"
+                            placeholder="z. B. Sommerangebot"
+                        >
+                    </label>
+
+                    <div class="service-package-price-grid">
+
+                        <label>
+                            Angebot monatlich
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                id="offerMonthlyPrice-${packageItem.id}"
+                                value="${packageItem.offer_monthly_price || 0}"
+                            >
+                        </label>
+
+                        <label>
+                            Angebot jährlich
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                id="offerYearlyPrice-${packageItem.id}"
+                                value="${packageItem.offer_yearly_price || 0}"
+                            >
+                        </label>
+
+                    </div>
+
+                    <label class="service-switch-row">
+
+                        <span>
+                            <strong>📅 Ablaufdatum</strong>
+                            <small>Nur verwenden, wenn benötigt</small>
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            id="offerUseEndDate-${packageItem.id}"
+                            ${packageItem.offer_use_end_date ? "checked" : ""}
+                        >
+
+                    </label>
+
+                    <label>
+                        Gültig bis
+
+                        <input
+                            type="date"
+                            id="offerEndDate-${packageItem.id}"
+                            value="${packageItem.offer_end_date || ""}"
+                        >
+                    </label>
+
+                </div>
 
                 <button
-                    onclick="saveServicePackageStatus(
-                        ${packageItem.id},
-                        '${packageItem.tariff}'
-                    )"
+                    class="service-save-button"
+                    onclick="saveServicePackageStatus(${packageItem.id})"
                 >
-                    💾 Status speichern
+                    💾 Tarif speichern
+                </button>
+
+            </article>
+
+        `).join("")}
+
+    </div>
+
+</section>
+
+<section class="service-addon-management">
+
+    <div class="service-package-management-head">
+
+        <div>
+            <small>Einmalige Leistungen</small>
+            <h3>🛠 Zusatzleistungen</h3>
+            <p>
+                Preise und Verfügbarkeit für alle verbundenen Webseiten verwalten.
+            </p>
+        </div>
+
+    </div>
+
+    <div class="service-addon-grid">
+
+        ${serviceAddons.map(addon => `
+
+            <article class="service-addon-card">
+
+                <div class="service-addon-card-head">
+
+                    <div>
+                        <small>Zusatzleistung</small>
+                        <h4>${addon.service_name}</h4>
+                    </div>
+
+                    <span class="service-package-status status-${addon.status}">
+                        ${
+                            addon.status === "available"
+                                ? "🟢 Verfügbar"
+                                : addon.status === "waiting"
+                                    ? "🟡 Warteliste"
+                                    : "🔴 Nicht verfügbar"
+                        }
+                    </span>
+
+                </div>
+
+                <label>
+                    Preis ab
+
+                    <div class="service-price-input">
+                        <input
+                            type="number"
+                            step="0.01"
+                            id="addonPrice-${addon.id}"
+                            value="${addon.price_once}"
+                        >
+
+                        <span>€</span>
+                    </div>
+                </label>
+
+                <label>
+                    Verfügbarkeit
+
+                    <select id="addonStatus-${addon.id}">
+                        <option
+                            value="available"
+                            ${addon.status === "available" ? "selected" : ""}
+                        >
+                            🟢 Verfügbar
+                        </option>
+
+                        <option
+                            value="waiting"
+                            ${addon.status === "waiting" ? "selected" : ""}
+                        >
+                            🟡 Warteliste
+                        </option>
+
+                        <option
+                            value="unavailable"
+                            ${addon.status === "unavailable" ? "selected" : ""}
+                        >
+                            🔴 Nicht verfügbar
+                        </option>
+                    </select>
+                </label>
+
+                <button
+                    class="service-save-button"
+                    onclick="saveServiceAddon(${addon.id})"
+                >
+                    💾 Leistung speichern
                 </button>
 
             </article>

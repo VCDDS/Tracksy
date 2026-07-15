@@ -256,6 +256,58 @@ async function initDatabase(){
             updated_at TEXT DEFAULT ''
         )
     `);
+    await pool.query(`
+        ALTER TABLE service_packages
+        ADD COLUMN IF NOT EXISTS offer_enabled BOOLEAN DEFAULT false
+    `);
+    
+    await pool.query(`
+        ALTER TABLE service_packages
+        ADD COLUMN IF NOT EXISTS offer_name TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        ALTER TABLE service_packages
+        ADD COLUMN IF NOT EXISTS offer_monthly_price NUMERIC(10,2) DEFAULT 0
+    `);
+    
+    await pool.query(`
+        ALTER TABLE service_packages
+        ADD COLUMN IF NOT EXISTS offer_yearly_price NUMERIC(10,2) DEFAULT 0
+    `);
+    
+    await pool.query(`
+        ALTER TABLE service_packages
+        ADD COLUMN IF NOT EXISTS offer_use_end_date BOOLEAN DEFAULT false
+    `);
+    
+    await pool.query(`
+        ALTER TABLE service_packages
+        ADD COLUMN IF NOT EXISTS offer_end_date TEXT DEFAULT ''
+    `);
+    
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS service_addons (
+            id SERIAL PRIMARY KEY,
+            service_name TEXT NOT NULL UNIQUE,
+            price_once NUMERIC(10,2) DEFAULT 0,
+            status TEXT DEFAULT 'available',
+            updated_at TEXT DEFAULT ''
+        )
+    `);
+    
+    await pool.query(`
+        INSERT INTO service_addons
+            (service_name, price_once)
+        VALUES
+            ('Neue Webseite', 399.00),
+            ('Neue Unterseite', 49.90),
+            ('Umfangreiche Designänderungen', 199.00),
+            ('Individuelle Funktionen', 99.00),
+            ('Schnittstellen und Integrationen', 99.00)
+        ON CONFLICT (service_name)
+        DO NOTHING
+    `);
 
     await pool.query(`
         INSERT INTO service_packages
@@ -3409,93 +3461,129 @@ app.get("/service-packages", async (req, res) => {
 
     }
 
-    app.get("/service-packages", async (req, res) => {
+});
 
-        try{
-    
-            const result = await pool.query(`
-                SELECT *
-                FROM service_packages
-                ORDER BY id
-            `);
-    
-            res.json(result.rows);
-    
-        }catch(error){
-    
-            console.error(error);
-    
-            res.status(500).json({
-                error:"Fehler beim Laden der Tarife."
-            });
-    
-        }
-    
-    });
-    
-    app.post("/save-service-package", async (req, res) => {
-    
-        try{
-    
-            const {
-                id,
-                monthly_price,
-                yearly_price,
-                status,
-    
-                offer_enabled,
-                offer_name,
-                offer_monthly_price,
-                offer_yearly_price,
-                offer_use_end_date,
-                offer_end_date
-            } = req.body;
-    
-            await pool.query(`
-                UPDATE service_packages
-                SET
-                    monthly_price = $1,
-                    yearly_price = $2,
-                    status = $3,
-    
-                    offer_enabled = $4,
-                    offer_name = $5,
-                    offer_monthly_price = $6,
-                    offer_yearly_price = $7,
-                    offer_use_end_date = $8,
-                    offer_end_date = $9,
-    
-                    updated_at = $10
-    
-                WHERE id = $11
-            `,[
-                monthly_price,
-                yearly_price,
-                status,
-    
-                offer_enabled === true,
-                offer_name || "",
-                Number(offer_monthly_price) || 0,
-                Number(offer_yearly_price) || 0,
-                offer_use_end_date === true,
-                offer_end_date || "",
-    
-                new Date().toISOString(),
-    
-                id
-            ]);
-    
-            res.send("Tarif gespeichert");
-    
-        }catch(error){
-    
-            console.error(error);
-    
-            res.status(500).send("Speichern fehlgeschlagen");
-    
-        }
-    
-    });
+app.post("/save-service-package", async (req, res) => {
+
+    try{
+
+        const {
+            id,
+            monthly_price,
+            yearly_price,
+            status,
+
+            offer_enabled,
+            offer_name,
+            offer_monthly_price,
+            offer_yearly_price,
+            offer_use_end_date,
+            offer_end_date
+        } = req.body;
+
+        await pool.query(`
+            UPDATE service_packages
+            SET
+                monthly_price = $1,
+                yearly_price = $2,
+                status = $3,
+
+                offer_enabled = $4,
+                offer_name = $5,
+                offer_monthly_price = $6,
+                offer_yearly_price = $7,
+                offer_use_end_date = $8,
+                offer_end_date = $9,
+
+                updated_at = $10
+
+            WHERE id = $11
+        `,[
+            monthly_price,
+            yearly_price,
+            status,
+
+            offer_enabled === true,
+            offer_name || "",
+            Number(offer_monthly_price) || 0,
+            Number(offer_yearly_price) || 0,
+            offer_use_end_date === true,
+            offer_end_date || "",
+
+            new Date().toISOString(),
+
+            id
+        ]);
+
+        res.send("Tarif gespeichert");
+
+    }catch(error){
+
+        console.error(error);
+
+        res.status(500).send("Speichern fehlgeschlagen");
+
+    }
+
+});
+
+app.get("/service-addons", async (req, res) => {
+
+    try{
+
+        const result = await pool.query(`
+            SELECT *
+            FROM service_addons
+            ORDER BY id
+        `);
+
+        res.json(result.rows);
+
+    }catch(error){
+
+        console.error(error);
+
+        res.status(500).json({
+            error:"Zusatzleistungen konnten nicht geladen werden."
+        });
+
+    }
+
+});
+
+app.post("/save-service-addon", async (req, res) => {
+
+    try{
+
+        const {
+            id,
+            price_once,
+            status
+        } = req.body;
+
+        await pool.query(`
+            UPDATE service_addons
+            SET
+                price_once = $1,
+                status = $2,
+                updated_at = $3
+            WHERE id = $4
+        `,[
+            Number(price_once) || 0,
+            status,
+            new Date().toISOString(),
+            id
+        ]);
+
+        res.send("Zusatzleistung gespeichert");
+
+    }catch(error){
+
+        console.error(error);
+
+        res.status(500).send("Zusatzleistung konnte nicht gespeichert werden");
+
+    }
 
 });
 app.use((err, req, res, next) => {

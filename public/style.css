@@ -4196,3 +4196,160 @@ h4{
 .service-package-management-head p{
     color:#9fb3d8;
 }
+/* ======================================================
+   SERVICE & TARIFE
+======================================================*/
+
+.service-package-grid,
+.service-addon-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(360px,1fr));
+    gap:24px;
+    margin-top:24px;
+}
+
+.service-package-card,
+.service-addon-card{
+    background:linear-gradient(180deg,#1b2434,#111827);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 12px 35px rgba(0,0,0,.35);
+    transition:.25s;
+}
+
+.service-package-card:hover,
+.service-addon-card:hover{
+    transform:translateY(-4px);
+    border-color:#3b82f6;
+    box-shadow:0 18px 45px rgba(59,130,246,.18);
+}
+
+.service-package-card-head,
+.service-addon-card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:22px;
+}
+
+.service-package-card h4,
+.service-addon-card h4{
+    margin:4px 0 0;
+    font-size:22px;
+}
+
+.service-package-card small,
+.service-addon-card small{
+    color:#94a3b8;
+}
+
+.service-package-price-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-bottom:18px;
+}
+
+.service-package-card input,
+.service-package-card select,
+.service-addon-card input,
+.service-addon-card select{
+    width:100%;
+    margin-top:8px;
+    padding:12px 14px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.08);
+    background:#0f172a;
+    color:#fff;
+}
+
+.service-offer-box{
+    margin-top:22px;
+    padding:18px;
+    border-radius:16px;
+    background:rgba(37,99,235,.08);
+    border:1px solid rgba(59,130,246,.15);
+}
+
+.service-switch-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+}
+
+.service-switch-row input{
+    width:22px;
+    height:22px;
+}
+
+.service-price-input{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.service-price-input span{
+    color:#94a3b8;
+    font-weight:600;
+}
+
+.service-save-button{
+    width:100%;
+    margin-top:24px;
+    border:none;
+    border-radius:14px;
+    padding:14px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    color:#fff;
+    background:linear-gradient(135deg,#2563eb,#4f46e5);
+    transition:.25s;
+}
+
+.service-save-button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 10px 25px rgba(37,99,235,.35);
+}
+
+.service-package-status{
+    padding:7px 14px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+}
+
+.status-available{
+    background:#14532d;
+    color:#4ade80;
+}
+
+.status-waiting{
+    background:#78350f;
+    color:#facc15;
+}
+
+.status-unavailable{
+    background:#7f1d1d;
+    color:#f87171;
+}
+
+@media(max-width:768px){
+
+    .service-package-grid,
+    .service-addon-grid{
+        grid-template-columns:1fr;
+    }
+
+    .service-package-price-grid{
+        grid-template-columns:1fr;
+    }
+
+    .service-package-card,
+    .service-addon-card{
+        padding:18px;
+    }
+
+}
