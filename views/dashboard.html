@@ -5239,6 +5239,11 @@ const result = await apiPost(
     }
 );
 
+alert(result);
+
+showServiceTariffs();
+}
+
 async function saveServicePackageStatus(id){
 
 const status =
@@ -5259,22 +5264,16 @@ const yearlyPrice =
 const result = await apiPost(
     "/save-service-package",
     {
-
         id,
-
         monthly_price: monthlyPrice,
-
         yearly_price: yearlyPrice,
-
         status
-
     }
 );
 
 alert(result);
 
 showServiceTariffs();
-
 }
 
 loadPage("start");
