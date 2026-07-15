@@ -3439,6 +3439,116 @@ app.post("/delete-document", async (req, res) => {
         res.send("Löschen fehlgeschlagen");
     }
 });
+
+app.post("/terminate-service-contract", async (req, res) => {
+    try{
+        const { id } = req.body;
+
+        if(!id){
+            return res.send("Vertrag fehlt");
+        }
+
+        const result = await pool.query(
+            "SELECT * FROM service_tariffs WHERE id = $1",
+            [id]
+        );
+
+        if(result.rows.length === 0){
+            return res.send("Vertrag nicht gefunden");
+        }
+
+        const service = result.rows[0];
+
+        const now = new Date().toLocaleString("de-DE", {
+            timeZone: "Europe/Berlin"
+        });
+
+        await pool.query(`
+            UPDATE service_tariffs
+            SET
+                status = 'Gekündigt',
+                tariff = 'Keiner',
+                support_active = false,
+                billing_cycle = '',
+                updated_at = $1
+            WHERE id = $2
+        `, [
+            now,
+            id
+        ]);
+
+        await pool.query(`
+            UPDATE service_requests
+            SET
+                status = 'Abgelehnt',
+                updated_at = $1
+            WHERE project = $2
+            AND status = 'Offen'
+        `, [
+            now,
+            service.project
+        ]);
+
+        await pool.query(`
+            INSERT INTO service_history (
+                project,
+                action,
+                details,
+                created_at
+            )
+            VALUES ($1,$2,$3,$4)
+        `, [
+            service.project,
+            "Vertrag durch VisualCode.dev gekündigt",
+            `${service.tariff || "Tarif"} beendet`,
+            now
+        ]);
+
+        res.send("Vertrag gekündigt");
+
+    }catch(err){
+        console.log(err);
+        res.status(500).send("Kündigung fehlgeschlagen");
+    }
+});
+
+app.post("/terminate-service-contract", async (req, res) => {
+
+    try{
+
+        const { id } = req.body;
+
+        const result = await pool.query(
+            "SELECT * FROM service_tariffs WHERE id = $1",
+            [id]
+        );
+
+        if(result.rows.length === 0){
+            return res.send("Vertrag nicht gefunden");
+        }
+
+        await pool.query(`
+            UPDATE service_tariffs
+            SET
+                tariff = 'Keiner',
+                status = 'cancelled',
+                support_active = false,
+                billing_cycle = NULL
+            WHERE id = $1
+        `, [id]);
+
+        res.send("Vertrag erfolgreich gekündigt.");
+
+    }catch(error){
+
+        console.error(error);
+
+        res.status(500).send("Kündigung fehlgeschlagen.");
+
+    }
+
+});
+
 app.get("/service-packages", async (req, res) => {
 
     try{

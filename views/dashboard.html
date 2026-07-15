@@ -4850,87 +4850,7 @@ content.innerHTML = `
 
 </div>
 
-<section class="service-contract-card">
 
-    <h3>📄 Vertragsdaten</h3>
-
-    <div class="service-contract-grid">
-
-        <div>
-            <label>📅 Vertragsbeginn</label>
-
-            <input
-                type="date"
-                id="contractStart-${service.project}"
-                value="${service.contract_start || ""}"
-            >
-        </div>
-
-        <div>
-            <label>💰 Erste Zahlung am</label>
-
-            <input
-                type="date"
-                id="firstPayment-${service.project}"
-                value="${service.first_payment || ""}"
-            >
-        </div>
-
-        <div>
-            <label>🔄 Abo-Beginn</label>
-
-            <input
-                type="date"
-                id="subscriptionStart-${service.project}"
-                value="${service.subscription_start || ""}"
-            >
-        </div>
-
-    </div>
-
-    <h3 style="margin-top:28px;">
-        🏦 Zahlungsinformationen
-    </h3>
-
-    <div class="service-contract-grid">
-
-        <div>
-            <label>Empfänger</label>
-
-            <input
-                id="paymentRecipient-${service.project}"
-                value="${service.payment_recipient || ""}"
-            >
-        </div>
-
-        <div>
-            <label>IBAN</label>
-
-            <input
-                id="paymentIban-${service.project}"
-                value="${service.payment_iban || ""}"
-            >
-        </div>
-
-        <div>
-            <label>Verwendungszweck</label>
-
-            <input
-                id="paymentReference-${service.project}"
-                value="${service.payment_reference || ""}"
-            >
-        </div>
-
-    </div>
-
-    <button
-        class="primary-btn"
-        onclick="saveContractInformation('${service.project}')"
-    >
-        💾 Vertragsdaten speichern
-    </button>
-
-</section>
                     <div class="service-status-overview">
 
     <div>
@@ -5023,6 +4943,15 @@ content.innerHTML = `
     >
         💾 Vertragsdaten speichern
     </button>
+
+${(userRole === "admin" || userRole === "user") ? `
+<button
+    class="danger-btn"
+    onclick="terminateServiceContract(${service.id})"
+>
+    🛑 Abo kündigen
+</button>
+` : ""}
 
 </section>
 
@@ -5527,6 +5456,22 @@ const result = await apiPost(
         price_once: Number(priceInput.value) || 0,
         status: statusSelect.value
     }
+);
+
+alert(result);
+
+showServiceTariffs();
+}
+
+async function terminateServiceContract(id){
+
+if(!confirm("Abo wirklich kündigen?")){
+    return;
+}
+
+const result = await apiPost(
+    "/terminate-service-contract",
+    { id }
 );
 
 alert(result);
