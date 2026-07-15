@@ -847,6 +847,75 @@ content.innerHTML = html;
 return;
 }
 
+if(page === "archiv"){
+
+const tickets = await apiGet("/tickets");
+const management = await apiGet("/service-management");
+
+const deletedTickets = tickets.filter(ticket =>
+    (ticket.status || "")
+        .toLowerCase()
+        .includes("gelöscht")
+);
+
+const cancelledContracts = management.tariffs.filter(service =>
+    (service.status || "").toLowerCase() === "cancelled" ||
+    (service.tariff || "").toLowerCase() === "keiner"
+);
+
+content.innerHTML = `
+<div class="archive-page">
+
+    <div class="archive-page-head">
+        <p class="dashboard-kicker">Admin Bereich</p>
+        <h2>📦 Archiv</h2>
+        <p>Gelöschte Tickets und gekündigte Verträge.</p>
+    </div>
+
+    <section class="archive-section">
+
+        <h3>🗑️ Gelöschte Tickets</h3>
+
+        ${
+            deletedTickets.length === 0
+                ? `<p>Keine gelöschten Tickets vorhanden.</p>`
+                : deletedTickets.map(ticket => `
+                    <article class="archive-item">
+                        <strong>#${ticket.id} · ${ticket.title || "-"}</strong>
+                        <span>📁 ${ticket.project || "-"}</span>
+                        <span>👤 ${ticket.customer_name || "-"}</span>
+                        <p>${ticket.message || "-"}</p>
+                    </article>
+                `).join("")
+        }
+
+    </section>
+
+    <section class="archive-section">
+
+        <h3>🛑 Gekündigte Verträge</h3>
+
+        ${
+            cancelledContracts.length === 0
+                ? `<p>Keine gekündigten Verträge vorhanden.</p>`
+                : cancelledContracts.map(service => `
+                    <article class="archive-item">
+                        <strong>${service.project || "-"}</strong>
+                        <span>Tarif: ${service.tariff || "Keiner"}</span>
+                        <span>Status: ${service.status || "Gekündigt"}</span>
+                        <span>Abrechnung: ${service.billing_cycle || "-"}</span>
+                    </article>
+                `).join("")
+        }
+
+    </section>
+
+</div>
+`;
+
+return;
+}
+
 if(page === "zeiten"){
         let times = await apiGet("/times");
 
