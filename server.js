@@ -3409,17 +3409,46 @@ app.get("/service-packages", async (req, res) => {
 
     }
 
-    app.post("/save-service-package", async (req, res) => {
+    app.get("/service-packages", async (req, res) => {
 
         try{
     
-            const {
+            const result = await pool.query(`
+                SELECT *
+                FROM service_packages
+                ORDER BY id
+            `);
     
+            res.json(result.rows);
+    
+        }catch(error){
+    
+            console.error(error);
+    
+            res.status(500).json({
+                error:"Fehler beim Laden der Tarife."
+            });
+    
+        }
+    
+    });
+    
+    app.post("/save-service-package", async (req, res) => {
+    
+        try{
+    
+            const {
                 id,
                 monthly_price,
                 yearly_price,
-                status
+                status,
     
+                offer_enabled,
+                offer_name,
+                offer_monthly_price,
+                offer_yearly_price,
+                offer_use_end_date,
+                offer_end_date
             } = req.body;
     
             await pool.query(`
@@ -3428,13 +3457,31 @@ app.get("/service-packages", async (req, res) => {
                     monthly_price = $1,
                     yearly_price = $2,
                     status = $3,
-                    updated_at = $4
-                WHERE id = $5
+    
+                    offer_enabled = $4,
+                    offer_name = $5,
+                    offer_monthly_price = $6,
+                    offer_yearly_price = $7,
+                    offer_use_end_date = $8,
+                    offer_end_date = $9,
+    
+                    updated_at = $10
+    
+                WHERE id = $11
             `,[
                 monthly_price,
                 yearly_price,
                 status,
+    
+                offer_enabled === true,
+                offer_name || "",
+                Number(offer_monthly_price) || 0,
+                Number(offer_yearly_price) || 0,
+                offer_use_end_date === true,
+                offer_end_date || "",
+    
                 new Date().toISOString(),
+    
                 id
             ]);
     
