@@ -4130,3 +4130,69 @@ h4{
         min-height:38px;
     }
 }
+.service-package-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:24px;
+    margin:25px 0 40px;
+}
+
+.service-package-card{
+    background:rgba(22,29,48,.92);
+    border:1px solid rgba(96,165,250,.18);
+    border-radius:18px;
+    padding:22px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+    transition:.25s;
+}
+
+.service-package-card:hover{
+    transform:translateY(-4px);
+    border-color:#5b7cff;
+    box-shadow:0 15px 40px rgba(91,124,255,.25);
+}
+
+.service-package-card h4{
+    font-size:1.35rem;
+    margin:4px 0;
+    color:#fff;
+}
+
+.service-package-card small{
+    color:#8ea3c9;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-size:.72rem;
+}
+
+.service-package-card label{
+    margin-top:4px;
+    font-size:.8rem;
+    color:#9fb3d8;
+}
+
+.service-package-card input,
+.service-package-card select{
+    width:100%;
+}
+
+.service-package-card button{
+    margin-top:12px;
+    width:100%;
+}
+
+.service-package-management-head{
+    margin-bottom:20px;
+}
+
+.service-package-management-head h3{
+    font-size:1.4rem;
+    margin:6px 0;
+}
+
+.service-package-management-head p{
+    color:#9fb3d8;
+}
