@@ -221,24 +221,56 @@ async function initDatabase(){
     await pool.query(`
         CREATE TABLE IF NOT EXISTS service_tariffs (
             id SERIAL PRIMARY KEY,
-        
             project TEXT NOT NULL UNIQUE,
-        
-            status TEXT DEFAULT 'Online',
-        
-            tariff TEXT DEFAULT 'Lite',
-        
-            support_active BOOLEAN DEFAULT true,
-        
-            billing_cycle TEXT DEFAULT 'Monatlich',
-        
+            status TEXT DEFAULT 'Offline',
+            tariff TEXT DEFAULT 'Keiner',
+            support_active BOOLEAN DEFAULT false,
+            billing_cycle TEXT DEFAULT '',
             contract_start TEXT DEFAULT '',
-        
             next_invoice TEXT DEFAULT '',
-        
+            open_amount NUMERIC(10,2) DEFAULT 0,
+            payment_status TEXT DEFAULT 'Beglichen',
             updated_at TEXT DEFAULT ''
         )
-        `);
+    `);
+    
+    await pool.query(`
+        ALTER TABLE service_tariffs
+        ADD COLUMN IF NOT EXISTS open_amount NUMERIC(10,2) DEFAULT 0
+    `);
+    
+    await pool.query(`
+        ALTER TABLE service_tariffs
+        ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'Beglichen'
+    `);
+    
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS service_requests (
+            id SERIAL PRIMARY KEY,
+            project TEXT NOT NULL,
+            request_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            tariff TEXT DEFAULT '',
+            billing_cycle TEXT DEFAULT '',
+            price_monthly NUMERIC(10,2) DEFAULT 0,
+            price_yearly NUMERIC(10,2) DEFAULT 0,
+            price_once NUMERIC(10,2) DEFAULT 0,
+            status TEXT DEFAULT 'Offen',
+            created_at TEXT NOT NULL,
+            updated_at TEXT DEFAULT ''
+        )
+    `);
+    
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS service_history (
+            id SERIAL PRIMARY KEY,
+            project TEXT NOT NULL,
+            action TEXT NOT NULL,
+            details TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+    `);
     
     await pool.query(`
         ALTER TABLE tickets
@@ -1697,10 +1729,45 @@ app.post("/create-ticket", async (req, res) => {
    SERVICE & TARIFE
 ====================================================== */
 
-app.get("/service-tariffs", async (req,res)=>{
-
+app.get("/service-management", async (req, res) => {
     try{
+        const tariffs = await pool.query(`
+            SELECT *
+            FROM service_tariffs
+            ORDER BY project ASC
+        `);
 
+        const requests = await pool.query(`
+            SELECT *
+            FROM service_requests
+            ORDER BY id DESC
+        `);
+
+        const history = await pool.query(`
+            SELECT *
+            FROM service_history
+            ORDER BY id DESC
+        `);
+
+        res.json({
+            tariffs: tariffs.rows,
+            requests: requests.rows,
+            history: history.rows
+        });
+
+    }catch(err){
+        console.log(err);
+
+        res.json({
+            tariffs: [],
+            requests: [],
+            history: []
+        });
+    }
+});
+
+app.get("/service-tariffs", async (req, res) => {
+    try{
         const result = await pool.query(`
             SELECT *
             FROM service_tariffs
@@ -1710,74 +1777,591 @@ app.get("/service-tariffs", async (req,res)=>{
         res.json(result.rows);
 
     }catch(err){
-
         console.log(err);
         res.json([]);
+    }
+});
+
+app.get("/service-status/:project", async (req, res) => {
+
+    try{
+
+        const project = req.params.project;
+
+        const tariff = await pool.query(`
+            SELECT *
+            FROM service_tariffs
+            WHERE project = $1
+            LIMIT 1
+        `,[project]);
+
+        const pending = await pool.query(`
+            SELECT *
+            FROM service_requests
+            WHERE project = $1
+            AND status = 'Offen'
+            ORDER BY id DESC
+            LIMIT 1
+        `,[project]);
+
+        res.json({
+
+            ...(tariff.rows[0] || {
+                project,
+                status:"Offline",
+                tariff:"Keiner",
+                support_active:false,
+                billing_cycle:""
+            }),
+
+            pending_request:
+                pending.rows.length
+                    ? pending.rows[0]
+                    : null
+
+        });
+
+    }catch(err){
+
+        console.log(err);
+
+        res.json({
+            status:"Offline",
+            tariff:"Keiner",
+            support_active:false,
+            billing_cycle:"",
+            pending_request:null
+        });
 
     }
 
 });
 
-app.post("/save-service-tariff", async(req,res)=>{
+/* Anfrage von RadioNetz */
 
+app.post("/create-service-request", async (req, res) => {
     try{
-
-        const{
+        const {
             project,
-            status,
+            requestType,
+            title,
+            description,
             tariff,
-            support_active,
-            billing_cycle,
-            contract_start,
-            next_invoice
+            billingCycle,
+            priceMonthly,
+            priceYearly,
+            priceOnce
         } = req.body;
 
+        const allowedTypes = [
+            "tariff",
+            "addon",
+            "cancellation"
+        ];
+
+        if(
+            !project ||
+            !requestType ||
+            !title ||
+            !allowedTypes.includes(requestType)
+        ){
+            return res.send("Anfrage-Daten fehlen");
+        }
+
+        if(requestType === "tariff"){
+
+            if(
+                !["Lite", "Normal", "Premium"].includes(tariff)
+            ){
+                return res.send("Ungültiger Tarif");
+            }
+
+            if(
+                !["Monatlich", "Jährlich"].includes(billingCycle)
+            ){
+                return res.send("Ungültige Abrechnung");
+            }
+        }
+
+        if(requestType === "cancellation"){
+
+            const activeService = await pool.query(`
+                SELECT tariff
+                FROM service_tariffs
+                WHERE project = $1
+                AND tariff IS NOT NULL
+                AND tariff != ''
+                AND tariff != 'Keiner'
+                LIMIT 1
+            `, [project]);
+
+            if(activeService.rows.length === 0){
+                return res.send("Kein aktiver Tarif vorhanden");
+            }
+        }
+
+        if(
+            requestType === "tariff" ||
+            requestType === "cancellation"
+        ){
+            const existingRequest = await pool.query(`
+                SELECT id
+                FROM service_requests
+                WHERE project = $1
+                AND request_type IN (
+                    'tariff',
+                    'cancellation'
+                )
+                AND status = 'Offen'
+                LIMIT 1
+            `, [project]);
+
+            if(existingRequest.rows.length > 0){
+                return res.send(
+                    "Es besteht bereits eine offene Tarifanfrage"
+                );
+            }
+        }
+
+        const now = new Date().toLocaleString("de-DE", {
+            timeZone: "Europe/Berlin"
+        });
+
         await pool.query(`
-        INSERT INTO service_tariffs
-        (
+            INSERT INTO service_requests (
+                project,
+                request_type,
+                title,
+                description,
+                tariff,
+                billing_cycle,
+                price_monthly,
+                price_yearly,
+                price_once,
+                status,
+                created_at
+            )
+            VALUES (
+                $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+            )
+        `, [
             project,
-            status,
-            tariff,
-            support_active,
-            billing_cycle,
-            contract_start,
-            next_invoice,
-            updated_at
-        )
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8)
-
-        ON CONFLICT(project)
-
-        DO UPDATE SET
-
-        status=$2,
-        tariff=$3,
-        support_active=$4,
-        billing_cycle=$5,
-        contract_start=$6,
-        next_invoice=$7,
-        updated_at=$8
-        `,
-        [
-            project,
-            status,
-            tariff,
-            support_active,
-            billing_cycle,
-            contract_start,
-            next_invoice,
-            new Date().toLocaleString("de-DE")
+            requestType,
+            title.trim(),
+            description || "",
+            tariff || "",
+            billingCycle || "",
+            Number(priceMonthly) || 0,
+            Number(priceYearly) || 0,
+            Number(priceOnce) || 0,
+            "Offen",
+            now
         ]);
 
-        res.send("Gespeichert");
+        await pool.query(`
+            INSERT INTO service_tariffs (project)
+            VALUES ($1)
+            ON CONFLICT (project) DO NOTHING
+        `, [project]);
+
+        res.send("Anfrage erfolgreich gesendet");
 
     }catch(err){
-
         console.log(err);
-        res.send("Fehler");
 
+        res.send(
+            "Anfrage konnte nicht gesendet werden"
+        );
     }
+});
 
+/* Anfrage annehmen oder ablehnen */
+
+app.post("/service-request-action", async (req, res) => {
+    try{
+        const { id, action } = req.body;
+
+        if(
+            !id ||
+            !["accept", "reject", "complete"].includes(action)
+        ){
+            return res.send("Ungültige Aktion");
+        }
+
+        const result = await pool.query(`
+            SELECT *
+            FROM service_requests
+            WHERE id = $1
+        `, [id]);
+
+        if(result.rows.length === 0){
+            return res.send("Anfrage nicht gefunden");
+        }
+
+        const request = result.rows[0];
+
+        const now = new Date().toLocaleString("de-DE", {
+            timeZone: "Europe/Berlin"
+        });
+
+        if(action === "accept"){
+
+            if(request.status !== "Offen"){
+                return res.send(
+                    "Anfrage wurde bereits bearbeitet"
+                );
+            }
+
+            if(request.request_type === "tariff"){
+
+                await pool.query(`
+                    INSERT INTO service_tariffs (
+                        project,
+                        status,
+                        tariff,
+                        support_active,
+                        billing_cycle,
+                        updated_at
+                    )
+                    VALUES ($1,$2,$3,$4,$5,$6)
+
+                    ON CONFLICT (project)
+                    DO UPDATE SET
+                        status = EXCLUDED.status,
+                        tariff = EXCLUDED.tariff,
+                        support_active =
+                            EXCLUDED.support_active,
+                        billing_cycle =
+                            EXCLUDED.billing_cycle,
+                        updated_at =
+                            EXCLUDED.updated_at
+                `, [
+                    request.project,
+                    "Online",
+                    request.tariff,
+                    true,
+                    request.billing_cycle,
+                    now
+                ]);
+
+                await pool.query(`
+                    UPDATE service_requests
+                    SET status = 'Angenommen',
+                        updated_at = $1
+                    WHERE id = $2
+                `, [now, id]);
+
+                await pool.query(`
+                    INSERT INTO service_history (
+                        project,
+                        action,
+                        details,
+                        created_at
+                    )
+                    VALUES ($1,$2,$3,$4)
+                `, [
+                    request.project,
+                    "Tarif angenommen",
+                    `${request.tariff} – ${request.billing_cycle}`,
+                    now
+                ]);
+
+                return res.send("Tarif angenommen");
+            }
+
+            if(request.request_type === "cancellation"){
+
+                await pool.query(`
+                    UPDATE service_tariffs
+                    SET tariff = 'Keiner',
+                        support_active = false,
+                        billing_cycle = '',
+                        updated_at = $1
+                    WHERE project = $2
+                `, [
+                    now,
+                    request.project
+                ]);
+
+                await pool.query(`
+                    UPDATE service_requests
+                    SET status = 'Angenommen',
+                        updated_at = $1
+                    WHERE id = $2
+                `, [now, id]);
+
+                await pool.query(`
+                    INSERT INTO service_history (
+                        project,
+                        action,
+                        details,
+                        created_at
+                    )
+                    VALUES ($1,$2,$3,$4)
+                `, [
+                    request.project,
+                    "Tarif gekündigt",
+                    request.tariff || "Tarif",
+                    now
+                ]);
+
+                return res.send("Kündigung angenommen");
+            }
+
+            await pool.query(`
+                UPDATE service_requests
+                SET status = 'Angenommen',
+                    updated_at = $1
+                WHERE id = $2
+            `, [now, id]);
+
+            await pool.query(`
+                INSERT INTO service_history (
+                    project,
+                    action,
+                    details,
+                    created_at
+                )
+                VALUES ($1,$2,$3,$4)
+            `, [
+                request.project,
+                "Zusatzleistung angenommen",
+                request.title,
+                now
+            ]);
+
+            return res.send(
+                "Zusatzleistung angenommen"
+            );
+        }
+
+        if(action === "reject"){
+
+            if(request.status !== "Offen"){
+                return res.send(
+                    "Anfrage wurde bereits bearbeitet"
+                );
+            }
+
+            await pool.query(`
+                UPDATE service_requests
+                SET status = 'Abgelehnt',
+                    updated_at = $1
+                WHERE id = $2
+            `, [now, id]);
+
+            let historyAction =
+                "Zusatzleistung abgelehnt";
+
+            if(request.request_type === "tariff"){
+                historyAction = "Tarif abgelehnt";
+            }
+
+            if(request.request_type === "cancellation"){
+                historyAction = "Kündigung abgelehnt";
+            }
+
+            await pool.query(`
+                INSERT INTO service_history (
+                    project,
+                    action,
+                    details,
+                    created_at
+                )
+                VALUES ($1,$2,$3,$4)
+            `, [
+                request.project,
+                historyAction,
+                request.title,
+                now
+            ]);
+
+            return res.send("Anfrage abgelehnt");
+        }
+
+        if(
+            action === "complete" &&
+            request.request_type === "addon" &&
+            request.status === "Angenommen"
+        ){
+            await pool.query(`
+                UPDATE service_requests
+                SET status = 'Erledigt',
+                    updated_at = $1
+                WHERE id = $2
+            `, [now, id]);
+
+            await pool.query(`
+                INSERT INTO service_history (
+                    project,
+                    action,
+                    details,
+                    created_at
+                )
+                VALUES ($1,$2,$3,$4)
+            `, [
+                request.project,
+                "Zusatzleistung erledigt",
+                request.title,
+                now
+            ]);
+
+            return res.send(
+                "Zusatzleistung erledigt"
+            );
+        }
+
+        res.send("Aktion nicht möglich");
+
+    }catch(err){
+        console.log(err);
+        res.send("Aktion fehlgeschlagen");
+    }
+});
+
+/* Status Online / Offline */
+
+app.post("/update-service-status", async (req, res) => {
+    try{
+        const { project, status } = req.body;
+
+        if(!project || !["Online", "Offline"].includes(status)){
+            return res.send("Ungültiger Status");
+        }
+
+        const now = new Date().toLocaleString("de-DE", {
+            timeZone: "Europe/Berlin"
+        });
+
+        await pool.query(`
+            INSERT INTO service_tariffs (
+                project,
+                status,
+                updated_at
+            )
+            VALUES ($1,$2,$3)
+
+            ON CONFLICT (project)
+            DO UPDATE SET
+                status = EXCLUDED.status,
+                updated_at = EXCLUDED.updated_at
+        `, [project, status, now]);
+
+        await pool.query(`
+            INSERT INTO service_history (
+                project,
+                action,
+                details,
+                created_at
+            )
+            VALUES ($1,$2,$3,$4)
+        `, [
+            project,
+            "Status geändert",
+            status,
+            now
+        ]);
+
+        res.send("Status gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Status konnte nicht gespeichert werden");
+    }
+});
+
+/* Offener Betrag */
+
+app.post("/update-service-payment", async (req, res) => {
+    try{
+        const {
+            project,
+            openAmount,
+            paymentStatus
+        } = req.body;
+
+        if(
+            !project ||
+            !["Offen", "Beglichen"].includes(paymentStatus)
+        ){
+            return res.send("Ungültige Zahlungsdaten");
+        }
+
+        const amount = Number(openAmount) || 0;
+
+        const now = new Date().toLocaleString("de-DE", {
+            timeZone: "Europe/Berlin"
+        });
+
+        await pool.query(`
+            INSERT INTO service_tariffs (
+                project,
+                open_amount,
+                payment_status,
+                updated_at
+            )
+            VALUES ($1,$2,$3,$4)
+
+            ON CONFLICT (project)
+            DO UPDATE SET
+                open_amount = EXCLUDED.open_amount,
+                payment_status = EXCLUDED.payment_status,
+                updated_at = EXCLUDED.updated_at
+        `, [
+            project,
+            paymentStatus === "Beglichen" ? 0 : amount,
+            paymentStatus,
+            now
+        ]);
+
+        await pool.query(`
+            INSERT INTO service_history (
+                project,
+                action,
+                details,
+                created_at
+            )
+            VALUES ($1,$2,$3,$4)
+        `, [
+            project,
+            paymentStatus === "Beglichen"
+                ? "Betrag beglichen"
+                : "Offener Betrag geändert",
+            paymentStatus === "Beglichen"
+                ? "Beglichen"
+                : amount.toFixed(2) + " €",
+            now
+        ]);
+
+        res.send("Zahlung gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Zahlung konnte nicht gespeichert werden");
+    }
+});
+
+/* History löschen */
+
+app.post("/clear-service-history", async (req, res) => {
+    try{
+        const { project } = req.body;
+
+        if(!project){
+            return res.send("Projekt fehlt");
+        }
+
+        await pool.query(`
+            DELETE FROM service_history
+            WHERE project = $1
+        `, [project]);
+
+        res.send("Verlauf gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Verlauf konnte nicht gelöscht werden");
+    }
 });
 
 app.post("/edit-external-ticket", async (req, res) => {

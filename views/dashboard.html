@@ -4428,8 +4428,7 @@ async function showServiceTariffs(){
 
 currentPage = "serviceTariffs";
 
-const services = await apiGet("/service-tariffs");
-const projects = await apiGet("/projects");
+const management = await apiGet("/service-management");
 
 content.innerHTML = `
 <div class="service-page">
@@ -4438,187 +4437,441 @@ content.innerHTML = `
         <div>
             <p class="dashboard-kicker">VisualCode Verwaltung</p>
             <h2>📻 Service & Tarife</h2>
-            <p>Serviceverträge, Betreuung und Abrechnung zentral verwalten.</p>
+            <p>Bestehende Verträge, Anfragen, Zahlungen und Verlauf verwalten.</p>
         </div>
     </div>
 
-    <section class="service-create-card">
+    ${
+        management.tariffs.length === 0
+        ? `
+            <div class="service-empty">
+                Noch keine Serviceverträge vorhanden.
+            </div>
+        `
+        : management.tariffs.map(service => {
 
-        <h3>➕ Servicevertrag anlegen</h3>
+            const activeAddons = management.requests.filter(request =>
+                request.project === service.project &&
+                request.request_type === "addon" &&
+                request.status === "Angenommen"
+            );
 
-        <select id="newServiceProject">
-            <option value="">Projekt auswählen</option>
+            const tariffRequests = management.requests.filter(request =>
+    request.project === service.project &&
+    (
+        request.request_type === "tariff" ||
+        request.request_type === "cancellation"
+    ) &&
+    request.status === "Offen"
+);
+            const addonRequests = management.requests.filter(request =>
+                request.project === service.project &&
+                request.request_type === "addon" &&
+                (
+                    request.status === "Offen" ||
+                    request.status === "Angenommen"
+                )
+            );
 
-            ${projects.map(project => `
-                <option value="${project.name}">
-                    ${project.name}
-                </option>
-            `).join("")}
-        </select>
+            const projectHistory = management.history.filter(entry =>
+                entry.project === service.project
+            );
 
-        <select id="newServiceStatus">
-            <option value="Online">🟢 Online</option>
-            <option value="Wartung">🟠 Wartung</option>
-            <option value="Offline">🔴 Offline</option>
-        </select>
+            return `
+            <section class="service-project">
 
-        <select id="newServiceTariff">
-            <option value="Lite">Lite</option>
-            <option value="Normal">Normal</option>
-            <option value="Premium">Premium</option>
-        </select>
+                <div class="service-project-head">
 
-        <select id="newServiceSupport">
-            <option value="true">Betreuung aktiv</option>
-            <option value="false">Betreuung inaktiv</option>
-        </select>
+                    <div>
+                        <small>Projekt</small>
+                        <h2>📻 ${service.project}</h2>
+                    </div>
 
-        <select id="newServiceBilling">
-            <option value="Monatlich">Monatlich</option>
-            <option value="Jährlich">Jährlich</option>
-        </select>
+                    <select
+                        onchange="updateServiceStatus(
+                            '${service.project}',
+                            this.value
+                        )"
+                    >
+                        <option
+                            value="Online"
+                            ${service.status === "Online" ? "selected" : ""}
+                        >
+                            🟢 Online
+                        </option>
 
-        <input
-            id="newServiceContractStart"
-            type="date"
-        >
+                        <option
+                            value="Offline"
+                            ${service.status === "Offline" ? "selected" : ""}
+                        >
+                            🔴 Offline
+                        </option>
+                    </select>
 
-        <input
-            id="newServiceNextInvoice"
-            type="date"
-        >
-
-        <button onclick="createServiceTariff()">
-            💾 Servicevertrag speichern
-        </button>
-
-    </section>
-
-    <div class="service-grid">
-
-        ${
-            services.length === 0
-            ? `
-                <div class="service-empty">
-                    Noch kein Servicevertrag angelegt.
                 </div>
-            `
-            : services.map(service => {
 
-                let statusClass = "service-status-online";
+                <div class="service-status-overview">
 
-                if(service.status === "Wartung"){
-                    statusClass = "service-status-maintenance";
-                }
-
-                if(service.status === "Offline"){
-                    statusClass = "service-status-offline";
-                }
-
-                return `
-                <article class="service-card">
-
-                    <div class="service-card-head">
-
-                        <div>
-                            <small>Projekt</small>
-                            <h3>${service.project}</h3>
-                        </div>
-
-                        <span class="service-status-badge ${statusClass}">
-                            ${service.status}
-                        </span>
-
+                    <div>
+                        <span>Status</span>
+                        <strong>${service.status || "Offline"}</strong>
                     </div>
 
-                    <div class="service-info-grid">
-
-                        <div>
-                            <span>📦 Tarif</span>
-                            <strong>${service.tariff}</strong>
-                        </div>
-
-                        <div>
-                            <span>🛠 Betreuung</span>
-                            <strong>
-                                ${service.support_active ? "Aktiv" : "Inaktiv"}
-                            </strong>
-                        </div>
-
-                        <div>
-                            <span>💳 Abrechnung</span>
-                            <strong>${service.billing_cycle}</strong>
-                        </div>
-
-                        <div>
-                            <span>📅 Vertragsbeginn</span>
-                            <strong>${service.contract_start || "-"}</strong>
-                        </div>
-
-                        <div>
-                            <span>🧾 Nächste Abrechnung</span>
-                            <strong>${service.next_invoice || "-"}</strong>
-                        </div>
-
-                        <div>
-                            <span>🔄 Letzte Änderung</span>
-                            <strong>${service.updated_at || "-"}</strong>
-                        </div>
-
+                    <div>
+                        <span>Aktueller Tarif</span>
+                        <strong>${service.tariff || "Keiner"}</strong>
                     </div>
 
-                    <button onclick="editServiceTariff('${service.project}')">
-                        ✏️ Vertrag bearbeiten
-                    </button>
+                    <div>
+                        <span>Abrechnung</span>
+                        <strong>${service.billing_cycle || "-"}</strong>
+                    </div>
 
-                </article>
-                `;
-            }).join("")
-        }
+                    <div>
+                        <span>Gebuchte Zusatzleistungen</span>
 
-    </div>
+                        <strong>
+                            ${
+                                activeAddons.length === 0
+                                ? "Keine"
+                                : activeAddons
+                                    .map(addon => addon.title)
+                                    .join(", ")
+                            }
+                        </strong>
+                    </div>
+
+                </div>
+
+                <div class="service-management-grid">
+
+                    <section class="service-section">
+
+                        <h3>📦 Tarifanfragen</h3>
+
+                        ${
+                            tariffRequests.length === 0
+                            ? `
+                                <p class="service-section-empty">
+                                    Keine offene Tarifanfrage.
+                                </p>
+                            `
+                            : tariffRequests.map(request => `
+                                <article class="service-request">
+
+                                    <div class="service-request-head">
+                                        <div>
+                                            <small>
+    ${
+        request.request_type === "cancellation"
+            ? "Kündigungsanfrage"
+            : "Tarifanfrage"
+    }
+</small>
+
+<h4>
+    ${
+        request.request_type === "cancellation"
+            ? `Kündigung ${request.tariff}`
+            : request.tariff
+    }
+</h4>
+                                        </div>
+
+                                        <span>
+                                            ${request.billing_cycle}
+                                        </span>
+                                    </div>
+
+                                    <p>
+                                        ${request.description || "-"}
+                                    </p>
+
+                                   ${
+    request.request_type === "cancellation"
+    ? `
+        <div class="service-price-box">
+            <strong>Tarifkündigung</strong>
+            <span>${request.billing_cycle || "-"}</span>
+        </div>
+    `
+    : `
+        <div class="service-price-box">
+            <strong>
+                ${Number(request.price_monthly || 0).toFixed(2)} €
+            </strong>
+            <span>/ Monat</span>
+
+            <small>oder</small>
+
+            <strong>
+                ${Number(request.price_yearly || 0).toFixed(2)} €
+            </strong>
+            <span>/ Jahr</span>
+        </div>
+    `
+}
+
+                                    <div class="service-request-actions">
+
+                                        <button
+                                            onclick="serviceAction(
+                                                ${request.id},
+                                                'accept'
+                                            )"
+                                        >
+                                            ✅ Annehmen
+                                        </button>
+
+                                        <button
+                                            class="danger-btn"
+                                            onclick="serviceAction(
+                                                ${request.id},
+                                                'reject'
+                                            )"
+                                        >
+                                            ❌ Ablehnen
+                                        </button>
+
+                                    </div>
+
+                                </article>
+                            `).join("")
+                        }
+
+                    </section>
+
+                    <section class="service-section">
+
+                        <h3>🛠 Einmalige Zusatzleistungen</h3>
+
+                        ${
+                            addonRequests.length === 0
+                            ? `
+                                <p class="service-section-empty">
+                                    Keine offene Zusatzleistung.
+                                </p>
+                            `
+                            : addonRequests.map(request => `
+                                <article class="service-request">
+
+                                    <div class="service-request-head">
+                                        <div>
+                                            <small>Zusatzleistung</small>
+                                            <h4>${request.title}</h4>
+                                        </div>
+
+                                        <span>
+                                            ${request.status}
+                                        </span>
+                                    </div>
+
+                                    <p>
+                                        ${request.description || "-"}
+                                    </p>
+
+                                    <div class="service-price-box">
+                                        <strong>
+                                            ab ${Number(request.price_once || 0).toFixed(2)} €
+                                        </strong>
+                                    </div>
+
+                                    <div class="service-request-actions">
+
+                                        ${
+                                            request.status === "Offen"
+                                            ? `
+                                                <button
+                                                    onclick="serviceAction(
+                                                        ${request.id},
+                                                        'accept'
+                                                    )"
+                                                >
+                                                    ✅ Annehmen
+                                                </button>
+
+                                                <button
+                                                    class="danger-btn"
+                                                    onclick="serviceAction(
+                                                        ${request.id},
+                                                        'reject'
+                                                    )"
+                                                >
+                                                    ❌ Ablehnen
+                                                </button>
+                                            `
+                                            : `
+                                                <button
+                                                    onclick="serviceAction(
+                                                        ${request.id},
+                                                        'complete'
+                                                    )"
+                                                >
+                                                    ✔️ Erledigt
+                                                </button>
+                                            `
+                                        }
+
+                                    </div>
+
+                                </article>
+                            `).join("")
+                        }
+
+                    </section>
+
+                    <section class="service-section">
+
+                        <h3>💳 Aktuell offener Betrag</h3>
+
+                        <input
+                            id="serviceAmount_${service.id}"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value="${service.open_amount || 0}"
+                            placeholder="Offener Betrag"
+                        >
+
+                        <select id="servicePaymentStatus_${service.id}">
+                            <option
+                                value="Offen"
+                                ${service.payment_status === "Offen" ? "selected" : ""}
+                            >
+                                Offen
+                            </option>
+
+                            <option
+                                value="Beglichen"
+                                ${service.payment_status === "Beglichen" ? "selected" : ""}
+                            >
+                                Beglichen
+                            </option>
+                        </select>
+
+                        <button
+                            onclick="saveServicePayment(
+                                ${service.id},
+                                '${service.project}'
+                            )"
+                        >
+                            💾 Zahlung speichern
+                        </button>
+
+                    </section>
+
+                    <section class="service-section">
+
+                        <div class="service-history-head">
+
+                            <h3>📜 History</h3>
+
+                            <button
+                                class="danger-btn"
+                                onclick="clearServiceHistory(
+                                    '${service.project}'
+                                )"
+                            >
+                                🗑️ Alles löschen
+                            </button>
+
+                        </div>
+
+                        ${
+                            projectHistory.length === 0
+                            ? `
+                                <p class="service-section-empty">
+                                    Noch kein Verlauf vorhanden.
+                                </p>
+                            `
+                            : projectHistory.map(entry => `
+                                <div class="service-history-entry">
+
+                                    <small>${entry.created_at}</small>
+
+                                    <strong>${entry.action}</strong>
+
+                                    <p>${entry.details || "-"}</p>
+
+                                </div>
+                            `).join("")
+                        }
+
+                    </section>
+
+                </div>
+
+            </section>
+            `;
+        }).join("")
+    }
 
 </div>
 `;
 }
 
-async function createServiceTariff(){
+/* =====================================================
+   SERVICE AKTIONEN
+===================================================== */
 
-const project = document.getElementById("newServiceProject").value;
+async function serviceAction(id, action){
 
-if(!project){
-    alert("Bitte Projekt auswählen.");
-    return;
-}
-
-const result = await apiPost("/save-service-tariff", {
-
-    project,
-
-    status:
-        document.getElementById("newServiceStatus").value,
-
-    tariff:
-        document.getElementById("newServiceTariff").value,
-
-    support_active:
-        document.getElementById("newServiceSupport").value === "true",
-
-    billing_cycle:
-        document.getElementById("newServiceBilling").value,
-
-    contract_start:
-        document.getElementById("newServiceContractStart").value,
-
-    next_invoice:
-        document.getElementById("newServiceNextInvoice").value
+const result = await apiPost("/service-request-action", {
+    id,
+    action
 });
 
 alert(result);
 
-if(result === "Gespeichert"){
-    showServiceTariffs();
+showServiceTariffs();
+
 }
+
+async function updateServiceStatus(project, status){
+
+await apiPost("/update-service-status", {
+    project,
+    status
+});
+
+}
+
+async function saveServicePayment(id, project){
+
+const openAmount =
+    document.getElementById(`serviceAmount_${id}`).value;
+
+const paymentStatus =
+    document.getElementById(`servicePaymentStatus_${id}`).value;
+
+const result = await apiPost("/update-service-payment",{
+
+    project,
+    openAmount,
+    paymentStatus
+
+});
+
+alert(result);
+
+showServiceTariffs();
+
+}
+
+async function clearServiceHistory(project){
+
+if(!confirm("Verlauf wirklich löschen?")){
+    return;
+}
+
+await apiPost("/clear-service-history",{
+
+    project
+
+});
+
+showServiceTariffs();
+
 }
 
 async function editServiceTariff(project){
