@@ -2846,3 +2846,178 @@ canvas{
     font-size:15px;
 
 }
+/* ======================================================
+   SERVICE & TARIFE
+====================================================== */
+
+.service-page{
+    display:flex;
+    flex-direction:column;
+    gap:25px;
+}
+
+.service-page-head{
+    background:#181818;
+    border:1px solid #2d2d2d;
+    border-radius:16px;
+    padding:25px;
+}
+
+.service-page-head h2{
+    margin:0;
+    color:#fff;
+    font-size:30px;
+}
+
+.service-page-head p{
+    margin-top:8px;
+    color:#9fa6b2;
+}
+
+.service-create-card{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    background:#181818;
+    padding:20px;
+    border-radius:16px;
+    border:1px solid #2d2d2d;
+}
+
+.service-create-card h3{
+    grid-column:1/-1;
+    margin:0 0 10px;
+    color:#fff;
+}
+
+.service-create-card input,
+.service-create-card select{
+    width:100%;
+}
+
+.service-create-card button{
+    grid-column:1/-1;
+}
+
+.service-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(380px,1fr));
+    gap:20px;
+}
+
+.service-card{
+    background:#181818;
+    border:1px solid #2d2d2d;
+    border-radius:16px;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+    transition:.25s;
+}
+
+.service-card:hover{
+    transform:translateY(-3px);
+    border-color:#3a8dff;
+}
+
+.service-card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+}
+
+.service-card-head h3{
+    margin:4px 0 0;
+    color:#fff;
+}
+
+.service-card-head small{
+    color:#8b8b8b;
+}
+
+.service-status-badge{
+    padding:7px 14px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:700;
+}
+
+.service-status-online{
+    background:#0d5b2b;
+    color:#7dffab;
+}
+
+.service-status-maintenance{
+    background:#5c4300;
+    color:#ffd166;
+}
+
+.service-status-offline{
+    background:#5d1d1d;
+    color:#ff8f8f;
+}
+
+.service-info-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:15px;
+}
+
+.service-info-grid span{
+    display:block;
+    color:#888;
+    font-size:13px;
+    margin-bottom:5px;
+}
+
+.service-info-grid strong{
+    color:#fff;
+}
+
+.service-card button{
+    margin-top:auto;
+}
+
+.service-empty{
+    grid-column:1/-1;
+    background:#181818;
+    border:2px dashed #444;
+    border-radius:16px;
+    padding:50px;
+    text-align:center;
+    color:#888;
+}
+
+.service-edit-card{
+    max-width:700px;
+    background:#181818;
+    padding:25px;
+    border-radius:16px;
+    border:1px solid #2d2d2d;
+    display:flex;
+    flex-direction:column;
+    gap:15px;
+}
+
+.service-edit-actions{
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+}
+
+@media(max-width:768px){
+
+.service-grid{
+    grid-template-columns:1fr;
+}
+
+.service-info-grid{
+    grid-template-columns:1fr;
+}
+
+.service-create-card{
+    grid-template-columns:1fr;
+}
+
+}

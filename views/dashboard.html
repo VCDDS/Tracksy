@@ -33,6 +33,7 @@
 
         <button onclick="loadPage('start')">🏠 <span>Start</span></button>
         <button onclick="loadPage('tickets')">🎫 <span>Tickets</span></button>
+        <button onclick="showServiceTariffs()">📻 Service & Tarife</button>
         <button onclick="loadPage('zeiten')">⌛ <span>Zeiten</span></button>
         <button onclick="loadPage('auswertung')">📊 <span>Auswertung</span></button>
         <button onclick="loadPage('report')">💻 <span>Report</span></button>
@@ -4418,6 +4419,353 @@ loadPage("entwicklungsplanung");
 
 }
 
+
+/* =====================================================
+   SERVICE & TARIFE
+===================================================== */
+
+async function showServiceTariffs(){
+
+currentPage = "serviceTariffs";
+
+const services = await apiGet("/service-tariffs");
+const projects = await apiGet("/projects");
+
+content.innerHTML = `
+<div class="service-page">
+
+    <div class="service-page-head">
+        <div>
+            <p class="dashboard-kicker">VisualCode Verwaltung</p>
+            <h2>📻 Service & Tarife</h2>
+            <p>Serviceverträge, Betreuung und Abrechnung zentral verwalten.</p>
+        </div>
+    </div>
+
+    <section class="service-create-card">
+
+        <h3>➕ Servicevertrag anlegen</h3>
+
+        <select id="newServiceProject">
+            <option value="">Projekt auswählen</option>
+
+            ${projects.map(project => `
+                <option value="${project.name}">
+                    ${project.name}
+                </option>
+            `).join("")}
+        </select>
+
+        <select id="newServiceStatus">
+            <option value="Online">🟢 Online</option>
+            <option value="Wartung">🟠 Wartung</option>
+            <option value="Offline">🔴 Offline</option>
+        </select>
+
+        <select id="newServiceTariff">
+            <option value="Lite">Lite</option>
+            <option value="Normal">Normal</option>
+            <option value="Premium">Premium</option>
+        </select>
+
+        <select id="newServiceSupport">
+            <option value="true">Betreuung aktiv</option>
+            <option value="false">Betreuung inaktiv</option>
+        </select>
+
+        <select id="newServiceBilling">
+            <option value="Monatlich">Monatlich</option>
+            <option value="Jährlich">Jährlich</option>
+        </select>
+
+        <input
+            id="newServiceContractStart"
+            type="date"
+        >
+
+        <input
+            id="newServiceNextInvoice"
+            type="date"
+        >
+
+        <button onclick="createServiceTariff()">
+            💾 Servicevertrag speichern
+        </button>
+
+    </section>
+
+    <div class="service-grid">
+
+        ${
+            services.length === 0
+            ? `
+                <div class="service-empty">
+                    Noch kein Servicevertrag angelegt.
+                </div>
+            `
+            : services.map(service => {
+
+                let statusClass = "service-status-online";
+
+                if(service.status === "Wartung"){
+                    statusClass = "service-status-maintenance";
+                }
+
+                if(service.status === "Offline"){
+                    statusClass = "service-status-offline";
+                }
+
+                return `
+                <article class="service-card">
+
+                    <div class="service-card-head">
+
+                        <div>
+                            <small>Projekt</small>
+                            <h3>${service.project}</h3>
+                        </div>
+
+                        <span class="service-status-badge ${statusClass}">
+                            ${service.status}
+                        </span>
+
+                    </div>
+
+                    <div class="service-info-grid">
+
+                        <div>
+                            <span>📦 Tarif</span>
+                            <strong>${service.tariff}</strong>
+                        </div>
+
+                        <div>
+                            <span>🛠 Betreuung</span>
+                            <strong>
+                                ${service.support_active ? "Aktiv" : "Inaktiv"}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>💳 Abrechnung</span>
+                            <strong>${service.billing_cycle}</strong>
+                        </div>
+
+                        <div>
+                            <span>📅 Vertragsbeginn</span>
+                            <strong>${service.contract_start || "-"}</strong>
+                        </div>
+
+                        <div>
+                            <span>🧾 Nächste Abrechnung</span>
+                            <strong>${service.next_invoice || "-"}</strong>
+                        </div>
+
+                        <div>
+                            <span>🔄 Letzte Änderung</span>
+                            <strong>${service.updated_at || "-"}</strong>
+                        </div>
+
+                    </div>
+
+                    <button onclick="editServiceTariff('${service.project}')">
+                        ✏️ Vertrag bearbeiten
+                    </button>
+
+                </article>
+                `;
+            }).join("")
+        }
+
+    </div>
+
+</div>
+`;
+}
+
+async function createServiceTariff(){
+
+const project = document.getElementById("newServiceProject").value;
+
+if(!project){
+    alert("Bitte Projekt auswählen.");
+    return;
+}
+
+const result = await apiPost("/save-service-tariff", {
+
+    project,
+
+    status:
+        document.getElementById("newServiceStatus").value,
+
+    tariff:
+        document.getElementById("newServiceTariff").value,
+
+    support_active:
+        document.getElementById("newServiceSupport").value === "true",
+
+    billing_cycle:
+        document.getElementById("newServiceBilling").value,
+
+    contract_start:
+        document.getElementById("newServiceContractStart").value,
+
+    next_invoice:
+        document.getElementById("newServiceNextInvoice").value
+});
+
+alert(result);
+
+if(result === "Gespeichert"){
+    showServiceTariffs();
+}
+}
+
+async function editServiceTariff(project){
+
+const services = await apiGet("/service-tariffs");
+
+const service = services.find(item =>
+    item.project === project
+);
+
+if(!service){
+    alert("Servicevertrag nicht gefunden.");
+    return;
+}
+
+content.innerHTML = `
+<div class="service-page">
+
+    <h2>📻 Service & Tarife</h2>
+
+    <div class="service-edit-card">
+
+        <h3>${service.project}</h3>
+
+        <input
+            id="serviceProject"
+            value="${service.project}"
+            readonly
+        >
+
+        <label>Status</label>
+        <select id="serviceStatus">
+            <option value="Online" ${service.status === "Online" ? "selected" : ""}>
+                Online
+            </option>
+
+            <option value="Wartung" ${service.status === "Wartung" ? "selected" : ""}>
+                Wartung
+            </option>
+
+            <option value="Offline" ${service.status === "Offline" ? "selected" : ""}>
+                Offline
+            </option>
+        </select>
+
+        <label>Tarif</label>
+        <select id="serviceTariff">
+            <option value="Lite" ${service.tariff === "Lite" ? "selected" : ""}>
+                Lite
+            </option>
+
+            <option value="Normal" ${service.tariff === "Normal" ? "selected" : ""}>
+                Normal
+            </option>
+
+            <option value="Premium" ${service.tariff === "Premium" ? "selected" : ""}>
+                Premium
+            </option>
+        </select>
+
+        <label>Betreuung</label>
+        <select id="serviceSupport">
+            <option value="true" ${service.support_active ? "selected" : ""}>
+                Aktiv
+            </option>
+
+            <option value="false" ${!service.support_active ? "selected" : ""}>
+                Inaktiv
+            </option>
+        </select>
+
+        <label>Abrechnung</label>
+        <select id="serviceBilling">
+            <option value="Monatlich" ${service.billing_cycle === "Monatlich" ? "selected" : ""}>
+                Monatlich
+            </option>
+
+            <option value="Jährlich" ${service.billing_cycle === "Jährlich" ? "selected" : ""}>
+                Jährlich
+            </option>
+        </select>
+
+        <label>Vertragsbeginn</label>
+        <input
+            id="serviceContractStart"
+            type="date"
+            value="${service.contract_start || ""}"
+        >
+
+        <label>Nächste Abrechnung</label>
+        <input
+            id="serviceNextInvoice"
+            type="date"
+            value="${service.next_invoice || ""}"
+        >
+
+        <div class="service-edit-actions">
+
+            <button onclick="saveServiceTariff()">
+                💾 Speichern
+            </button>
+
+            <button onclick="showServiceTariffs()">
+                ↩️ Abbrechen
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+`;
+}
+
+async function saveServiceTariff(){
+
+const result = await apiPost("/save-service-tariff", {
+
+    project:
+        document.getElementById("serviceProject").value,
+
+    status:
+        document.getElementById("serviceStatus").value,
+
+    tariff:
+        document.getElementById("serviceTariff").value,
+
+    support_active:
+        document.getElementById("serviceSupport").value === "true",
+
+    billing_cycle:
+        document.getElementById("serviceBilling").value,
+
+    contract_start:
+        document.getElementById("serviceContractStart").value,
+
+    next_invoice:
+        document.getElementById("serviceNextInvoice").value
+
+});
+
+alert(result);
+
+if(result === "Gespeichert"){
+    showServiceTariffs();
+}
+}
 
 loadPage("start");
 </script>

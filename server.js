@@ -217,6 +217,28 @@ async function initDatabase(){
             updated_at TEXT DEFAULT ''
         )
     `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS service_tariffs (
+            id SERIAL PRIMARY KEY,
+        
+            project TEXT NOT NULL UNIQUE,
+        
+            status TEXT DEFAULT 'Online',
+        
+            tariff TEXT DEFAULT 'Lite',
+        
+            support_active BOOLEAN DEFAULT true,
+        
+            billing_cycle TEXT DEFAULT 'Monatlich',
+        
+            contract_start TEXT DEFAULT '',
+        
+            next_invoice TEXT DEFAULT '',
+        
+            updated_at TEXT DEFAULT ''
+        )
+        `);
     
     await pool.query(`
         ALTER TABLE tickets
@@ -1669,6 +1691,93 @@ app.post("/create-ticket", async (req, res) => {
         console.log(err);
         res.send("Ticket Fehler");
     }
+});
+
+/* ======================================================
+   SERVICE & TARIFE
+====================================================== */
+
+app.get("/service-tariffs", async (req,res)=>{
+
+    try{
+
+        const result = await pool.query(`
+            SELECT *
+            FROM service_tariffs
+            ORDER BY project ASC
+        `);
+
+        res.json(result.rows);
+
+    }catch(err){
+
+        console.log(err);
+        res.json([]);
+
+    }
+
+});
+
+app.post("/save-service-tariff", async(req,res)=>{
+
+    try{
+
+        const{
+            project,
+            status,
+            tariff,
+            support_active,
+            billing_cycle,
+            contract_start,
+            next_invoice
+        } = req.body;
+
+        await pool.query(`
+        INSERT INTO service_tariffs
+        (
+            project,
+            status,
+            tariff,
+            support_active,
+            billing_cycle,
+            contract_start,
+            next_invoice,
+            updated_at
+        )
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+
+        ON CONFLICT(project)
+
+        DO UPDATE SET
+
+        status=$2,
+        tariff=$3,
+        support_active=$4,
+        billing_cycle=$5,
+        contract_start=$6,
+        next_invoice=$7,
+        updated_at=$8
+        `,
+        [
+            project,
+            status,
+            tariff,
+            support_active,
+            billing_cycle,
+            contract_start,
+            next_invoice,
+            new Date().toLocaleString("de-DE")
+        ]);
+
+        res.send("Gespeichert");
+
+    }catch(err){
+
+        console.log(err);
+        res.send("Fehler");
+
+    }
+
 });
 
 app.post("/edit-external-ticket", async (req, res) => {
