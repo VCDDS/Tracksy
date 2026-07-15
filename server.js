@@ -3387,11 +3387,6 @@ app.post("/delete-document", async (req, res) => {
         res.send("Löschen fehlgeschlagen");
     }
 });
-
-app.use((err, req, res, next) => {
-    console.log(err);
-    res.status(500).send("Server Fehler");
-});
 app.get("/service-packages", async (req, res) => {
 
     try{
@@ -3415,6 +3410,11 @@ app.get("/service-packages", async (req, res) => {
     }
 
 });
+app.use((err, req, res, next) => {
+    console.log(err);
+    res.status(500).send("Server Fehler");
+});
+
 
 app.listen(process.env.PORT || 3000, () => {
     console.log("Server läuft");
