@@ -1599,21 +1599,40 @@ canvas{
 
     .mobile-menu{
         position:fixed;
+    
         left:12px;
         right:12px;
+    
+        top:76px;
         bottom:78px;
+    
         z-index:9998;
-
+    
         display:none;
         grid-template-columns:1fr 1fr;
         gap:10px;
-
+    
+        overflow-y:auto;
+        overflow-x:hidden;
+    
         padding:14px;
+    
         border-radius:22px;
-
+    
         background:rgba(8,15,30,0.98);
         border:1px solid var(--border);
         box-shadow:var(--shadow);
+    
+        -webkit-overflow-scrolling:touch;
+        overscroll-behavior:contain;
+    
+        scrollbar-width:none;
+        -ms-overflow-style:none;
+    }
+    .mobile-menu::-webkit-scrollbar{
+        width:0;
+        height:0;
+        display:none;
     }
 
     .mobile-menu.mobile-menu-open{
