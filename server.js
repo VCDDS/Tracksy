@@ -3409,6 +3409,47 @@ app.get("/service-packages", async (req, res) => {
 
     }
 
+    app.post("/save-service-package", async (req, res) => {
+
+        try{
+    
+            const {
+    
+                id,
+                monthly_price,
+                yearly_price,
+                status
+    
+            } = req.body;
+    
+            await pool.query(`
+                UPDATE service_packages
+                SET
+                    monthly_price = $1,
+                    yearly_price = $2,
+                    status = $3,
+                    updated_at = $4
+                WHERE id = $5
+            `,[
+                monthly_price,
+                yearly_price,
+                status,
+                new Date().toISOString(),
+                id
+            ]);
+    
+            res.send("Tarif gespeichert");
+    
+        }catch(error){
+    
+            console.error(error);
+    
+            res.status(500).send("Speichern fehlgeschlagen");
+    
+        }
+    
+    });
+
 });
 app.use((err, req, res, next) => {
     console.log(err);

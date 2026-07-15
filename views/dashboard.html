@@ -160,6 +160,7 @@
 const content = document.getElementById("content");
 
 let currentUser = localStorage.getItem("username") || "Gast";
+let servicePackages = [];
 let isAdmin = localStorage.getItem("isAdmin") === "true";
 let userRole = localStorage.getItem("userRole") || (isAdmin ? "admin" : "user");
 let assignedProject = localStorage.getItem("assignedProject") || "";
@@ -4462,6 +4463,7 @@ async function showServiceTariffs(){
 currentPage = "serviceTariffs";
 
 const management = await apiGet("/service-management");
+servicePackages = await apiGet("/service-packages");
 
 content.innerHTML = `
 <div class="service-page">
@@ -4473,6 +4475,90 @@ content.innerHTML = `
             <p>Bestehende Verträge, Anfragen, Zahlungen und Verlauf verwalten.</p>
         </div>
     </div>
+
+
+    <section class="service-package-management">
+
+    <div class="service-package-management-head">
+        <div>
+            <small>Globale Einstellungen</small>
+            <h3>📦 Tarifverfügbarkeit</h3>
+            <p>
+                Diese Einstellung gilt automatisch für alle verbundenen Webseiten.
+            </p>
+        </div>
+    </div>
+
+    <div class="service-package-grid">
+
+        ${servicePackages.map(packageItem => `
+
+            <article class="service-package-card">
+
+                <div>
+                    <small>Tarif</small>
+                    <h4>${packageItem.tariff}</h4>
+                </div>
+
+<label>Monatspreis</label>
+
+<input
+    type="number"
+    step="0.01"
+    id="monthlyPrice-${packageItem.id}"
+    value="${packageItem.monthly_price}"
+>
+
+<label>Jahrespreis</label>
+
+<input
+    type="number"
+    step="0.01"
+    id="yearlyPrice-${packageItem.id}"
+    value="${packageItem.yearly_price}"
+>
+
+                <label>Status</label>
+
+                <select id="servicePackageStatus-${packageItem.id}">
+                    <option
+                        value="available"
+                        ${packageItem.status === "available" ? "selected" : ""}
+                    >
+                        🟢 Verfügbar
+                    </option>
+
+                    <option
+                        value="waiting"
+                        ${packageItem.status === "waiting" ? "selected" : ""}
+                    >
+                        🟡 Warteliste
+                    </option>
+
+                    <option
+                        value="unavailable"
+                        ${packageItem.status === "unavailable" ? "selected" : ""}
+                    >
+                        🔴 Nicht verfügbar
+                    </option>
+                </select>
+
+                <button
+                    onclick="saveServicePackageStatus(
+                        ${packageItem.id},
+                        '${packageItem.tariff}'
+                    )"
+                >
+                    💾 Status speichern
+                </button>
+
+            </article>
+
+        `).join("")}
+
+    </div>
+
+</section>
 
     ${
         management.tariffs.length === 0
@@ -5153,9 +5239,42 @@ const result = await apiPost(
     }
 );
 
+async function saveServicePackageStatus(id){
+
+const status =
+    document.getElementById(
+        `servicePackageStatus-${id}`
+    ).value;
+
+const monthlyPrice =
+    document.getElementById(
+        `monthlyPrice-${id}`
+    ).value;
+
+const yearlyPrice =
+    document.getElementById(
+        `yearlyPrice-${id}`
+    ).value;
+
+const result = await apiPost(
+    "/save-service-package",
+    {
+
+        id,
+
+        monthly_price: monthlyPrice,
+
+        yearly_price: yearlyPrice,
+
+        status
+
+    }
+);
+
 alert(result);
 
 showServiceTariffs();
+
 }
 
 loadPage("start");
