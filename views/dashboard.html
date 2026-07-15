@@ -4424,6 +4424,35 @@ loadPage("entwicklungsplanung");
    SERVICE & TARIFE
 ===================================================== */
 
+const serviceTariffBenefits = {
+
+Lite: [
+    "Sicherheitsupdates",
+    "Versionsupdates",
+    "Regelmäßige Fehlerprüfung",
+    "Fehlerbehebung",
+    "Kleine Designanpassungen",
+    "Support per E-Mail oder WhatsApp"
+],
+
+Normal: [
+    "Alle Leistungen aus Lite",
+    "Erweiterte Fehlerbehebung",
+    "Performance- und Funktionsprüfung",
+    "Kleinere Inhaltsänderungen",
+    "Bevorzugte Bearbeitung von Supportanfragen"
+],
+
+Premium: [
+    "Alle Leistungen aus Normal",
+    "Regelmäßige Optimierung der Webseite",
+    "Individuelle Beratung",
+    "Monatlicher System- und Funktionscheck",
+    "Planung zukünftiger Verbesserungen"
+]
+
+};
+
 async function showServiceTariffs(){
 
 currentPage = "serviceTariffs";
@@ -4476,6 +4505,9 @@ content.innerHTML = `
             const projectHistory = management.history.filter(entry =>
                 entry.project === service.project
             );
+
+            const tariffBenefits =
+            serviceTariffBenefits[service.tariff] || [];
 
             return `
             <section class="service-project">
@@ -4542,6 +4574,47 @@ content.innerHTML = `
                     </div>
 
                 </div>
+
+                <section class="service-active-plan">
+
+    <div class="service-active-plan-head">
+
+        <div>
+            <small>Aktiver Betreuungstarif</small>
+
+            <h3>
+                📦 ${service.tariff || "Kein Tarif"}
+            </h3>
+        </div>
+
+        <span>
+            ${service.billing_cycle || "Keine Abrechnung"}
+        </span>
+
+    </div>
+
+    ${
+        tariffBenefits.length === 0
+        ? `
+            <p class="service-section-empty">
+                Aktuell sind keine Tarifleistungen gebucht.
+            </p>
+        `
+        : `
+            <div class="service-benefit-grid">
+
+                ${tariffBenefits.map(benefit => `
+                    <div class="service-benefit-item">
+                        <span>✅</span>
+                        <strong>${benefit}</strong>
+                    </div>
+                `).join("")}
+
+            </div>
+        `
+    }
+
+</section>
 
                 <div class="service-management-grid">
 
