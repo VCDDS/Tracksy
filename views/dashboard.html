@@ -4660,6 +4660,83 @@ content.innerHTML = `
 
 </div>
 
+<section class="service-contract-card">
+
+    <h3>📄 Vertragsdaten & Zahlung</h3>
+
+    <div class="service-contract-grid">
+
+        <div>
+            <label>📅 Vertragsbeginn</label>
+            <input
+                type="date"
+                id="contractStart-${service.id}"
+                value="${service.contract_start || ""}"
+            >
+        </div>
+
+        <div>
+            <label>💰 Erste Zahlung am</label>
+            <input
+                type="date"
+                id="firstPayment-${service.id}"
+                value="${service.first_payment || ""}"
+            >
+        </div>
+
+        <div>
+            <label>🔄 Abo-Beginn</label>
+            <input
+                type="date"
+                id="subscriptionStart-${service.id}"
+                value="${service.subscription_start || ""}"
+            >
+        </div>
+
+        <div>
+            <label>🏦 Zahlung an</label>
+            <input
+                type="text"
+                id="paymentRecipient-${service.id}"
+                value="${service.payment_recipient || ""}"
+                placeholder="VisualCode.dev"
+            >
+        </div>
+
+        <div>
+            <label>IBAN</label>
+            <input
+                type="text"
+                id="paymentIban-${service.id}"
+                value="${service.payment_iban || ""}"
+                placeholder="DE..."
+            >
+        </div>
+
+        <div>
+            <label>Verwendungszweck</label>
+            <input
+                type="text"
+                id="paymentReference-${service.id}"
+                value="${service.payment_reference || ""}"
+                placeholder="RadioNetz Zwickau"
+            >
+        </div>
+
+    </div>
+
+    <button
+        class="primary-btn"
+        onclick="saveContractInformation(
+            ${service.id},
+            '${service.project}'
+        )"
+    >
+        💾 Vertragsdaten speichern
+    </button>
+
+</section>
+
                 <section class="service-active-plan">
 
     <div class="service-active-plan-head">
@@ -5032,157 +5109,44 @@ showServiceTariffs();
 
 }
 
-async function editServiceTariff(project){
 
-const services = await apiGet("/service-tariffs");
-
-const service = services.find(item =>
-    item.project === project
-);
-
-if(!service){
-    alert("Servicevertrag nicht gefunden.");
-    return;
-}
-
-content.innerHTML = `
-<div class="service-page">
-
-    <h2>📻 Service & Tarife</h2>
-
-    <div class="service-edit-card">
-
-        <h3>${service.project}</h3>
-
-        <input
-            id="serviceProject"
-            value="${service.project}"
-            readonly
-        >
-
-        <label>Status</label>
-        <select id="serviceStatus">
-            <option value="Online" ${service.status === "Online" ? "selected" : ""}>
-                Online
-            </option>
-
-            <option value="Wartung" ${service.status === "Wartung" ? "selected" : ""}>
-                Wartung
-            </option>
-
-            <option value="Offline" ${service.status === "Offline" ? "selected" : ""}>
-                Offline
-            </option>
-        </select>
-
-        <label>Tarif</label>
-        <select id="serviceTariff">
-            <option value="Lite" ${service.tariff === "Lite" ? "selected" : ""}>
-                Lite
-            </option>
-
-            <option value="Normal" ${service.tariff === "Normal" ? "selected" : ""}>
-                Normal
-            </option>
-
-            <option value="Premium" ${service.tariff === "Premium" ? "selected" : ""}>
-                Premium
-            </option>
-        </select>
-
-        <label>Betreuung</label>
-        <select id="serviceSupport">
-            <option value="true" ${service.support_active ? "selected" : ""}>
-                Aktiv
-            </option>
-
-            <option value="false" ${!service.support_active ? "selected" : ""}>
-                Inaktiv
-            </option>
-        </select>
-
-        <label>Abrechnung</label>
-        <select id="serviceBilling">
-            <option value="Monatlich" ${service.billing_cycle === "Monatlich" ? "selected" : ""}>
-                Monatlich
-            </option>
-
-            <option value="Jährlich" ${service.billing_cycle === "Jährlich" ? "selected" : ""}>
-                Jährlich
-            </option>
-        </select>
-
-        <label>Vertragsbeginn</label>
-        <input
-            id="serviceContractStart"
-            type="date"
-            value="${service.contract_start || ""}"
-        >
-
-        <label>Nächste Abrechnung</label>
-        <input
-            id="serviceNextInvoice"
-            type="date"
-            value="${service.next_invoice || ""}"
-        >
-
-        <div class="service-edit-actions">
-
-            <button onclick="saveServiceTariff()">
-                💾 Speichern
-            </button>
-
-            <button onclick="showServiceTariffs()">
-                ↩️ Abbrechen
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-`;
-}
-
-async function saveContractInformation(project){
-
-const body = {
-    project,
-
-    contract_start:
-        document.getElementById(
-            `contractStart-${project}`
-        ).value,
-
-    first_payment:
-        document.getElementById(
-            `firstPayment-${project}`
-        ).value,
-
-    subscription_start:
-        document.getElementById(
-            `subscriptionStart-${project}`
-        ).value,
-
-    payment_recipient:
-        document.getElementById(
-            `paymentRecipient-${project}`
-        ).value,
-
-    payment_iban:
-        document.getElementById(
-            `paymentIban-${project}`
-        ).value,
-
-    payment_reference:
-        document.getElementById(
-            `paymentReference-${project}`
-        ).value
-};
+async function saveContractInformation(serviceId, project){
 
 const result = await apiPost(
     "/save-contract-information",
-    body
+    {
+        project,
+
+        contract_start:
+            document.getElementById(
+                `contractStart-${serviceId}`
+            ).value,
+
+        first_payment:
+            document.getElementById(
+                `firstPayment-${serviceId}`
+            ).value,
+
+        subscription_start:
+            document.getElementById(
+                `subscriptionStart-${serviceId}`
+            ).value,
+
+        payment_recipient:
+            document.getElementById(
+                `paymentRecipient-${serviceId}`
+            ).value,
+
+        payment_iban:
+            document.getElementById(
+                `paymentIban-${serviceId}`
+            ).value,
+
+        payment_reference:
+            document.getElementById(
+                `paymentReference-${serviceId}`
+            ).value
+    }
 );
 
 alert(result);
