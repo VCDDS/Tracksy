@@ -2725,6 +2725,61 @@ app.get("/shiftplans/:username", async (req, res) => {
     }
 });
 
+app.get("/shift-planner", async (req, res) => {
+
+    try{
+
+        const {
+            assigned_to,
+            period_start,
+            period_end
+        } = req.query;
+
+        const result = await pool.query(
+            `
+            SELECT *
+            FROM shiftplans
+            WHERE assigned_to = $1
+            AND period_start = $2
+            AND period_end = $3
+            ORDER BY id DESC
+            LIMIT 1
+            `,
+            [
+                assigned_to,
+                period_start,
+                period_end
+            ]
+        );
+
+        if(result.rows.length === 0){
+
+            return res.json({
+                exists:false,
+                days:[]
+            });
+
+        }
+
+        res.json({
+            exists:true,
+            id:result.rows[0].id,
+            days:result.rows[0].planner_data || []
+        });
+
+    }catch(err){
+
+        console.error(err);
+
+        res.status(500).json({
+            exists:false,
+            days:[]
+        });
+
+    }
+
+});
+
 app.post("/upload-shiftplan", shiftplanUpload.single("pdf"), async (req, res) => {
     try{
         if(!req.file){

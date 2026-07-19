@@ -4740,3 +4740,285 @@ h4{
     }
 
 }
+/* =======================================================
+   PLANNER DASHBOARD V4
+======================================================= */
+
+.planner-wrapper{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+}
+
+.planner-toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    padding:18px;
+    border-radius:18px;
+    background:#1d2433;
+}
+
+.planner-toolbar button{
+    padding:10px 18px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.planner-toolbar .primary{
+    background:#3b82f6;
+    color:#fff;
+}
+
+.planner-title{
+    font-size:20px;
+    font-weight:700;
+}
+
+.planner-layout{
+    display:grid;
+    grid-template-columns:1fr 320px;
+    gap:22px;
+}
+
+.planner-sidebar{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+}
+
+.planner-side-card{
+    background:#1d2433;
+    border-radius:16px;
+    padding:20px;
+}
+
+.planner-side-card h3{
+    margin:0 0 15px;
+}
+
+.planner-table{
+    overflow:auto;
+    border-radius:18px;
+    background:#1d2433;
+}
+
+.planner-table-grid{
+    display:grid;
+}
+
+.planner-table-grid>div,
+.planner-day-cell{
+    border:1px solid rgba(255,255,255,.08);
+}
+
+.planner-table-corner{
+    padding:18px;
+    font-weight:700;
+    background:#20293b;
+}
+
+.planner-employee-head{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:18px;
+    background:#20293b;
+}
+
+.planner-avatar{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#3b82f6;
+    color:#fff;
+    font-weight:700;
+}
+
+.planner-day-head{
+    padding:16px;
+    background:#161d2c;
+}
+
+.planner-day-head strong{
+    display:block;
+}
+
+.planner-day-head span{
+    opacity:.7;
+}
+
+.planner-day-cell{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    align-items:flex-start;
+    min-height:130px;
+    padding:16px;
+    background:#131925;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.planner-day-cell:hover{
+    background:#1d2740;
+    transform:scale(1.02);
+}
+
+.planner-cell-name{
+    font-weight:700;
+}
+
+.planner-cell-free{
+    padding:5px 12px;
+    border-radius:30px;
+    background:#22c55e;
+    color:#fff;
+    font-size:13px;
+}
+
+.planner-modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.65);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:99999;
+}
+
+.planner-modal{
+    width:650px;
+    max-width:95%;
+    border-radius:18px;
+    background:#1d2433;
+    overflow:hidden;
+}
+
+.planner-modal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:22px;
+    background:#20293b;
+}
+
+.planner-modal-head button{
+    border:none;
+    background:none;
+    color:#fff;
+    font-size:22px;
+    cursor:pointer;
+}
+
+.planner-modal-body{
+    padding:22px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+}
+
+.planner-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+}
+
+.planner-input{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.planner-input input,
+.planner-input textarea{
+    padding:12px;
+    border-radius:10px;
+    border:none;
+}
+
+.planner-modal-footer{
+    display:flex;
+    justify-content:flex-end;
+    gap:12px;
+    padding:22px;
+    background:#20293b;
+}
+
+.planner-modal-footer button{
+    padding:10px 18px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.planner-modal-footer .primary{
+    background:#3b82f6;
+    color:#fff;
+}
+
+@media(max-width:1200px){
+
+.planner-layout{
+    grid-template-columns:1fr;
+}
+
+}
+
+@media(max-width:768px){
+
+.planner-row{
+    grid-template-columns:1fr;
+}
+
+.planner-toolbar{
+    justify-content:center;
+}
+
+}.planner-day-cell.planned{
+    background:#17233b;
+    border-left:4px solid #3b82f6;
+}
+
+.planner-cell-time{
+    font-size:13px;
+    font-weight:700;
+    color:#60a5fa;
+}
+
+.planner-cell-task{
+    text-align:left;
+    line-height:1.4;
+}
+
+.planner-cell-status{
+    padding:5px 10px;
+    border-radius:20px;
+    background:#f59e0b;
+    color:#111827;
+    font-size:12px;
+    font-weight:700;
+}
+
+.planner-task-entry{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    padding:12px 0;
+    border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.planner-task-entry:last-child{
+    border-bottom:none;
+}
+
+.planner-task-entry span,
+.planner-task-entry small{
+    opacity:.75;
+}
