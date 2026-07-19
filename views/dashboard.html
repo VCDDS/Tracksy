@@ -28,6 +28,7 @@
                 <a href="#" onclick="loadPage('archiv'); closeAdminDropdown(); return false;">📦 Archiv</a>
                 <a href="#" onclick="loadPage('adminDaten'); closeAdminDropdown(); return false;">🧹 Daten bereinigen</a>
                 <a href="#" onclick="loadPage('zeitenKorrigieren'); closeAdminDropdown(); return false;">🛠️ Zeiten korrigieren</a>
+                <a href="#" onclick="loadPage('dienstplanungAdmin'); closeAdminDropdown(); return false;">📅 Dienstplanung & Aufgaben</a>
                 <a href="#" onclick="loadPage('benutzerVerwaltung'); closeAdminDropdown(); return false;">👤 Benutzer verwalten</a>                <a href="#" onclick="printOrPDF(); closeAdminDropdown(); return false;">🖨️ Drucken/PDF speichern</a>
             </div>
         </div>
@@ -47,6 +48,7 @@
             <span id="documentBadge" class="suggestion-badge" style="display:none;">NEW</span>
             </button>
         <button onclick="loadPage('kalender')">📅 <span>Kalender</span></button>
+        <button onclick="loadPage('dienstplanAufgaben')">🗓️ <span>Dienstplan & Aufgaben</span></button>
         <button onclick="loadPage('notizen')">✏️ <span>Notizen</span></button>
         <button onclick="loadPage('vorschlaege')">
             💡 <span>Vorschläge</span>
@@ -87,6 +89,7 @@
         <button onclick="loadPage('archiv'); toggleMobileMenu()">📦 Archiv</button>
         <button onclick="loadPage('adminDaten'); toggleMobileMenu()">🧹 Daten bereinigen</button>
         <button onclick="loadPage('zeitenKorrigieren'); toggleMobileMenu()">🛠️ Zeiten korrigieren</button>
+        <button onclick="loadPage('dienstplanungAdmin'); toggleMobileMenu()">📅 Dienstplanung & Aufgaben</button>
         <button onclick="loadPage('benutzerVerwaltung'); toggleMobileMenu()">👤 Benutzer verwalten</button>
     </div>
     <button onclick="loadPage('zeiten'); toggleMobileMenu()">⌛ Zeiten</button>
@@ -94,12 +97,8 @@
     <button onclick="loadPage('report'); toggleMobileMenu()">💻 Report</button>
     <button onclick="loadPage('dokumente'); toggleMobileMenu()">📄 Dokumente</button>
     <button onclick="loadPage('kalender'); toggleMobileMenu()">📅 Kalender</button>
-    <button onclick="loadPage('dienstplaene'); toggleMobileMenu()">
-        📅 Mein Dienstplan
-    </button>
-    
-    <button onclick="loadPage('meineAufgaben'); toggleMobileMenu()">
-        📋 Meine Entwicklungsaufgaben
+    <button onclick="loadPage('dienstplanAufgaben'); toggleMobileMenu()">
+        🗓️ Dienstplan & Aufgaben
     </button>
     <button onclick="loadPage('notizen'); toggleMobileMenu()">✏️ Notizen</button>
     <button onclick="loadPage('vorschlaege'); toggleMobileMenu()">💡 Vorschläge</button>
@@ -157,6 +156,14 @@ let isAdmin = localStorage.getItem("isAdmin") === "true";
 let userRole = localStorage.getItem("userRole") || (isAdmin ? "admin" : "user");
 let assignedProject = localStorage.getItem("assignedProject") || "";
 let isCustomer = userRole === "kunde";
+const adminPlanningState = {
+    weekStart: null,
+    data: null,
+    selectedUserId: null,
+    selectedDate: null
+};
+
+let myPlanningWeekStart = null;
 
 document.getElementById("user").textContent = currentUser;
 function updateDateTime(){
@@ -1469,6 +1476,28 @@ if(page === "benutzer"){
     return;
 }
 
+if(page === "dienstplanungAdmin"){
+
+if(!isAdmin){
+    content.innerHTML = `
+        <div class="planning-empty-state">
+            Keine Berechtigung für die Dienstplanung.
+        </div>
+    `;
+
+    return;
+}
+
+await loadAdminPlanningPage();
+return;
+}
+
+if(page === "dienstplanAufgaben"){
+
+await loadMyPlanningPage();
+return;
+}
+
 if(page === "kalender"){
 
 let entries = await apiGet("/calendar/" + currentUser);
@@ -2199,6 +2228,1480 @@ return;
 
 }
 
+/* =====================================================
+   DIENSTPLAN & AUFGABEN
+===================================================== */
+
+function escapePlanningHtml(value){
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function planningIsoDate(date){
+    return [
+        date.getFullYear(),
+        String(
+            date.getMonth() + 1
+        ).padStart(2, "0"),
+        String(
+            date.getDate()
+        ).padStart(2, "0")
+    ].join("-");
+}
+
+function getMondayIso(value){
+
+    let date;
+
+    if(value instanceof Date){
+        date = new Date(
+            value.getFullYear(),
+            value.getMonth(),
+            value.getDate()
+        );
+    }else{
+        date = new Date(
+            String(value) + "T12:00:00"
+        );
+    }
+
+    let day = date.getDay();
+
+    if(day === 0){
+        day = 7;
+    }
+
+    date.setDate(
+        date.getDate() - day + 1
+    );
+
+    return planningIsoDate(date);
+}
+
+function shiftPlanningDate(isoDate, days){
+
+    const date = new Date(
+        isoDate + "T12:00:00"
+    );
+
+    date.setDate(
+        date.getDate() + days
+    );
+
+    return planningIsoDate(date);
+}
+
+function getPlanningWeekDates(weekStart){
+
+    return Array.from(
+        { length: 7 },
+        (_, index) => {
+            return shiftPlanningDate(
+                weekStart,
+                index
+            );
+        }
+    );
+}
+
+function formatPlanningDate(
+    isoDate,
+    options = {}
+){
+    return new Date(
+        isoDate + "T12:00:00"
+    ).toLocaleDateString(
+        "de-DE",
+        options
+    );
+}
+
+function planningPriorityClass(priority){
+
+    if(priority === "Hoch"){
+        return "planning-priority-high";
+    }
+
+    if(priority === "Niedrig"){
+        return "planning-priority-low";
+    }
+
+    return "planning-priority-normal";
+}
+
+function planningStatusClass(status){
+
+    if(status === "Erledigt"){
+        return "planning-status-done";
+    }
+
+    if(status === "In Bearbeitung"){
+        return "planning-status-progress";
+    }
+
+    return "planning-status-open";
+}
+
+function findAdminPlanningSchedule(
+    userId,
+    workDate
+){
+    if(!adminPlanningState.data){
+        return null;
+    }
+
+    return (
+        adminPlanningState.data.schedules || []
+    ).find(schedule =>
+        Number(schedule.user_id) === Number(userId) &&
+        schedule.work_date === workDate
+    ) || null;
+}
+
+function findAdminPlanningTask(taskId){
+
+    if(!adminPlanningState.data){
+        return null;
+    }
+
+    for(const schedule of (
+        adminPlanningState.data.schedules || []
+    )){
+        const task = (
+            schedule.tasks || []
+        ).find(item =>
+            Number(item.id) === Number(taskId)
+        );
+
+        if(task){
+            return task;
+        }
+    }
+
+    return null;
+}
+
+async function loadAdminPlanningPage(){
+
+    if(!adminPlanningState.weekStart){
+        adminPlanningState.weekStart =
+            getMondayIso(new Date());
+    }
+
+    const data = await apiGet(
+        "/work-planning" +
+        "?weekStart=" +
+        encodeURIComponent(
+            adminPlanningState.weekStart
+        ) +
+        "&adminUsername=" +
+        encodeURIComponent(
+            currentUser
+        )
+    );
+
+    if(!data || data.error){
+        content.innerHTML = `
+            <div class="planning-empty-state">
+                ${
+                    escapePlanningHtml(
+                        data?.error ||
+                        "Dienstplanung konnte nicht geladen werden"
+                    )
+                }
+            </div>
+        `;
+
+        return;
+    }
+
+    adminPlanningState.data = data;
+
+    const users = data.users || [];
+    const weekDates = getPlanningWeekDates(
+        adminPlanningState.weekStart
+    );
+
+    const selectedUserExists = users.some(
+        user =>
+            Number(user.id) ===
+            Number(
+                adminPlanningState.selectedUserId
+            )
+    );
+
+    if(!selectedUserExists){
+        adminPlanningState.selectedUserId =
+            users.length > 0
+                ? users[0].id
+                : null;
+    }
+
+    if(
+        !adminPlanningState.selectedDate ||
+        !weekDates.includes(
+            adminPlanningState.selectedDate
+        )
+    ){
+        adminPlanningState.selectedDate =
+            weekDates[0];
+    }
+
+    renderAdminPlanningPage();
+}
+
+function renderAdminPlanningPage(){
+
+    const data = adminPlanningState.data;
+
+    if(!data){
+        return;
+    }
+
+    const users = data.users || [];
+    const weekDates = getPlanningWeekDates(
+        adminPlanningState.weekStart
+    );
+
+    const weekEnd = weekDates[6];
+
+    if(users.length === 0){
+        content.innerHTML = `
+            <div class="planning-page">
+
+                <div class="planning-header">
+                    <div>
+                        <p class="dashboard-kicker">
+                            Admin Bereich
+                        </p>
+
+                        <h2>
+                            📅 Dienstplanung & Aufgaben
+                        </h2>
+                    </div>
+                </div>
+
+                <div class="planning-empty-state">
+                    Keine planbaren Benutzer vorhanden.
+                </div>
+
+            </div>
+        `;
+
+        return;
+    }
+
+    const selectedUser = users.find(
+        user =>
+            Number(user.id) ===
+            Number(
+                adminPlanningState.selectedUserId
+            )
+    ) || users[0];
+
+    const selectedSchedule =
+        findAdminPlanningSchedule(
+            selectedUser.id,
+            adminPlanningState.selectedDate
+        );
+
+    const gridColumns =
+        `110px repeat(${users.length}, minmax(190px, 1fr))`;
+
+    let planningGrid = `
+        <div class="planning-corner-cell">
+            Woche
+        </div>
+    `;
+
+    users.forEach(user => {
+        planningGrid += `
+            <div class="planning-user-header">
+                <strong>
+                    ${escapePlanningHtml(user.username)}
+                </strong>
+
+                <span>
+                    Wochenplanung
+                </span>
+            </div>
+        `;
+    });
+
+    weekDates.forEach(workDate => {
+
+        planningGrid += `
+            <div class="planning-day-header">
+
+                <strong>
+                    ${formatPlanningDate(
+                        workDate,
+                        {
+                            weekday: "short"
+                        }
+                    )}
+                </strong>
+
+                <span>
+                    ${formatPlanningDate(
+                        workDate,
+                        {
+                            day: "2-digit",
+                            month: "2-digit"
+                        }
+                    )}
+                </span>
+
+            </div>
+        `;
+
+        users.forEach(user => {
+
+            const schedule =
+                findAdminPlanningSchedule(
+                    user.id,
+                    workDate
+                );
+
+            const tasks =
+                schedule?.tasks || [];
+
+            const selected =
+                Number(user.id) ===
+                    Number(
+                        adminPlanningState
+                            .selectedUserId
+                    ) &&
+                workDate ===
+                    adminPlanningState
+                        .selectedDate;
+
+            const timeText =
+                schedule?.start_time &&
+                schedule?.end_time
+                    ? `${schedule.start_time} – ${schedule.end_time}`
+                    : "Zeit eintragen";
+
+            const taskPreview = tasks
+                .slice(0, 3)
+                .map(task => `
+                    <span class="
+                        planning-cell-task
+                        ${planningStatusClass(task.status)}
+                    ">
+                        ${
+                            task.status === "Erledigt"
+                                ? "✓ "
+                                : ""
+                        }
+
+                        ${escapePlanningHtml(task.title)}
+                    </span>
+                `)
+                .join("");
+
+            planningGrid += `
+                <button
+                    type="button"
+
+                    class="
+                        planning-cell
+                        ${selected ? "selected" : ""}
+                        ${
+                            schedule
+                                ? "has-entry"
+                                : ""
+                        }
+                    "
+
+                    onclick="
+                        selectPlanningCell(
+                            ${user.id},
+                            '${workDate}'
+                        )
+                    "
+                >
+
+                    <div class="planning-cell-time">
+                        ${timeText}
+                    </div>
+
+                    <div class="planning-cell-count">
+                        ${
+                            tasks.length === 1
+                                ? "1 Aufgabe"
+                                : `${tasks.length} Aufgaben`
+                        }
+                    </div>
+
+                    <div class="planning-cell-task-list">
+                        ${taskPreview}
+                    </div>
+
+                    ${
+                        tasks.length > 3
+                            ? `
+                                <small>
+                                    +${tasks.length - 3} weitere
+                                </small>
+                            `
+                            : ""
+                    }
+
+                </button>
+            `;
+        });
+    });
+
+    content.innerHTML = `
+        <div class="planning-page">
+
+            <div class="planning-header">
+
+                <div>
+                    <p class="dashboard-kicker">
+                        Admin Bereich
+                    </p>
+
+                    <h2>
+                        📅 Dienstplanung & Aufgaben
+                    </h2>
+
+                    <p>
+                        Dienstzeiten und Aufgaben pro Benutzer
+                        und Tag verwalten.
+                    </p>
+                </div>
+
+                <div class="planning-week-controls">
+
+                    <button
+                        onclick="changeAdminPlanningWeek(-1)"
+                    >
+                        ←
+                    </button>
+
+                    <button
+                        onclick="goAdminPlanningToday()"
+                    >
+                        Heute
+                    </button>
+
+                    <strong>
+                        ${
+                            formatPlanningDate(
+                                adminPlanningState.weekStart,
+                                {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric"
+                                }
+                            )
+                        }
+
+                        –
+
+                        ${
+                            formatPlanningDate(
+                                weekEnd,
+                                {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric"
+                                }
+                            )
+                        }
+                    </strong>
+
+                    <button
+                        onclick="changeAdminPlanningWeek(1)"
+                    >
+                        →
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="planning-layout">
+
+                <section class="planning-board">
+
+                    <div class="planning-board-head">
+
+                        <div>
+                            <h3>
+                                Wochenübersicht
+                            </h3>
+
+                            <p>
+                                Benutzer und Tag anklicken,
+                                um rechts zu bearbeiten.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <div class="planning-grid-scroll">
+
+                        <div
+                            class="planning-grid"
+                            style="
+                                grid-template-columns:
+                                ${gridColumns};
+                            "
+                        >
+                            ${planningGrid}
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <aside class="planning-detail-panel">
+
+                    ${renderAdminPlanningDetail(
+                        selectedUser,
+                        adminPlanningState.selectedDate,
+                        selectedSchedule
+                    )}
+
+                </aside>
+
+            </div>
+
+        </div>
+
+        <div
+            id="planningTaskModal"
+            class="modal planning-task-modal"
+        >
+
+            <div class="modal-box planning-task-modal-box">
+
+                <div class="planning-modal-head">
+
+                    <h3 id="planningTaskModalTitle">
+                        Aufgabe hinzufügen
+                    </h3>
+
+                    <button
+                        type="button"
+                        onclick="closePlanningTaskModal()"
+                    >
+                        ✕
+                    </button>
+
+                </div>
+
+                <input
+                    id="planningTaskId"
+                    type="hidden"
+                >
+
+                <label>
+                    Aufgabe
+                </label>
+
+                <textarea
+                    id="planningTaskTitle"
+                    maxlength="300"
+                    placeholder="Aufgabe eingeben"
+                ></textarea>
+
+                <label>
+                    Priorität
+                </label>
+
+                <select id="planningTaskPriority">
+                    <option value="Niedrig">
+                        Niedrig
+                    </option>
+
+                    <option
+                        value="Normal"
+                        selected
+                    >
+                        Normal
+                    </option>
+
+                    <option value="Hoch">
+                        Hoch
+                    </option>
+                </select>
+
+                <label>
+                    Status
+                </label>
+
+                <select id="planningTaskStatus">
+                    <option value="Offen">
+                        Offen
+                    </option>
+
+                    <option value="In Bearbeitung">
+                        In Bearbeitung
+                    </option>
+
+                    <option value="Erledigt">
+                        Erledigt
+                    </option>
+                </select>
+
+                <div class="planning-modal-actions">
+
+                    <button
+                        class="start-btn"
+                        onclick="savePlanningTask()"
+                    >
+                        Speichern
+                    </button>
+
+                    <button
+                        onclick="closePlanningTaskModal()"
+                    >
+                        Abbrechen
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+    `;
+}
+
+function renderAdminPlanningDetail(
+    user,
+    workDate,
+    schedule
+){
+    const tasks = schedule?.tasks || [];
+
+    return `
+        <div class="planning-detail-head">
+
+            <div>
+                <span>
+                    Ausgewählter Benutzer
+                </span>
+
+                <h3>
+                    ${escapePlanningHtml(user.username)}
+                </h3>
+
+                <p>
+                    ${
+                        formatPlanningDate(
+                            workDate,
+                            {
+                                weekday: "long",
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric"
+                            }
+                        )
+                    }
+                </p>
+            </div>
+
+        </div>
+
+        <section class="planning-detail-section">
+
+            <div class="planning-section-title">
+
+                <h4>
+                    Dienstzeit
+                </h4>
+
+            </div>
+
+            <div class="planning-time-grid">
+
+                <label>
+                    Von
+
+                    <input
+                        id="planningStartTime"
+                        type="time"
+                        value="${schedule?.start_time || ""}"
+                    >
+                </label>
+
+                <label>
+                    Bis
+
+                    <input
+                        id="planningEndTime"
+                        type="time"
+                        value="${schedule?.end_time || ""}"
+                    >
+                </label>
+
+            </div>
+
+            <div class="planning-detail-actions">
+
+                <button
+                    class="start-btn"
+                    onclick="saveSelectedWorkSchedule()"
+                >
+                    💾 Dienstzeit speichern
+                </button>
+
+                ${
+                    schedule?.start_time ||
+                    schedule?.end_time
+                        ? `
+                            <button
+                                class="danger-btn"
+                                onclick="
+                                    clearSelectedWorkSchedule()
+                                "
+                            >
+                                Dienstzeit entfernen
+                            </button>
+                        `
+                        : ""
+                }
+
+            </div>
+
+        </section>
+
+        <section class="planning-detail-section">
+
+            <div class="planning-section-title">
+
+                <div>
+                    <h4>
+                        Aufgaben
+                    </h4>
+
+                    <span>
+                        ${tasks.length}
+                    </span>
+                </div>
+
+                <button
+                    onclick="openPlanningTaskModal()"
+                >
+                    + Aufgabe
+                </button>
+
+            </div>
+
+            <div class="planning-task-list">
+
+                ${
+                    tasks.length === 0
+                        ? `
+                            <div class="planning-no-tasks">
+                                Keine Aufgaben für diesen Tag.
+                            </div>
+                        `
+                        : tasks.map(task => `
+                            <article
+                                class="
+                                    planning-task-card
+                                    ${
+                                        task.status === "Erledigt"
+                                            ? "completed"
+                                            : ""
+                                    }
+                                "
+                            >
+
+                                <div class="planning-task-card-head">
+
+                                    <strong>
+                                        ${escapePlanningHtml(task.title)}
+                                    </strong>
+
+                                    <span
+                                        class="
+                                            planning-task-status
+                                            ${planningStatusClass(task.status)}
+                                        "
+                                    >
+                                        ${escapePlanningHtml(task.status)}
+                                    </span>
+
+                                </div>
+
+                                <div class="planning-task-meta">
+
+                                    <span
+                                        class="
+                                            ${planningPriorityClass(
+                                                task.priority
+                                            )}
+                                        "
+                                    >
+                                        ${escapePlanningHtml(task.priority)}
+                                    </span>
+
+                                </div>
+
+                                <div class="planning-task-actions">
+
+                                    <button
+                                        onclick="
+                                            openPlanningTaskModal(
+                                                ${task.id}
+                                            )
+                                        "
+                                    >
+                                        ✏️ Bearbeiten
+                                    </button>
+
+                                    <button
+                                        class="danger-btn"
+                                        onclick="
+                                            deletePlanningTask(
+                                                ${task.id}
+                                            )
+                                        "
+                                    >
+                                        🗑️ Löschen
+                                    </button>
+
+                                </div>
+
+                            </article>
+                        `).join("")
+                }
+
+            </div>
+
+        </section>
+    `;
+}
+
+function selectPlanningCell(
+    userId,
+    workDate
+){
+    adminPlanningState.selectedUserId =
+        Number(userId);
+
+    adminPlanningState.selectedDate =
+        workDate;
+
+    renderAdminPlanningPage();
+}
+
+async function changeAdminPlanningWeek(direction){
+
+    adminPlanningState.weekStart =
+        shiftPlanningDate(
+            adminPlanningState.weekStart,
+            direction * 7
+        );
+
+    adminPlanningState.selectedDate =
+        adminPlanningState.weekStart;
+
+    await loadAdminPlanningPage();
+}
+
+async function goAdminPlanningToday(){
+
+    adminPlanningState.weekStart =
+        getMondayIso(new Date());
+
+    adminPlanningState.selectedDate =
+        planningIsoDate(new Date());
+
+    await loadAdminPlanningPage();
+}
+
+async function saveSelectedWorkSchedule(){
+
+    const startTime =
+        document.getElementById(
+            "planningStartTime"
+        )?.value || "";
+
+    const endTime =
+        document.getElementById(
+            "planningEndTime"
+        )?.value || "";
+
+    if(!startTime || !endTime){
+        alert(
+            "Start- und Endzeit eingeben"
+        );
+
+        return;
+    }
+
+    if(endTime <= startTime){
+        alert(
+            "Endzeit muss nach der Startzeit liegen"
+        );
+
+        return;
+    }
+
+    const result = await apiPost(
+        "/save-work-schedule",
+        {
+            adminUsername: currentUser,
+
+            userId:
+                adminPlanningState
+                    .selectedUserId,
+
+            workDate:
+                adminPlanningState
+                    .selectedDate,
+
+            startTime,
+            endTime
+        }
+    );
+
+    alert(result);
+
+    await loadAdminPlanningPage();
+}
+
+async function clearSelectedWorkSchedule(){
+
+    const schedule =
+        findAdminPlanningSchedule(
+            adminPlanningState.selectedUserId,
+            adminPlanningState.selectedDate
+        );
+
+    if(!schedule){
+        alert(
+            "Keine Dienstzeit vorhanden"
+        );
+
+        return;
+    }
+
+    if(
+        !confirm(
+            "Dienstzeit entfernen? Die Aufgaben bleiben erhalten."
+        )
+    ){
+        return;
+    }
+
+    const result = await apiPost(
+        "/clear-work-schedule-time",
+        {
+            adminUsername: currentUser,
+            scheduleId: schedule.id
+        }
+    );
+
+    alert(result);
+
+    await loadAdminPlanningPage();
+}
+
+function openPlanningTaskModal(taskId = null){
+
+    const modal =
+        document.getElementById(
+            "planningTaskModal"
+        );
+
+    const idInput =
+        document.getElementById(
+            "planningTaskId"
+        );
+
+    const titleInput =
+        document.getElementById(
+            "planningTaskTitle"
+        );
+
+    const priorityInput =
+        document.getElementById(
+            "planningTaskPriority"
+        );
+
+    const statusInput =
+        document.getElementById(
+            "planningTaskStatus"
+        );
+
+    const modalTitle =
+        document.getElementById(
+            "planningTaskModalTitle"
+        );
+
+    if(!modal){
+        return;
+    }
+
+    if(taskId){
+
+        const task =
+            findAdminPlanningTask(taskId);
+
+        if(!task){
+            alert(
+                "Aufgabe nicht gefunden"
+            );
+
+            return;
+        }
+
+        idInput.value = task.id;
+        titleInput.value = task.title;
+        priorityInput.value = task.priority;
+        statusInput.value = task.status;
+
+        modalTitle.textContent =
+            "Aufgabe bearbeiten";
+
+    }else{
+
+        idInput.value = "";
+        titleInput.value = "";
+        priorityInput.value = "Normal";
+        statusInput.value = "Offen";
+
+        modalTitle.textContent =
+            "Aufgabe hinzufügen";
+    }
+
+    modal.style.display = "flex";
+
+    setTimeout(() => {
+        titleInput.focus();
+    }, 50);
+}
+
+function closePlanningTaskModal(){
+
+    const modal =
+        document.getElementById(
+            "planningTaskModal"
+        );
+
+    if(modal){
+        modal.style.display = "none";
+    }
+}
+
+async function savePlanningTask(){
+
+    const taskId =
+        document.getElementById(
+            "planningTaskId"
+        ).value;
+
+    const title =
+        document.getElementById(
+            "planningTaskTitle"
+        ).value.trim();
+
+    const priority =
+        document.getElementById(
+            "planningTaskPriority"
+        ).value;
+
+    const status =
+        document.getElementById(
+            "planningTaskStatus"
+        ).value;
+
+    if(!title){
+        alert(
+            "Aufgabe eingeben"
+        );
+
+        return;
+    }
+
+    let result;
+
+    if(taskId){
+
+        result = await apiPost(
+            "/edit-work-task",
+            {
+                adminUsername: currentUser,
+                id: Number(taskId),
+                title,
+                priority,
+                status
+            }
+        );
+
+    }else{
+
+        result = await apiPost(
+            "/create-work-task",
+            {
+                adminUsername: currentUser,
+
+                userId:
+                    adminPlanningState
+                        .selectedUserId,
+
+                workDate:
+                    adminPlanningState
+                        .selectedDate,
+
+                title,
+                priority
+            }
+        );
+    }
+
+    alert(result);
+
+    closePlanningTaskModal();
+
+    await loadAdminPlanningPage();
+}
+
+async function deletePlanningTask(taskId){
+
+    if(
+        !confirm(
+            "Aufgabe wirklich löschen?"
+        )
+    ){
+        return;
+    }
+
+    const result = await apiPost(
+        "/delete-work-task",
+        {
+            adminUsername: currentUser,
+            id: taskId
+        }
+    );
+
+    alert(result);
+
+    await loadAdminPlanningPage();
+}
+
+/* =====================================================
+   BENUTZERBEREICH
+===================================================== */
+
+async function loadMyPlanningPage(){
+
+    if(!myPlanningWeekStart){
+        myPlanningWeekStart =
+            getMondayIso(new Date());
+    }
+
+    const data = await apiGet(
+        "/my-work-plan/" +
+        encodeURIComponent(currentUser) +
+        "?weekStart=" +
+        encodeURIComponent(
+            myPlanningWeekStart
+        )
+    );
+
+    if(!data || data.error){
+
+        content.innerHTML = `
+            <div class="planning-empty-state">
+                ${
+                    escapePlanningHtml(
+                        data?.error ||
+                        "Dienstplan konnte nicht geladen werden"
+                    )
+                }
+            </div>
+        `;
+
+        return;
+    }
+
+    const weekDates =
+        getPlanningWeekDates(
+            myPlanningWeekStart
+        );
+
+    const schedules =
+        data.schedules || [];
+
+    const weekEnd =
+        weekDates[6];
+
+    const dayCards = weekDates.map(
+        workDate => {
+
+            const schedule =
+                schedules.find(
+                    item =>
+                        item.work_date ===
+                        workDate
+                );
+
+            const tasks =
+                schedule?.tasks || [];
+
+            const timeText =
+                schedule?.start_time &&
+                schedule?.end_time
+                    ? `${schedule.start_time} – ${schedule.end_time}`
+                    : "Keine Dienstzeit eingetragen";
+
+            return `
+                <article class="my-planning-day">
+
+                    <div class="my-planning-day-head">
+
+                        <div>
+                            <span>
+                                ${
+                                    formatPlanningDate(
+                                        workDate,
+                                        {
+                                            weekday: "long"
+                                        }
+                                    )
+                                }
+                            </span>
+
+                            <strong>
+                                ${
+                                    formatPlanningDate(
+                                        workDate,
+                                        {
+                                            day: "2-digit",
+                                            month: "2-digit",
+                                            year: "numeric"
+                                        }
+                                    )
+                                }
+                            </strong>
+                        </div>
+
+                        <div class="my-planning-time">
+                            🕒 ${timeText}
+                        </div>
+
+                    </div>
+
+                    <div class="my-planning-tasks">
+
+                        ${
+                            tasks.length === 0
+                                ? `
+                                    <div class="planning-no-tasks">
+                                        Keine offenen Aufgaben.
+                                    </div>
+                                `
+                                : tasks.map(task => `
+                                    <div class="my-planning-task">
+
+                                        <div class="my-planning-task-main">
+
+                                            <strong>
+                                                ${escapePlanningHtml(task.title)}
+                                            </strong>
+
+                                            <span
+                                                class="
+                                                    ${planningPriorityClass(
+                                                        task.priority
+                                                    )}
+                                                "
+                                            >
+                                                ${escapePlanningHtml(task.priority)}
+                                            </span>
+
+                                        </div>
+
+                                        <label>
+                                            Status
+
+                                            <select
+                                                onchange="
+                                                    updateMyPlanningTaskStatus(
+                                                        ${task.id},
+                                                        this.value
+                                                    )
+                                                "
+                                            >
+                                                <option
+                                                    value="Offen"
+                                                    ${
+                                                        task.status === "Offen"
+                                                            ? "selected"
+                                                            : ""
+                                                    }
+                                                >
+                                                    Offen
+                                                </option>
+
+                                                <option
+                                                    value="In Bearbeitung"
+                                                    ${
+                                                        task.status === "In Bearbeitung"
+                                                            ? "selected"
+                                                            : ""
+                                                    }
+                                                >
+                                                    In Bearbeitung
+                                                </option>
+
+                                                <option value="Erledigt">
+                                                    Erledigt
+                                                </option>
+                                            </select>
+                                        </label>
+
+                                    </div>
+                                `).join("")
+                        }
+
+                    </div>
+
+                </article>
+            `;
+        }
+    ).join("");
+
+    content.innerHTML = `
+        <div class="my-planning-page">
+
+            <div class="planning-header">
+
+                <div>
+                    <p class="dashboard-kicker">
+                        Persönlicher Bereich
+                    </p>
+
+                    <h2>
+                        🗓️ Dienstplan & Aufgaben
+                    </h2>
+
+                    <p>
+                        Hier siehst du deine eingetragenen
+                        Zeiten und offenen Aufgaben.
+                    </p>
+                </div>
+
+                <div class="planning-week-controls">
+
+                    <button
+                        onclick="changeMyPlanningWeek(-1)"
+                    >
+                        ←
+                    </button>
+
+                    <button
+                        onclick="goMyPlanningToday()"
+                    >
+                        Heute
+                    </button>
+
+                    <strong>
+                        ${
+                            formatPlanningDate(
+                                myPlanningWeekStart,
+                                {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric"
+                                }
+                            )
+                        }
+
+                        –
+
+                        ${
+                            formatPlanningDate(
+                                weekEnd,
+                                {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric"
+                                }
+                            )
+                        }
+                    </strong>
+
+                    <button
+                        onclick="changeMyPlanningWeek(1)"
+                    >
+                        →
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="my-planning-grid">
+                ${dayCards}
+            </div>
+
+        </div>
+    `;
+}
+
+async function changeMyPlanningWeek(direction){
+
+    myPlanningWeekStart =
+        shiftPlanningDate(
+            myPlanningWeekStart,
+            direction * 7
+        );
+
+    await loadMyPlanningPage();
+}
+
+async function goMyPlanningToday(){
+
+    myPlanningWeekStart =
+        getMondayIso(new Date());
+
+    await loadMyPlanningPage();
+}
+
+async function updateMyPlanningTaskStatus(
+    taskId,
+    status
+){
+    if(
+        status === "Erledigt" &&
+        !confirm(
+            "Aufgabe als erledigt markieren?"
+        )
+    ){
+        await loadMyPlanningPage();
+        return;
+    }
+
+    const result = await apiPost(
+        "/update-my-work-task-status",
+        {
+            username: currentUser,
+            id: taskId,
+            status
+        }
+    );
+
+    if(result !== "Status gespeichert"){
+        alert(result);
+    }
+
+    await loadMyPlanningPage();
+}
+
 function filterTickets(){
 
 let searchInput = document.getElementById("ticketSearch");
@@ -2673,12 +4176,14 @@ async function changeOwnUser(){
     }
 
     let msg = await apiPost("/edit-user", {
-        oldName: currentUser,
-        newName,
-        email,
-        pw,
-        admin: isAdmin
-    });
+    oldName: currentUser,
+    newName,
+    email,
+    pw,
+    admin: isAdmin,
+    role: userRole,
+    assignedProject
+});
 
     alert(msg);
 

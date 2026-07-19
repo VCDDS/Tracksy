@@ -80,6 +80,46 @@ async function isRealAdmin(username){
     return result.rows[0].is_admin === true || result.rows[0].role === "admin";
 }
 
+const planningPriorities = new Set([
+    "Niedrig",
+    "Normal",
+    "Hoch"
+]);
+
+const planningStatuses = new Set([
+    "Offen",
+    "In Bearbeitung",
+    "Erledigt"
+]);
+
+function isValidPlanningDate(value){
+    if(
+        typeof value !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(value)
+    ){
+        return false;
+    }
+
+    const [year, month, day] = value
+        .split("-")
+        .map(Number);
+
+    const date = new Date(
+        Date.UTC(year, month - 1, day)
+    );
+
+    return (
+        date.getUTCFullYear() === year &&
+        date.getUTCMonth() === month - 1 &&
+        date.getUTCDate() === day
+    );
+}
+
+function isValidPlanningTime(value){
+    return typeof value === "string" &&
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 async function initDatabase(){
 
     await pool.query(`
@@ -115,6 +155,80 @@ async function initDatabase(){
     await pool.query(`
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS assigned_project TEXT DEFAULT ''
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS work_schedules (
+            id SERIAL PRIMARY KEY,
+    
+            user_id INTEGER NOT NULL
+                REFERENCES users(id)
+                ON DELETE CASCADE,
+    
+            work_date DATE NOT NULL,
+    
+            start_time TIME DEFAULT NULL,
+            end_time TIME DEFAULT NULL,
+    
+            created_by TEXT DEFAULT '',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+            UNIQUE(user_id, work_date),
+    
+            CONSTRAINT work_schedules_time_check
+            CHECK (
+                start_time IS NULL
+                OR end_time IS NULL
+                OR end_time > start_time
+            )
+        )
+    `);
+    
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS work_tasks (
+            id SERIAL PRIMARY KEY,
+    
+            schedule_id INTEGER NOT NULL
+                REFERENCES work_schedules(id)
+                ON DELETE CASCADE,
+    
+            title TEXT NOT NULL,
+    
+            priority TEXT NOT NULL DEFAULT 'Normal',
+            status TEXT NOT NULL DEFAULT 'Offen',
+    
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+            CONSTRAINT work_tasks_priority_check
+            CHECK (
+                priority IN (
+                    'Niedrig',
+                    'Normal',
+                    'Hoch'
+                )
+            ),
+    
+            CONSTRAINT work_tasks_status_check
+            CHECK (
+                status IN (
+                    'Offen',
+                    'In Bearbeitung',
+                    'Erledigt'
+                )
+            )
+        )
+    `);
+    
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_work_schedules_date
+        ON work_schedules(work_date)
+    `);
+    
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_work_tasks_schedule
+        ON work_tasks(schedule_id)
     `);
 
     await pool.query(`
@@ -773,6 +887,639 @@ app.post("/delete-user", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Benutzer konnte nicht gelöscht werden");
+    }
+});
+
+/* =====================================================
+   DIENSTPLAN & AUFGABEN
+===================================================== */
+
+app.get("/work-planning", async (req, res) => {
+    try{
+        const {
+            weekStart,
+            adminUsername
+        } = req.query;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).json({
+                error: "Keine Berechtigung"
+            });
+        }
+
+        if(!isValidPlanningDate(weekStart)){
+            return res.status(400).json({
+                error: "Ungültiger Wochenbeginn"
+            });
+        }
+
+        const usersResult = await pool.query(`
+            SELECT
+                id,
+                username
+
+            FROM users
+
+            WHERE COALESCE(
+                NULLIF(role, ''),
+                CASE
+                    WHEN is_admin = true THEN 'admin'
+                    ELSE 'user'
+                END
+            ) != 'kunde'
+
+            ORDER BY username ASC
+        `);
+
+        const schedulesResult = await pool.query(`
+            SELECT
+                ws.id,
+                ws.user_id,
+
+                TO_CHAR(
+                    ws.work_date,
+                    'YYYY-MM-DD'
+                ) AS work_date,
+
+                TO_CHAR(
+                    ws.start_time,
+                    'HH24:MI'
+                ) AS start_time,
+
+                TO_CHAR(
+                    ws.end_time,
+                    'HH24:MI'
+                ) AS end_time,
+
+                COALESCE(
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', wt.id,
+                            'title', wt.title,
+                            'priority', wt.priority,
+                            'status', wt.status
+                        )
+
+                        ORDER BY
+                            (wt.status = 'Erledigt'),
+                            wt.id
+                    )
+
+                    FILTER (
+                        WHERE wt.id IS NOT NULL
+                    ),
+
+                    '[]'::json
+                ) AS tasks
+
+            FROM work_schedules ws
+
+            LEFT JOIN work_tasks wt
+                ON wt.schedule_id = ws.id
+
+            WHERE ws.work_date BETWEEN
+                $1::date
+                AND
+                (
+                    $1::date +
+                    INTERVAL '6 days'
+                )::date
+
+            GROUP BY
+                ws.id,
+                ws.user_id,
+                ws.work_date,
+                ws.start_time,
+                ws.end_time
+
+            ORDER BY
+                ws.work_date ASC,
+                ws.user_id ASC
+        `, [
+            weekStart
+        ]);
+
+        res.json({
+            users: usersResult.rows,
+            schedules: schedulesResult.rows
+        });
+
+    }catch(err){
+        console.log(err);
+
+        res.status(500).json({
+            error: "Dienstplanung konnte nicht geladen werden"
+        });
+    }
+});
+
+app.get("/my-work-plan/:username", async (req, res) => {
+    try{
+        const username = req.params.username;
+        const { weekStart } = req.query;
+
+        if(!isValidPlanningDate(weekStart)){
+            return res.status(400).json({
+                error: "Ungültiger Wochenbeginn"
+            });
+        }
+
+        const userResult = await pool.query(`
+            SELECT
+                id,
+                username
+
+            FROM users
+
+            WHERE username = $1
+
+            AND COALESCE(
+                NULLIF(role, ''),
+                CASE
+                    WHEN is_admin = true THEN 'admin'
+                    ELSE 'user'
+                END
+            ) != 'kunde'
+
+            LIMIT 1
+        `, [
+            username
+        ]);
+
+        if(userResult.rows.length === 0){
+            return res.status(404).json({
+                error: "Benutzer nicht gefunden"
+            });
+        }
+
+        const user = userResult.rows[0];
+
+        const schedulesResult = await pool.query(`
+            SELECT
+                ws.id,
+                ws.user_id,
+
+                TO_CHAR(
+                    ws.work_date,
+                    'YYYY-MM-DD'
+                ) AS work_date,
+
+                TO_CHAR(
+                    ws.start_time,
+                    'HH24:MI'
+                ) AS start_time,
+
+                TO_CHAR(
+                    ws.end_time,
+                    'HH24:MI'
+                ) AS end_time,
+
+                COALESCE(
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', wt.id,
+                            'title', wt.title,
+                            'priority', wt.priority,
+                            'status', wt.status
+                        )
+
+                        ORDER BY wt.id
+                    )
+
+                    FILTER (
+                        WHERE wt.id IS NOT NULL
+                        AND wt.status != 'Erledigt'
+                    ),
+
+                    '[]'::json
+                ) AS tasks
+
+            FROM work_schedules ws
+
+            LEFT JOIN work_tasks wt
+                ON wt.schedule_id = ws.id
+
+            WHERE ws.user_id = $1
+
+            AND ws.work_date BETWEEN
+                $2::date
+                AND
+                (
+                    $2::date +
+                    INTERVAL '6 days'
+                )::date
+
+            GROUP BY
+                ws.id,
+                ws.user_id,
+                ws.work_date,
+                ws.start_time,
+                ws.end_time
+
+            ORDER BY ws.work_date ASC
+        `, [
+            user.id,
+            weekStart
+        ]);
+
+        res.json({
+            user,
+            schedules: schedulesResult.rows
+        });
+
+    }catch(err){
+        console.log(err);
+
+        res.status(500).json({
+            error: "Dienstplan konnte nicht geladen werden"
+        });
+    }
+});
+
+app.post("/save-work-schedule", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            userId,
+            workDate,
+            startTime,
+            endTime
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        if(
+            !userId ||
+            !isValidPlanningDate(workDate)
+        ){
+            return res.send(
+                "Ungültige Dienstplandaten"
+            );
+        }
+
+        const cleanStart = String(
+            startTime || ""
+        ).trim();
+
+        const cleanEnd = String(
+            endTime || ""
+        ).trim();
+
+        if(
+            !isValidPlanningTime(cleanStart) ||
+            !isValidPlanningTime(cleanEnd)
+        ){
+            return res.send(
+                "Start- und Endzeit fehlen"
+            );
+        }
+
+        if(cleanEnd <= cleanStart){
+            return res.send(
+                "Endzeit muss nach der Startzeit liegen"
+            );
+        }
+
+        const userCheck = await pool.query(`
+            SELECT id
+            FROM users
+            WHERE id = $1
+        `, [
+            userId
+        ]);
+
+        if(userCheck.rows.length === 0){
+            return res.send(
+                "Benutzer nicht gefunden"
+            );
+        }
+
+        await pool.query(`
+            INSERT INTO work_schedules (
+                user_id,
+                work_date,
+                start_time,
+                end_time,
+                created_by
+            )
+
+            VALUES (
+                $1,
+                $2::date,
+                $3::time,
+                $4::time,
+                $5
+            )
+
+            ON CONFLICT (
+                user_id,
+                work_date
+            )
+
+            DO UPDATE SET
+                start_time = EXCLUDED.start_time,
+                end_time = EXCLUDED.end_time,
+                updated_at = NOW()
+        `, [
+            userId,
+            workDate,
+            cleanStart,
+            cleanEnd,
+            adminUsername
+        ]);
+
+        res.send("Dienstzeit gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Dienstzeit konnte nicht gespeichert werden");
+    }
+});
+
+app.post("/clear-work-schedule-time", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            scheduleId
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        await pool.query(`
+            UPDATE work_schedules
+
+            SET
+                start_time = NULL,
+                end_time = NULL,
+                updated_at = NOW()
+
+            WHERE id = $1
+        `, [
+            scheduleId
+        ]);
+
+        res.send("Dienstzeit entfernt");
+
+    }catch(err){
+        console.log(err);
+        res.send("Dienstzeit konnte nicht entfernt werden");
+    }
+});
+
+app.post("/create-work-task", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            userId,
+            workDate,
+            title,
+            priority
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        if(
+            !userId ||
+            !isValidPlanningDate(workDate) ||
+            !title ||
+            !title.trim()
+        ){
+            return res.send(
+                "Aufgabendaten fehlen"
+            );
+        }
+
+        const finalPriority =
+            planningPriorities.has(priority)
+                ? priority
+                : "Normal";
+
+        await pool.query(`
+            WITH selected_schedule AS (
+
+                INSERT INTO work_schedules (
+                    user_id,
+                    work_date,
+                    created_by
+                )
+
+                VALUES (
+                    $1,
+                    $2::date,
+                    $3
+                )
+
+                ON CONFLICT (
+                    user_id,
+                    work_date
+                )
+
+                DO UPDATE SET
+                    updated_at = NOW()
+
+                RETURNING id
+            )
+
+            INSERT INTO work_tasks (
+                schedule_id,
+                title,
+                priority,
+                status
+            )
+
+            SELECT
+                id,
+                $4,
+                $5,
+                'Offen'
+
+            FROM selected_schedule
+        `, [
+            userId,
+            workDate,
+            adminUsername,
+            title.trim().slice(0, 300),
+            finalPriority
+        ]);
+
+        res.send("Aufgabe erstellt");
+
+    }catch(err){
+        console.log(err);
+        res.send("Aufgabe konnte nicht erstellt werden");
+    }
+});
+
+app.post("/edit-work-task", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            id,
+            title,
+            priority,
+            status
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        if(
+            !id ||
+            !title ||
+            !title.trim()
+        ){
+            return res.send(
+                "Aufgabendaten fehlen"
+            );
+        }
+
+        const finalPriority =
+            planningPriorities.has(priority)
+                ? priority
+                : "Normal";
+
+        const finalStatus =
+            planningStatuses.has(status)
+                ? status
+                : "Offen";
+
+        const result = await pool.query(`
+            UPDATE work_tasks
+
+            SET
+                title = $1,
+                priority = $2,
+                status = $3,
+                updated_at = NOW()
+
+            WHERE id = $4
+
+            RETURNING id
+        `, [
+            title.trim().slice(0, 300),
+            finalPriority,
+            finalStatus,
+            id
+        ]);
+
+        if(result.rows.length === 0){
+            return res.send(
+                "Aufgabe nicht gefunden"
+            );
+        }
+
+        res.send("Aufgabe geändert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Aufgabe konnte nicht geändert werden");
+    }
+});
+
+app.post("/delete-work-task", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            id
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        const result = await pool.query(`
+            DELETE FROM work_tasks
+
+            WHERE id = $1
+
+            RETURNING id
+        `, [
+            id
+        ]);
+
+        if(result.rows.length === 0){
+            return res.send(
+                "Aufgabe nicht gefunden"
+            );
+        }
+
+        res.send("Aufgabe gelöscht");
+
+    }catch(err){
+        console.log(err);
+        res.send("Aufgabe konnte nicht gelöscht werden");
+    }
+});
+
+app.post("/update-my-work-task-status", async (req, res) => {
+    try{
+        const {
+            username,
+            id,
+            status
+        } = req.body;
+
+        if(
+            !username ||
+            !id ||
+            !planningStatuses.has(status)
+        ){
+            return res.send(
+                "Ungültiger Status"
+            );
+        }
+
+        const result = await pool.query(`
+            UPDATE work_tasks wt
+
+            SET
+                status = $1,
+                updated_at = NOW()
+
+            FROM
+                work_schedules ws,
+                users u
+
+            WHERE wt.id = $2
+            AND wt.schedule_id = ws.id
+            AND ws.user_id = u.id
+            AND u.username = $3
+
+            RETURNING wt.id
+        `, [
+            status,
+            id,
+            username
+        ]);
+
+        if(result.rows.length === 0){
+            return res.send(
+                "Aufgabe nicht gefunden oder keine Berechtigung"
+            );
+        }
+
+        res.send("Status gespeichert");
+
+    }catch(err){
+        console.log(err);
+        res.send("Status konnte nicht gespeichert werden");
     }
 });
 
