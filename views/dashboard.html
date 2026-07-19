@@ -1408,6 +1408,7 @@ if(!isAdmin){
 }
 
 let users = await apiGet("/users");
+
 let shiftplans = await apiGet(
     "/shiftplans/" + encodeURIComponent(currentUser) + "?admin=true"
 );
@@ -1420,69 +1421,212 @@ let selectableUsers = users.filter(u => {
 content.innerHTML = `
 <div class="shiftplan-page">
 
-    <h2>📅 Dienstplan verwalten</h2>
+    <div class="shiftplan-admin-header">
 
-    <p class="page-description">
-        Plane hier Arbeitszeiten, Termine und Abwesenheiten für bis zu vier Wochen.
-        Der jeweilige Benutzer sieht die Planung anschließend unter
-        <b>„Mein Dienstplan“</b>.
-    </p>
+        <div>
+            <p class="dashboard-kicker">Admin Bereich</p>
+            <h2>📅 Dienstpläne verwalten</h2>
 
-    <div class="shiftplan-create-card">
-
-        <h3>Planung vorbereiten</h3>
-
-        <label for="shiftUser">
-            Mitarbeiter
-        </label>
-
-        <small>
-            Wähle den Benutzer oder Administrator aus, für den der Dienstplan erstellt wird.
-        </small>
-
-        <select id="shiftUser">
-            <option value="">Mitarbeiter auswählen</option>
-
-            ${selectableUsers.map(u => `
-                <option value="${u.username}">
-                    ${u.username}
-                </option>
-            `).join("")}
-        </select>
-
-        <label for="shiftStart">
-            Planungsbeginn
-        </label>
-
-        <small>
-            Wähle den ersten Tag des Dienstplans.
-        </small>
-
-        <input
-            id="shiftStart"
-            type="date"
-        >
-
-        <label for="shiftEnd">
-            Planungsende
-        </label>
-
-        <small>
-            Der Zeitraum darf maximal vier Wochen umfassen.
-        </small>
-
-        <input
-            id="shiftEnd"
-            type="date"
-        >
-
-        <button onclick="loadShiftPlanner()">
-            📅 Planung öffnen
-        </button>
+            <p class="page-description">
+                Erstelle Dienstpläne mit Schichten, Arbeitszeiten,
+                Terminen und Aufgaben für Benutzer und Administratoren.
+            </p>
+        </div>
 
     </div>
 
+    <div class="shiftplan-admin-summary">
+
+        <div class="shiftplan-stat-card">
+            <span>📅 Dienstpläne</span>
+            <strong>${shiftplans.length}</strong>
+            <small>Gespeicherte Planungen</small>
+        </div>
+
+        <div class="shiftplan-stat-card">
+            <span>👥 Mitarbeiter</span>
+            <strong>${selectableUsers.length}</strong>
+            <small>Planbare Benutzer</small>
+        </div>
+
+        <div class="shiftplan-stat-card">
+            <span>🗓️ Zeitraum</span>
+            <strong>4 Wochen</strong>
+            <small>Maximale Planung</small>
+        </div>
+
+    </div>
+
+    <section class="shiftplan-create-card">
+
+        <div class="shiftplan-create-head">
+
+            <div>
+                <h3>➕ Neuen Dienstplan erstellen</h3>
+                <p>Mitarbeiter und Zeitraum auswählen.</p>
+            </div>
+
+        </div>
+
+        <div class="shiftplan-create-grid">
+
+            <div>
+                <label for="shiftUser">
+                    Mitarbeiter
+                </label>
+
+                <small>
+                    Benutzer oder Administrator auswählen.
+                </small>
+
+                <select id="shiftUser">
+                    <option value="">Mitarbeiter auswählen</option>
+
+                    ${selectableUsers.map(u => `
+                        <option value="${u.username}">
+                            ${u.username}
+                        </option>
+                    `).join("")}
+                </select>
+            </div>
+
+            <div>
+                <label for="shiftStart">
+                    Planungsbeginn
+                </label>
+
+                <small>
+                    Erster Tag des Dienstplans.
+                </small>
+
+                <input
+                    id="shiftStart"
+                    type="date"
+                >
+            </div>
+
+            <div>
+                <label for="shiftEnd">
+                    Planungsende
+                </label>
+
+                <small>
+                    Maximal vier Wochen.
+                </small>
+
+                <input
+                    id="shiftEnd"
+                    type="date"
+                >
+            </div>
+
+        </div>
+
+        <button
+            class="shiftplan-open-button"
+            onclick="loadShiftPlanner()"
+        >
+            📅 Dienstplan öffnen
+        </button>
+
+    </section>
+
     <div id="shiftPlanner"></div>
+
+    <section class="shiftplan-existing-section">
+
+        <div class="shiftplan-existing-head">
+
+            <div>
+                <h3>📋 Gespeicherte Dienstpläne</h3>
+                <p>Bereits erstellte Dienstpläne verwalten.</p>
+            </div>
+
+        </div>
+
+        <div class="shiftplan-admin-grid">
+
+            ${
+                shiftplans.length === 0
+                ? `
+                    <div class="shiftplan-empty">
+                        <h3>Noch keine Dienstpläne</h3>
+                        <p>Es wurde noch keine Planung gespeichert.</p>
+                    </div>
+                `
+                : shiftplans.map(plan => `
+
+                    <article class="shiftplan-admin-card">
+
+                        <div class="shiftplan-card-head">
+
+                            <div>
+                                <small>
+                                    👤 ${plan.assigned_to || "-"}
+                                </small>
+
+                                <h3>
+                                    ${plan.title || "Dienstplan"}
+                                </h3>
+                            </div>
+
+                            <span>
+                                ${plan.period_start || "-"}
+                                bis
+                                ${plan.period_end || "-"}
+                            </span>
+
+                        </div>
+
+                        <div class="shiftplan-admin-meta">
+
+                            <span>
+                                📅 ${plan.period_start || "-"}
+                            </span>
+
+                            <span>
+                                🏁 ${plan.period_end || "-"}
+                            </span>
+
+                            <span>
+                                ✍️ ${plan.uploaded_by || "-"}
+                            </span>
+
+                        </div>
+
+                        <div class="shiftplan-actions">
+
+                            <button onclick="editShiftplan(${plan.id})">
+                                ✏️ Bearbeiten
+                            </button>
+
+                            ${
+                                plan.filename
+                                ? `
+                                    <button onclick="openShiftplan(${plan.id})">
+                                        📄 PDF öffnen
+                                    </button>
+                                `
+                                : ""
+                            }
+
+                            <button
+                                class="danger-btn"
+                                onclick="deleteShiftplan(${plan.id})"
+                            >
+                                🗑️ Löschen
+                            </button>
+
+                        </div>
+
+                    </article>
+
+                `).join("")
+            }
+
+        </div>
+
+    </section>
 
 </div>
 `;
@@ -1574,22 +1718,41 @@ if(plans.length === 0){
 
                         <div class="shiftplan-day-details">
 
-                            <p>
-                                <b>Arbeitszeit:</b>
-                                ${day.work || "-"}
-                            </p>
+    <p>
+        <b>Schicht:</b>
+        ${day.shift || "-"}
+    </p>
 
-                            <p>
-                                <b>Termin:</b>
-                                ${day.appointment || "-"}
-                            </p>
+    <p>
+        <b>Arbeitszeit:</b>
+        ${
+            day.start_time || day.end_time
+                ? `${day.start_time || "--:--"} - ${day.end_time || "--:--"}`
+                : "-"
+        }
+    </p>
 
-                            <p>
-                                <b>Hinweis:</b>
-                                ${day.note || "-"}
-                            </p>
+    <p>
+        <b>Status:</b>
+        ${day.status || "Arbeit"}
+    </p>
 
-                        </div>
+    <p>
+        <b>Aufgaben:</b>
+        ${day.tasks || "-"}
+    </p>
+
+    <p>
+        <b>Termin:</b>
+        ${day.appointment || "-"}
+    </p>
+
+    <p>
+        <b>Hinweis:</b>
+        ${day.note || "-"}
+    </p>
+
+</div>
 
                     </div>
 
@@ -3924,7 +4087,7 @@ if(badge){
 }
 }
 
-function loadShiftPlanner(){
+async function loadShiftPlanner(){
 
 const user = document.getElementById("shiftUser").value;
 const start = document.getElementById("shiftStart").value;
@@ -3943,14 +4106,14 @@ if(!start || !end){
 const startDate = new Date(start);
 const endDate = new Date(end);
 
-const diffDays = Math.ceil(
-    (endDate - startDate) / (1000 * 60 * 60 * 24)
-) + 1;
-
 if(endDate < startDate){
     alert("Das Enddatum darf nicht vor dem Startdatum liegen.");
     return;
 }
+
+const diffDays = Math.ceil(
+    (endDate - startDate) / (1000 * 60 * 60 * 24)
+) + 1;
 
 if(diffDays > 28){
     alert("Der Dienstplan darf maximal 4 Wochen umfassen.");
@@ -3960,28 +4123,35 @@ if(diffDays > 28){
 const planner = document.getElementById("shiftPlanner");
 
 planner.innerHTML = `
-    <div class="shift-planner-card">
+<div class="shift-planner-card">
 
-        <div class="shift-planner-head">
-            <div>
-                <h3>📅 Dienstplan für ${user}</h3>
-                <p>${start} bis ${end}</p>
-            </div>
+    <div class="shift-planner-head">
+
+        <div>
+            <h3>📅 Dienstplan für ${user}</h3>
+            <p>${start} bis ${end}</p>
         </div>
 
-        <div id="shiftPlannerDays"></div>
+    </div>
+
+    <div id="shiftPlannerDays"></div>
+
+    <div class="shift-planner-footer">
 
         <button onclick="saveShiftPlanner()">
             💾 Dienstplan speichern
         </button>
 
     </div>
+
+</div>
 `;
 
-renderShiftPlannerDays(start, end);
+await renderShiftPlannerDays(start, end);
+
 }
 
-function renderShiftPlannerDays(start, end){
+async function renderShiftPlannerDays(start, end){
 
 const container = document.getElementById("shiftPlannerDays");
 
@@ -4011,53 +4181,118 @@ while(currentDate <= endDate){
     html += `
         <div class="shift-planner-day" data-date="${dateValue}">
 
-            <h4>${displayDate}</h4>
+            <div class="shift-planner-day-head">
+                <h4>${displayDate}</h4>
+
+                <span class="shift-day-badge">
+                    Planung
+                </span>
+            </div>
+
+            <div class="shift-planner-fields">
+
+                <div class="shift-field">
+
+                    <label>
+                        Schicht
+                        <small>
+                            Wähle die geplante Schicht.
+                        </small>
+                    </label>
+
+                    <select class="shift-type">
+                        <option value="">Keine Schicht</option>
+                        <option value="Frühschicht">Frühschicht</option>
+                        <option value="Spätschicht">Spätschicht</option>
+                        <option value="Nachtschicht">Nachtschicht</option>
+                        <option value="Tagschicht">Tagschicht</option>
+                        <option value="Individuell">Individuell</option>
+                    </select>
+
+                </div>
+
+                <div class="shift-field">
+
+                    <label>
+                        Beginn
+                        <small>
+                            Start der Arbeitszeit.
+                        </small>
+                    </label>
+
+                    <input
+                        class="shift-start-time"
+                        type="time"
+                    >
+
+                </div>
+
+                <div class="shift-field">
+
+                    <label>
+                        Ende
+                        <small>
+                            Ende der Arbeitszeit.
+                        </small>
+                    </label>
+
+                    <input
+                        class="shift-end-time"
+                        type="time"
+                    >
+
+                </div>
+
+                <div class="shift-field">
+
+                    <label>
+                        Status
+                        <small>
+                            Status für diesen Tag.
+                        </small>
+                    </label>
+
+                    <select class="shift-day-status">
+                        <option value="Arbeit">Arbeit</option>
+                        <option value="Frei">Frei</option>
+                        <option value="Urlaub">Urlaub</option>
+                        <option value="Krank">Krank</option>
+                        <option value="Termin">Nur Termin</option>
+                    </select>
+
+                </div>
+
+            </div>
 
             <label>
-                Arbeitszeit
+                Aufgaben
                 <small>
-                    Schicht oder Arbeitszeit, zum Beispiel 06:00 bis 14:00.
+                    Aufgaben für den Benutzer an diesem Tag.
                 </small>
             </label>
 
-            <input
-                class="shift-work-time"
-                type="text"
-                placeholder="z. B. Frühschicht 06:00 – 14:00"
-            >
+            <textarea
+                class="shift-tasks"
+                placeholder="z. B. Tickets prüfen, Kundenanfrage bearbeiten, Systemkontrolle"
+            ></textarea>
 
             <label>
                 Termin
                 <small>
-                    Wichtige Termine oder feste Verpflichtungen an diesem Tag.
+                    Wichtige Termine oder feste Verpflichtungen.
                 </small>
             </label>
 
             <input
                 class="shift-appointment"
                 type="text"
-                placeholder="z. B. Arzttermin 15:30 Uhr"
+                placeholder="z. B. Besprechung um 15:30 Uhr"
             >
-
-            <label>
-                Status
-                <small>
-                    Frei, Urlaub, Krank oder regulärer Arbeitstag.
-                </small>
-            </label>
-
-            <select class="shift-day-status">
-                <option value="Arbeit">Arbeit</option>
-                <option value="Frei">Frei</option>
-                <option value="Urlaub">Urlaub</option>
-                <option value="Krank">Krank</option>
-                <option value="Termin">Nur Termin</option>
-            </select>
 
             <label>
                 Hinweis
                 <small>
-                    Zusätzliche Informationen für den jeweiligen Benutzer.
+                    Zusätzliche Informationen für den Benutzer.
                 </small>
             </label>
 
@@ -4073,6 +4308,7 @@ while(currentDate <= endDate){
 }
 
 container.innerHTML = html;
+
 }
 
 async function openShiftplan(id){
@@ -4095,119 +4331,92 @@ if(!data.success){
 window.open(data.url,"_blank");
 }
 
-async function saveShiftPlanner(){
-
-const assigned_to =
-    document.getElementById("shiftUser").value;
-
-const period_start =
-    document.getElementById("shiftStart").value;
-
-const period_end =
-    document.getElementById("shiftEnd").value;
-
-const days = [];
-
-document
-    .querySelectorAll(".shift-planner-day")
-    .forEach(day => {
-
-        days.push({
-
-            date:
-                day.dataset.date,
-
-            work:
-                day.querySelector(".shift-work-time").value,
-
-            appointment:
-                day.querySelector(".shift-appointment").value,
-
-            status:
-                day.querySelector(".shift-day-status").value,
-
-            note:
-                day.querySelector(".shift-note").value
-
-        });
-
-    });
-
-    const msg = await apiPost(
-    "/save-shift-planner",
-    {
-        assigned_to,
-        period_start,
-        period_end,
-        days,
-        uploaded_by: currentUser
-    }
-);
-
-alert(msg);
-
-if(msg === "Dienstplan gespeichert."){
-    loadPage("dienstplaeneAdmin");
-}
-
-}
-
 async function editShiftplan(id){
 
-let plans = await apiGet(
+const plans = await apiGet(
     "/shiftplans/" + encodeURIComponent(currentUser) + "?admin=true"
 );
 
-let plan = plans.find(p => p.id === id);
+const plan = plans.find(p => String(p.id) === String(id));
 
 if(!plan){
     alert("Dienstplan nicht gefunden.");
     return;
 }
 
-let title = prompt("Titel:", plan.title || "");
-if(title === null) return;
+let plannerDays = [];
 
-let description = prompt(
-    "Beschreibung:",
-    plan.description || ""
-);
-if(description === null) return;
-
-let assignedTo = prompt(
-    "Mitarbeiter:",
-    plan.assigned_to || ""
-);
-if(assignedTo === null) return;
-
-let periodStart = prompt(
-    "Zeitraum von – JJJJ-MM-TT:",
-    plan.period_start || ""
-);
-if(periodStart === null) return;
-
-let periodEnd = prompt(
-    "Zeitraum bis – JJJJ-MM-TT:",
-    plan.period_end || ""
-);
-if(periodEnd === null) return;
-
-if(!title.trim() || !assignedTo.trim() || !periodStart || !periodEnd){
-    alert("Titel, Mitarbeiter und Zeitraum sind erforderlich.");
-    return;
+if(Array.isArray(plan.planner_data)){
+    plannerDays = plan.planner_data;
+}else if(typeof plan.planner_data === "string"){
+    try{
+        plannerDays = JSON.parse(plan.planner_data);
+    }catch{
+        plannerDays = [];
+    }
 }
 
-let msg = await apiPost("/edit-shiftplan", {
-    id,
-    title: title.trim(),
-    description: description.trim(),
-    assignedTo: assignedTo.trim(),
-    periodStart,
-    periodEnd
+document.getElementById("shiftUser").value =
+    plan.assigned_to || "";
+
+document.getElementById("shiftStart").value =
+    String(plan.period_start || "").slice(0, 10);
+
+document.getElementById("shiftEnd").value =
+    String(plan.period_end || "").slice(0, 10);
+
+await loadShiftPlanner();
+
+window.editingShiftplanId = id;
+
+document
+    .querySelectorAll(".shift-planner-day")
+    .forEach(dayElement => {
+
+        const dayData = plannerDays.find(
+            day => day.date === dayElement.dataset.date
+        );
+
+        if(!dayData){
+            return;
+        }
+
+        dayElement.querySelector(".shift-type").value =
+            dayData.shift || "";
+
+        dayElement.querySelector(".shift-start-time").value =
+            dayData.start_time || "";
+
+        dayElement.querySelector(".shift-end-time").value =
+            dayData.end_time || "";
+
+        dayElement.querySelector(".shift-day-status").value =
+            dayData.status || "Arbeit";
+
+        dayElement.querySelector(".shift-tasks").value =
+            dayData.tasks || "";
+
+        dayElement.querySelector(".shift-appointment").value =
+            dayData.appointment || "";
+
+        dayElement.querySelector(".shift-note").value =
+            dayData.note || "";
+
+    });
+
+const saveButton = document.querySelector(
+    ".shift-planner-footer button"
+);
+
+if(saveButton){
+    saveButton.innerHTML = "💾 Änderungen speichern";
+}
+
+document.getElementById("shiftPlanner").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
 });
 
-alert(msg);
-loadPage("dienstplaeneAdmin");
 }
 
 async function deleteShiftplan(id){

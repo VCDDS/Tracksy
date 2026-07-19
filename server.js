@@ -3066,6 +3066,57 @@ app.post("/save-shift-planner", async (req, res) => {
 
 });
 
+app.post("/update-shift-planner", async (req, res) => {
+
+    try{
+
+        const{
+            id,
+            assigned_to,
+            period_start,
+            period_end,
+            days,
+            uploaded_by
+        } = req.body;
+
+        await pool.query(
+            `
+            UPDATE shiftplans
+            SET
+                title = $1,
+                assigned_to = $2,
+                period_start = $3,
+                period_end = $4,
+                planner_data = $5,
+                uploaded_by = $6,
+                updated_at = $7
+            WHERE id = $8
+            `,
+            [
+                "Dienstplan " + period_start + " bis " + period_end,
+                assigned_to,
+                period_start,
+                period_end,
+                JSON.stringify(days || []),
+                uploaded_by || "System",
+                new Date().toLocaleString("de-DE", {
+                    timeZone: "Europe/Berlin"
+                }),
+                id
+            ]
+        );
+
+        res.send("Dienstplan aktualisiert.");
+
+    }catch(err){
+
+        console.error(err);
+        res.status(500).send("Fehler beim Aktualisieren.");
+
+    }
+
+});
+
 app.post("/edit-work-order", async (req, res) => {
     try{
         const {
