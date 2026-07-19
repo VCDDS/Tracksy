@@ -1413,197 +1413,276 @@ let shiftplans = await apiGet(
     "/shiftplans/" + encodeURIComponent(currentUser) + "?admin=true"
 );
 
-let selectableUsers = users.filter(u => {
-    let role = u.role || (u.is_admin ? "admin" : "user");
+let selectableUsers = users.filter(user => {
+    const role =
+        user.role ||
+        (user.is_admin ? "admin" : "user");
+
     return role === "admin" || role === "user";
 });
 
 content.innerHTML = `
-<div class="shiftplan-page">
+<div class="planner-main-page">
 
-    <div class="shiftplan-admin-header">
+    <header class="planner-main-header">
 
         <div>
-            <p class="dashboard-kicker">Entwicklungsplanung</p>
+            <h1>Dienstplanung & Aufgaben</h1>
 
-            <h2>📅 Dienstplanung & Aufgaben</h2>
-
-            <p class="page-description">
-                Plane Mitarbeiter, Arbeitstage, Arbeitszeiten
-                und Entwicklungsaufgaben.
+            <p>
+                Übersicht, Planung und Aufgabenverwaltung
             </p>
         </div>
 
-    </div>
+        <div class="planner-main-actions">
 
-    <div class="planner-dashboard-top">
+            <button onclick="loadCurrentPlannerWeek()">
+                ✨ Heute
+            </button>
 
-        <div class="planner-info-card red">
-            <span>Offene Aufgaben</span>
-            <strong id="plannerOpenTasks">0</strong>
-            <small>Noch nicht begonnen</small>
-        </div>
+            <button onclick="changePlannerWeek(-1)">
+                ←
+            </button>
 
-        <div class="planner-info-card orange">
-            <span>In Bearbeitung</span>
-            <strong id="plannerProgressTasks">0</strong>
-            <small>Aktive Aufgaben</small>
-        </div>
-
-        <div class="planner-info-card green">
-            <span>Erledigt</span>
-            <strong id="plannerDoneTasks">0</strong>
-            <small>Diese Woche</small>
-        </div>
-
-        <div class="planner-info-card blue">
-            <span>Auslastung</span>
-            <strong id="plannerLoad">0%</strong>
-            <small>Gesamte Woche</small>
-        </div>
-
-    </div>
-
-    <section class="shiftplan-create-card">
-
-        <div class="shiftplan-create-head">
-
-            <div>
-                <h3>➕ Planung erstellen</h3>
-
-                <p>
-                    Mitarbeiter und Zeitraum auswählen.
-                </p>
+            <div class="planner-header-period">
+                <span id="plannerHeaderPeriod">
+                    Zeitraum auswählen
+                </span>
             </div>
 
+            <button onclick="changePlannerWeek(1)">
+                →
+            </button>
+
+            <button
+                class="planner-main-create"
+                onclick="openPlannerDayModal('', plannerStartDate)"
+            >
+                ＋ Schicht planen
+            </button>
+
         </div>
 
-        <div class="shiftplan-create-grid">
+    </header>
 
-            <div>
-                <label for="shiftUser">
-                    Name
-                </label>
+    <section class="planner-filter-card">
 
-                <small>
-                    Mitarbeiter auswählen.
-                </small>
+        <div>
 
-                <select id="shiftUser">
+            <label>Mitarbeiter</label>
 
-                    <option value="">
-                        Mitarbeiter auswählen
+            <select id="shiftUser">
+
+                <option value="">
+                    Mitarbeiter auswählen
+                </option>
+
+                ${selectableUsers.map(user => `
+                    <option value="${user.username}">
+                        ${user.username}
                     </option>
+                `).join("")}
 
-                    ${selectableUsers.map(u => `
-                        <option value="${u.username}">
-                            ${u.username}
-                        </option>
-                    `).join("")}
-
-                </select>
-            </div>
-
-            <div>
-                <label for="shiftStart">
-                    Erster Tag
-                </label>
-
-                <small>
-                    Beginn der Planung.
-                </small>
-
-                <input
-                    id="shiftStart"
-                    type="date"
-                >
-            </div>
-
-            <div>
-                <label for="shiftEnd">
-                    Letzter Tag
-                </label>
-
-                <small>
-                    Ende der Planung.
-                </small>
-
-                <input
-                    id="shiftEnd"
-                    type="date"
-                >
-            </div>
+            </select>
 
         </div>
 
-        <button
-            class="shiftplan-open-button"
-            onclick="loadShiftPlanner()"
-        >
-            📅 Planung öffnen
+        <div>
+
+            <label>Erster Tag</label>
+
+            <input
+                id="shiftStart"
+                type="date"
+            >
+
+        </div>
+
+        <div>
+
+            <label>Letzter Tag</label>
+
+            <input
+                id="shiftEnd"
+                type="date"
+            >
+
+        </div>
+
+        <button onclick="loadShiftPlanner()">
+            Planung öffnen
         </button>
 
     </section>
 
-    <section class="planner-dashboard">
+    <section class="planner-stat-row">
 
-        <div class="planner-week-header">
+        <article class="planner-stat-box planner-stat-open">
 
-            <div>
-                <h3>Wochenübersicht</h3>
+            <span>Offene Aufgaben</span>
 
-                <p>
-                    Name, Tag, Arbeitszeit und Entwicklungsaufgabe.
-                </p>
-            </div>
+            <strong id="plannerOpenTasks">
+                0
+            </strong>
 
-            <div class="planner-week-controls">
+            <small>
+                Noch nicht begonnen
+            </small>
 
-                <button onclick="changePlannerWeek(-1)">
-                    ←
-                </button>
+        </article>
 
-                <button onclick="loadCurrentPlannerWeek()">
-                    Heute
-                </button>
+        <article class="planner-stat-box planner-stat-progress">
 
-                <button onclick="changePlannerWeek(1)">
-                    →
-                </button>
+            <span>In Bearbeitung</span>
 
-            </div>
+            <strong id="plannerProgressTasks">
+                0
+            </strong>
 
-        </div>
+            <small>
+                Aktive Aufgaben
+            </small>
 
-        <div id="plannerWeekView">
+        </article>
 
-            <div class="planner-empty-state">
+        <article class="planner-stat-box planner-stat-done">
 
-                <h3>Noch keine Wochenplanung geöffnet</h3>
+            <span>Erledigt</span>
 
-                <p>
-                    Mitarbeiter und Zeitraum auswählen und anschließend
-                    die Planung öffnen.
-                </p>
+            <strong id="plannerDoneTasks">
+                0
+            </strong>
 
-            </div>
+            <small>
+                Im aktuellen Zeitraum
+            </small>
 
-        </div>
+        </article>
+
+        <article class="planner-stat-box planner-stat-load">
+
+            <span>Auslastung gesamt</span>
+
+            <strong id="plannerLoad">
+                0%
+            </strong>
+
+            <small>
+                Aktuelle Planung
+            </small>
+
+        </article>
 
     </section>
 
-    <div id="shiftPlanner"></div>
+    <div class="planner-main-layout">
+
+        <main class="planner-board">
+
+            <div id="shiftPlanner">
+
+    <div class="planner-week-grid">
+
+        <div class="planner-grid-header planner-day-column">
+
+        </div>
+
+        <div id="plannerEmployeeHeader" class="planner-employee-columns">
+
+        </div>
+
+        <div id="plannerWeekRows">
+
+        </div>
+
+    </div>
+
+</div>
+
+        </main>
+
+        <aside class="planner-right-sidebar">
+
+            <section class="planner-right-card">
+
+                <div class="planner-right-head">
+
+                    <h3>Aufgabenübersicht</h3>
+
+                    <span>Gesamt</span>
+
+                </div>
+
+                <div id="plannerTaskOverview">
+
+                    <div class="planner-side-empty">
+                        Keine Aufgaben
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="planner-right-card">
+
+                <div class="planner-right-head">
+
+                    <h3>Überfällige Aufgaben</h3>
+
+                    <span>Alle anzeigen</span>
+
+                </div>
+
+                <div id="plannerOverdue">
+
+                    <div class="planner-side-empty">
+                        Keine überfälligen Aufgaben
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="planner-right-card">
+
+                <div class="planner-right-head">
+
+                    <h3>Aktuelle Aufgaben</h3>
+
+                    <button
+                        onclick="openPlannerDayModal('', plannerStartDate)"
+                    >
+                        ＋ Neu
+                    </button>
+
+                </div>
+
+                <div id="plannerCurrent">
+
+                    <div class="planner-side-empty">
+                        Keine aktuellen Aufgaben
+                    </div>
+
+                </div>
+
+            </section>
+
+        </aside>
+
+    </div>
 
     <section class="shiftplan-existing-section">
 
         <div class="shiftplan-existing-head">
 
             <div>
-                <h3>📋 Gespeicherte Planungen</h3>
+
+                <h3>Gespeicherte Planungen</h3>
 
                 <p>
-                    Bereits erstellte Entwicklungsplanungen verwalten.
+                    Vorhandene Dienstplanungen verwalten.
                 </p>
+
             </div>
 
         </div>
@@ -1612,87 +1691,65 @@ content.innerHTML = `
 
             ${
                 shiftplans.length === 0
-                ? `
-                    <div class="shiftplan-empty">
+                    ? `
+                        <div class="shiftplan-empty">
+                            Noch keine Planungen vorhanden.
+                        </div>
+                    `
+                    : shiftplans.map(plan => `
 
-                        <h3>Noch keine Planungen</h3>
+                        <article class="shiftplan-admin-card">
 
-                        <p>
-                            Es wurde noch keine Planung gespeichert.
-                        </p>
+                            <div class="shiftplan-card-head">
 
-                    </div>
-                `
-                : shiftplans.map(plan => `
+                                <div>
 
-                    <article class="shiftplan-admin-card">
+                                    <small>
+                                        👤 ${plan.assigned_to || "-"}
+                                    </small>
 
-                        <div class="shiftplan-card-head">
+                                    <h3>
+                                        ${plan.title || "Dienstplanung"}
+                                    </h3>
 
-                            <div>
+                                </div>
 
-                                <small>
-                                    👤 ${plan.assigned_to || "-"}
-                                </small>
-
-                                <h3>
-                                    ${plan.title || "Entwicklungsplanung"}
-                                </h3>
+                                <span>
+                                    ${plan.period_start || "-"}
+                                    bis
+                                    ${plan.period_end || "-"}
+                                </span>
 
                             </div>
 
-                            <span>
-                                ${plan.period_start || "-"}
-                                bis
-                                ${plan.period_end || "-"}
-                            </span>
+                            <div class="shiftplan-actions">
 
-                        </div>
+                                <button onclick="editShiftplan(${plan.id})">
+                                    ✏️ Bearbeiten
+                                </button>
 
-                        <div class="shiftplan-admin-meta">
+                                ${
+                                    plan.filename
+                                        ? `
+                                            <button onclick="openShiftplan(${plan.id})">
+                                                📄 PDF öffnen
+                                            </button>
+                                        `
+                                        : ""
+                                }
 
-                            <span>
-                                📅 ${plan.period_start || "-"}
-                            </span>
+                                <button
+                                    class="danger-btn"
+                                    onclick="deleteShiftplan(${plan.id})"
+                                >
+                                    🗑️ Löschen
+                                </button>
 
-                            <span>
-                                🏁 ${plan.period_end || "-"}
-                            </span>
+                            </div>
 
-                            <span>
-                                ✍️ ${plan.uploaded_by || "-"}
-                            </span>
+                        </article>
 
-                        </div>
-
-                        <div class="shiftplan-actions">
-
-                            <button onclick="editShiftplan(${plan.id})">
-                                ✏️ Bearbeiten
-                            </button>
-
-                            ${
-                                plan.filename
-                                ? `
-                                    <button onclick="openShiftplan(${plan.id})">
-                                        📄 PDF öffnen
-                                    </button>
-                                `
-                                : ""
-                            }
-
-                            <button
-                                class="danger-btn"
-                                onclick="deleteShiftplan(${plan.id})"
-                            >
-                                🗑️ Löschen
-                            </button>
-
-                        </div>
-
-                    </article>
-
-                `).join("")
+                    `).join("")
             }
 
         </div>
@@ -4309,128 +4366,107 @@ if(selectedUser){
 
 async function renderShiftPlannerDays(start, end){
 
-    const container = document.getElementById("shiftPlannerDays");
+    const header =
+    document.getElementById("plannerEmployeeHeader");
 
-    if(!container){
-        return;
-    }
+const body =
+    document.getElementById("plannerWeekRows");
 
-    const users = await apiGet("/users");
+if(!header || !body) return;
 
-    const selectableUsers = users.filter(user => {
-        const role =
-            user.role ||
-            (user.is_admin ? "admin" : "user");
+header.innerHTML = "";
+body.innerHTML = "";
 
-        return role === "admin" || role === "user";
-    });
+const employees = [...new Set(
+    window.plannerDays.map(d => d.assigned_to)
+)];
 
-    let currentDate = new Date(start + "T00:00:00");
-    const endDate = new Date(end + "T00:00:00");
+const weekdays = [
+    "Montag",
+    "Dienstag",
+    "Mittwoch",
+    "Donnerstag",
+    "Freitag",
+    "Samstag",
+    "Sonntag"
+];
 
-    const days = [];
+weekdays.forEach((day,index)=>{
 
-    while(currentDate <= endDate){
+    body.innerHTML += `
+        <div class="planner-week-row">
 
-        days.push({
-            value: getPlannerDateValue(currentDate),
+            <div class="planner-weekday">
+                ${day}
+            </div>
 
-            weekday: currentDate.toLocaleDateString(
-                "de-DE",
-                {
-                    weekday: "long"
-                }
-            ),
-
-            date: currentDate.toLocaleDateString(
-                "de-DE",
-                {
-                    day: "2-digit",
-                    month: "2-digit"
-                }
-            )
-        });
-
-        currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    container.innerHTML = `
-        <div class="planner-table">
-
-            <div
-                class="planner-table-grid"
-                style="
-                    grid-template-columns:
-                    145px
-                    repeat(
-                        ${selectableUsers.length},
-                        minmax(210px, 1fr)
-                    );
-                "
-            >
-
-                <div class="planner-table-corner">
-                    Tag
-                </div>
-
-                ${selectableUsers.map(user => `
-                    <div class="planner-employee-head">
-
-                        <div class="planner-avatar">
-                            ${escapePlannerHtml(
-                                user.username
-                            ).charAt(0).toUpperCase()}
-                        </div>
-
-                        <div>
-                            <strong>
-                                ${escapePlannerHtml(user.username)}
-                            </strong>
-
-                            <small>
-                                Webentwicklung
-                            </small>
-                        </div>
-
-                    </div>
-                `).join("")}
-
-                ${days.map(day => `
-
-                    <div class="planner-day-head">
-                        <strong>
-                            ${day.weekday}
-                        </strong>
-
-                        <span>
-                            ${day.date}
-                        </span>
-                    </div>
-
-                    ${selectableUsers.map(user => {
-
-                        const key =
-                            user.username + "_" + day.value;
-
-                        const entry =
-                            window.plannerDays[key];
-
-                        return renderPlannerCell(
-                            user.username,
-                            day.value,
-                            entry
-                        );
-
-                    }).join("")}
-
-                `).join("")}
-
+            <div class="planner-row-cells" id="plannerRow${index}">
             </div>
 
         </div>
     `;
-}
 
+    const row =
+        document.getElementById(`plannerRow${index}`);
+
+    employees.forEach(user=>{
+
+        const entry =
+            window.plannerDays.find(p=>
+
+                p.assigned_to===user &&
+                p.dayIndex===index
+
+            );
+
+        row.innerHTML += `
+
+        <div
+            class="planner-day-card"
+            onclick="openPlannerDayModal(
+                '${user}',
+                '${entry?.date || ""}'
+            )"
+        >
+
+            ${
+                entry ?
+
+                `
+                <strong>
+                    ${entry.start || "--:--"}
+                    -
+                    ${entry.end || "--:--"}
+                </strong>
+
+                <div class="planner-task-name">
+                    ${entry.task || "-"}
+                </div>
+
+                <span class="planner-status">
+                    ${entry.status || "Geplant"}
+                </span>
+                `
+
+                :
+
+                `
+                <div class="planner-free">
+
+                    Frei
+
+                </div>
+                `
+            }
+
+        </div>
+
+        `;
+
+    });
+
+});
+}
 function renderPlannerCell(user, date, entry){
 
     const safeUser = escapePlannerHtml(user);

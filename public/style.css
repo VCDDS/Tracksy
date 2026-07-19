@@ -5021,4 +5021,259 @@ h4{
 .planner-task-entry span,
 .planner-task-entry small{
     opacity:.75;
+}/* =====================================================
+   DIENSTPLAN DASHBOARD V5
+===================================================== */
+
+.planner-main-page{
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+}
+
+.planner-main-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+    flex-wrap:wrap;
+}
+
+.planner-main-actions{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+
+.planner-header-period{
+    min-width:220px;
+    padding:11px 18px;
+    text-align:center;
+    border-radius:14px;
+    background:rgba(255,255,255,.06);
+    border:1px solid var(--border);
+    font-weight:700;
+}
+
+.planner-main-create{
+    background:linear-gradient(135deg,#6d4cff,#3b82f6);
+}
+
+.planner-filter-card{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    padding:22px;
+    border-radius:20px;
+    background:linear-gradient(145deg,#111b31,#0b1220);
+    border:1px solid var(--border);
+}
+
+.planner-filter-card label{
+    display:block;
+    margin-bottom:8px;
+    font-weight:700;
+}
+
+.planner-stat-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+}
+
+.planner-stat-box{
+    padding:20px;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.08);
+    background:linear-gradient(145deg,#111b31,#0b1220);
+}
+
+.planner-stat-box span{
+    color:#9fb3d8;
+    display:block;
+}
+
+.planner-stat-box strong{
+    display:block;
+    margin:8px 0;
+    font-size:38px;
+}
+
+.planner-main-layout{
+    display:grid;
+    grid-template-columns:1fr 360px;
+    gap:22px;
+}
+
+.planner-board{
+    min-height:700px;
+    padding:22px;
+    border-radius:20px;
+    background:linear-gradient(145deg,#111b31,#0b1220);
+}
+
+.planner-right-sidebar{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+}
+
+.planner-right-card{
+    padding:20px;
+    border-radius:20px;
+    background:linear-gradient(145deg,#111b31,#0b1220);
+}
+
+.planner-right-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+}
+
+.planner-side-empty,
+.planner-empty-state{
+    padding:40px;
+    text-align:center;
+    color:#94a3b8;
+}
+
+@media(max-width:1200px){
+
+.planner-main-layout{
+    grid-template-columns:1fr;
+}
+
+}
+
+@media(max-width:900px){
+
+.planner-filter-card,
+.planner-stat-row{
+    grid-template-columns:1fr 1fr;
+}
+
+}
+
+@media(max-width:768px){
+
+.planner-main-header,
+.planner-main-actions{
+    flex-direction:column;
+    align-items:stretch;
+}
+
+.planner-filter-card,
+.planner-stat-row{
+    grid-template-columns:1fr;
+}
+
+.planner-board,
+.planner-right-card{
+    padding:16px;
+}
+
+}
+
+/* Wochenansicht */
+
+.planner-week-grid{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+}
+
+.planner-employee-columns{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px;
+    margin-bottom:15px;
+}
+
+.planner-employee-card{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px;
+    border-radius:16px;
+    background:#15213b;
+    border:1px solid rgba(255,255,255,.08);
+}
+
+.planner-avatar{
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:bold;
+    background:#4f46e5;
+    color:#fff;
+}
+
+.planner-week-row{
+    display:grid;
+    grid-template-columns:180px 1fr;
+    gap:14px;
+    align-items:stretch;
+}
+
+.planner-weekday{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:16px;
+    background:#111b31;
+    border:1px solid rgba(255,255,255,.08);
+    font-weight:700;
+}
+
+.planner-row-cells{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px;
+}
+
+.planner-day-card{
+    background:#18233f;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.08);
+    padding:14px;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.planner-day-card:hover{
+    transform:translateY(-2px);
+    border-color:#4f46e5;
+}
+
+.planner-task-name{
+    margin-top:8px;
+    color:#b8c5df;
+}
+
+.planner-status{
+    display:inline-block;
+    margin-top:10px;
+    padding:4px 10px;
+    border-radius:999px;
+    background:#2b3f68;
+    font-size:12px;
+}
+
+.planner-free{
+    color:#7f8ca6;
+    text-align:center;
+    padding:18px 0;
+}
+
+@media(max-width:900px){
+
+    .planner-week-row{
+        grid-template-columns:1fr;
+    }
+
 }
