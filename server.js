@@ -2864,7 +2864,7 @@ app.get("/service-status/:project", async (req, res) => {
 
 });
 
-/* Anfrage von RadioNetz */
+/* Anfrage von verbundenen Webseiten */
 
 app.post("/create-service-request", async (req, res) => {
     try{
@@ -2874,10 +2874,8 @@ app.post("/create-service-request", async (req, res) => {
             title,
             description,
             tariff,
-            billingCycle,
-            priceMonthly,
-            priceYearly,
-            priceOnce
+            addon,
+            billingCycle
         } = req.body;
 
         const allowedTypes = [
@@ -2889,25 +2887,130 @@ app.post("/create-service-request", async (req, res) => {
         if(
             !project ||
             !requestType ||
-            !title ||
             !allowedTypes.includes(requestType)
         ){
             return res.send("Anfrage-Daten fehlen");
         }
 
+        let requestTitle =
+            String(title || "").trim();
+
+        let requestDescription =
+            String(description || "").trim();
+
+        let requestTariff = "";
+        let requestPriceMonthly = 0;
+        let requestPriceYearly = 0;
+        let requestPriceOnce = 0;
+
         if(requestType === "tariff"){
 
             if(
-                !["Lite", "Normal", "Premium"].includes(tariff)
+                !["Monatlich", "Jährlich"].includes(
+                    billingCycle
+                )
             ){
-                return res.send("Ungültiger Tarif");
+                return res.send(
+                    "Ungültige Abrechnung"
+                );
             }
 
-            if(
-                !["Monatlich", "Jährlich"].includes(billingCycle)
-            ){
-                return res.send("Ungültige Abrechnung");
+            const packageResult = await pool.query(`
+                SELECT *
+                FROM service_packages
+                WHERE tariff = $1
+                AND status = 'available'
+                LIMIT 1
+            `,[
+                String(tariff || "")
+            ]);
+
+            if(packageResult.rows.length === 0){
+                return res.send(
+                    "Tarif ist nicht verfügbar"
+                );
             }
+
+            const packageItem =
+                packageResult.rows[0];
+
+            let offerStillValid = true;
+
+            if(packageItem.offer_use_end_date){
+
+                const endDate = new Date(
+                    `${packageItem.offer_end_date}T23:59:59`
+                );
+
+                offerStillValid =
+                    Boolean(packageItem.offer_end_date) &&
+                    !Number.isNaN(endDate.getTime()) &&
+                    endDate >= new Date();
+            }
+
+            const offerActive =
+                packageItem.offer_enabled === true &&
+                offerStillValid;
+
+            requestTitle =
+                packageItem.display_name ||
+                packageItem.tariff;
+
+            requestDescription =
+                packageItem.description || "";
+
+            requestTariff =
+                packageItem.tariff;
+
+            requestPriceMonthly = Number(
+                offerActive
+                    ? packageItem.offer_monthly_price
+                    : packageItem.monthly_price
+            ) || 0;
+
+            requestPriceYearly = Number(
+                offerActive
+                    ? packageItem.offer_yearly_price
+                    : packageItem.yearly_price
+            ) || 0;
+        }
+
+        if(requestType === "addon"){
+
+            const addonKey =
+                String(addon || title || "").trim();
+
+            const addonResult = await pool.query(`
+                SELECT *
+                FROM service_addons
+                WHERE (
+                    service_name = $1
+                    OR display_name = $1
+                )
+                AND status = 'available'
+                LIMIT 1
+            `,[
+                addonKey
+            ]);
+
+            if(addonResult.rows.length === 0){
+                return res.send(
+                    "Zusatzleistung ist nicht verfügbar"
+                );
+            }
+
+            const addonItem =
+                addonResult.rows[0];
+
+            requestTitle =
+                addonItem.display_name ||
+                addonItem.service_name;
+
+            requestDescription =
+                addonItem.description || "";
+
+            requestPriceOnce =
+                Number(addonItem.price_once) || 0;
         }
 
         if(requestType === "cancellation"){
@@ -2920,11 +3023,18 @@ app.post("/create-service-request", async (req, res) => {
                 AND tariff != ''
                 AND tariff != 'Keiner'
                 LIMIT 1
-            `, [project]);
+            `,[
+                project
+            ]);
 
             if(activeService.rows.length === 0){
-                return res.send("Kein aktiver Tarif vorhanden");
+                return res.send(
+                    "Kein aktiver Tarif vorhanden"
+                );
             }
+
+            requestTitle =
+                requestTitle || "Tarif kündigen";
         }
 
         if(
@@ -2941,7 +3051,9 @@ app.post("/create-service-request", async (req, res) => {
                 )
                 AND status = 'Offen'
                 LIMIT 1
-            `, [project]);
+            `,[
+                project
+            ]);
 
             if(existingRequest.rows.length > 0){
                 return res.send(
@@ -2950,9 +3062,12 @@ app.post("/create-service-request", async (req, res) => {
             }
         }
 
-        const now = new Date().toLocaleString("de-DE", {
-            timeZone: "Europe/Berlin"
-        });
+        const now = new Date().toLocaleString(
+            "de-DE",
+            {
+                timeZone: "Europe/Berlin"
+            }
+        );
 
         await pool.query(`
             INSERT INTO service_requests (
@@ -2971,16 +3086,16 @@ app.post("/create-service-request", async (req, res) => {
             VALUES (
                 $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
             )
-        `, [
+        `,[
             project,
             requestType,
-            title.trim(),
-            description || "",
-            tariff || "",
+            requestTitle,
+            requestDescription,
+            requestTariff,
             billingCycle || "",
-            Number(priceMonthly) || 0,
-            Number(priceYearly) || 0,
-            Number(priceOnce) || 0,
+            requestPriceMonthly,
+            requestPriceYearly,
+            requestPriceOnce,
             "Offen",
             now
         ]);
@@ -2989,7 +3104,9 @@ app.post("/create-service-request", async (req, res) => {
             INSERT INTO service_tariffs (project)
             VALUES ($1)
             ON CONFLICT (project) DO NOTHING
-        `, [project]);
+        `,[
+            project
+        ]);
 
         res.send("Anfrage erfolgreich gesendet");
 
