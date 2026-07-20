@@ -3874,12 +3874,28 @@ app.post("/restore-service-contract", async (req, res) => {
     }
 });
 
+const serviceCatalogStatuses = new Set([
+    "available",
+    "waiting",
+    "unavailable"
+]);
+
+function normalizeServiceFeatures(value){
+    if(!Array.isArray(value)){
+        return [];
+    }
+
+    return value
+        .map(item => String(item).trim())
+        .filter(Boolean);
+}
+
 app.get("/service-packages", async (req, res) => {
     try{
         const result = await pool.query(`
             SELECT *
             FROM service_packages
-            ORDER BY id
+            ORDER BY sort_order ASC, id ASC
         `);
 
         res.json(result.rows);
@@ -3893,16 +3909,118 @@ app.get("/service-packages", async (req, res) => {
     }
 });
 
-app.post("/save-service-package", async (req, res) => {
-
+app.post("/create-service-package", async (req, res) => {
     try{
-
         const {
-            id,
+            adminUsername,
+            display_name,
+            subtitle,
+            description,
+            icon,
+            features,
             monthly_price,
             yearly_price,
             status,
+            recommended,
+            recommendation_text,
+            sort_order
+        } = req.body;
 
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send("Keine Berechtigung");
+        }
+
+        const cleanName = String(display_name || "").trim();
+        const cleanStatus = String(status || "available");
+
+        if(!cleanName){
+            return res.status(400).send("Tarifname fehlt");
+        }
+
+        if(!serviceCatalogStatuses.has(cleanStatus)){
+            return res.status(400).send(
+                "Ungültige Verfügbarkeit"
+            );
+        }
+
+        const tariffKey =
+            `tariff-${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2, 8)}`;
+
+        await pool.query(`
+            INSERT INTO service_packages (
+                tariff,
+                display_name,
+                subtitle,
+                description,
+                icon,
+                features,
+                monthly_price,
+                yearly_price,
+                status,
+                recommended,
+                recommendation_text,
+                sort_order,
+                updated_at
+            )
+            VALUES (
+                $1,$2,$3,$4,$5,$6::jsonb,
+                $7,$8,$9,$10,$11,$12,$13
+            )
+        `,[
+            tariffKey,
+            cleanName,
+            String(subtitle || "").trim(),
+            String(description || "").trim(),
+            String(icon || "📦").trim() || "📦",
+            JSON.stringify(
+                normalizeServiceFeatures(features)
+            ),
+            Math.max(
+                0,
+                Number(monthly_price) || 0
+            ),
+            Math.max(
+                0,
+                Number(yearly_price) || 0
+            ),
+            cleanStatus,
+            recommended === true,
+            String(
+                recommendation_text || ""
+            ).trim(),
+            Number(sort_order) || 0,
+            new Date().toISOString()
+        ]);
+
+        res.send("Tarif angelegt");
+
+    }catch(error){
+        console.error(error);
+
+        res.status(500).send(
+            "Tarif konnte nicht angelegt werden"
+        );
+    }
+});
+
+app.post("/save-service-package", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            id,
+            display_name,
+            subtitle,
+            description,
+            icon,
+            features,
+            monthly_price,
+            yearly_price,
+            status,
+            recommended,
+            recommendation_text,
+            sort_order,
             offer_enabled,
             offer_name,
             offer_monthly_price,
@@ -3911,50 +4029,172 @@ app.post("/save-service-package", async (req, res) => {
             offer_end_date
         } = req.body;
 
-        await pool.query(`
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        const cleanName =
+            String(display_name || "").trim();
+
+        const cleanStatus =
+            String(status || "available");
+
+        if(!id || !cleanName){
+            return res.status(400).send(
+                "Tarif-Daten fehlen"
+            );
+        }
+
+        if(!serviceCatalogStatuses.has(cleanStatus)){
+            return res.status(400).send(
+                "Ungültige Verfügbarkeit"
+            );
+        }
+
+        const result = await pool.query(`
             UPDATE service_packages
             SET
-                monthly_price = $1,
-                yearly_price = $2,
-                status = $3,
-
-                offer_enabled = $4,
-                offer_name = $5,
-                offer_monthly_price = $6,
-                offer_yearly_price = $7,
-                offer_use_end_date = $8,
-                offer_end_date = $9,
-
-                updated_at = $10
-
-            WHERE id = $11
+                display_name = $1,
+                subtitle = $2,
+                description = $3,
+                icon = $4,
+                features = $5::jsonb,
+                monthly_price = $6,
+                yearly_price = $7,
+                status = $8,
+                recommended = $9,
+                recommendation_text = $10,
+                sort_order = $11,
+                offer_enabled = $12,
+                offer_name = $13,
+                offer_monthly_price = $14,
+                offer_yearly_price = $15,
+                offer_use_end_date = $16,
+                offer_end_date = $17,
+                updated_at = $18
+            WHERE id = $19
+            RETURNING id
         `,[
-            monthly_price,
-            yearly_price,
-            status,
-
+            cleanName,
+            String(subtitle || "").trim(),
+            String(description || "").trim(),
+            String(icon || "📦").trim() || "📦",
+            JSON.stringify(
+                normalizeServiceFeatures(features)
+            ),
+            Math.max(
+                0,
+                Number(monthly_price) || 0
+            ),
+            Math.max(
+                0,
+                Number(yearly_price) || 0
+            ),
+            cleanStatus,
+            recommended === true,
+            String(
+                recommendation_text || ""
+            ).trim(),
+            Number(sort_order) || 0,
             offer_enabled === true,
-            offer_name || "",
-            Number(offer_monthly_price) || 0,
-            Number(offer_yearly_price) || 0,
+            String(offer_name || "").trim(),
+            Math.max(
+                0,
+                Number(offer_monthly_price) || 0
+            ),
+            Math.max(
+                0,
+                Number(offer_yearly_price) || 0
+            ),
             offer_use_end_date === true,
-            offer_end_date || "",
-
+            offer_use_end_date === true
+                ? String(offer_end_date || "")
+                : "",
             new Date().toISOString(),
-
             id
         ]);
+
+        if(result.rows.length === 0){
+            return res.status(404).send(
+                "Tarif nicht gefunden"
+            );
+        }
 
         res.send("Tarif gespeichert");
 
     }catch(error){
-
         console.error(error);
 
-        res.status(500).send("Speichern fehlgeschlagen");
-
+        res.status(500).send(
+            "Speichern fehlgeschlagen"
+        );
     }
+});
 
+app.post("/delete-service-package", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            id
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        const packageResult = await pool.query(`
+            SELECT tariff
+            FROM service_packages
+            WHERE id = $1
+            LIMIT 1
+        `,[
+            id
+        ]);
+
+        if(packageResult.rows.length === 0){
+            return res.status(404).send(
+                "Tarif nicht gefunden"
+            );
+        }
+
+        const tariffKey =
+            packageResult.rows[0].tariff;
+
+        const usageResult = await pool.query(`
+            SELECT EXISTS (
+                SELECT 1
+                FROM service_tariffs
+                WHERE tariff = $1
+                AND tariff != 'Keiner'
+            ) AS is_used
+        `,[
+            tariffKey
+        ]);
+
+        if(usageResult.rows[0].is_used){
+            return res.status(409).send(
+                "Tarif ist bereits gebucht und kann nur auf Nicht verfügbar gestellt werden"
+            );
+        }
+
+        await pool.query(
+            "DELETE FROM service_packages WHERE id = $1",
+            [id]
+        );
+
+        res.send("Tarif gelöscht");
+
+    }catch(error){
+        console.error(error);
+
+        res.status(500).send(
+            "Tarif konnte nicht gelöscht werden"
+        );
+    }
 });
 
 app.get("/service-addons", async (req, res) => {
