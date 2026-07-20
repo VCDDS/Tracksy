@@ -435,6 +435,187 @@ async function initDatabase(){
         DO NOTHING
     `);
 
+    /* =====================================================
+   ZENTRALER SERVICEKATALOG
+===================================================== */
+
+await pool.query(`
+    ALTER TABLE service_packages
+    ADD COLUMN IF NOT EXISTS display_name TEXT,
+    ADD COLUMN IF NOT EXISTS subtitle TEXT,
+    ADD COLUMN IF NOT EXISTS description TEXT,
+    ADD COLUMN IF NOT EXISTS icon TEXT,
+    ADD COLUMN IF NOT EXISTS features JSONB,
+    ADD COLUMN IF NOT EXISTS recommended BOOLEAN,
+    ADD COLUMN IF NOT EXISTS recommendation_text TEXT,
+    ADD COLUMN IF NOT EXISTS sort_order INTEGER
+`);
+
+await pool.query(`
+    UPDATE service_packages
+    SET
+        display_name = tariff,
+
+        subtitle = CASE tariff
+            WHEN 'Lite'
+                THEN 'Für kleine Webseiten'
+            WHEN 'Normal'
+                THEN 'Für regelmäßige Unterstützung'
+            WHEN 'Premium'
+                THEN 'Rundum-Betreuung'
+            ELSE ''
+        END,
+
+        description = CASE tariff
+            WHEN 'Lite'
+                THEN 'Grundlegende Absicherung und Unterstützung für kleinere Webseiten.'
+            WHEN 'Normal'
+                THEN 'Der empfohlene Tarif für eine zuverlässige laufende Betreuung.'
+            WHEN 'Premium'
+                THEN 'Umfassende Betreuung für Webseiten mit höheren Anforderungen.'
+            ELSE ''
+        END,
+
+        icon = CASE tariff
+            WHEN 'Lite' THEN '🌿'
+            WHEN 'Normal' THEN '⭐'
+            WHEN 'Premium' THEN '💎'
+            ELSE '📦'
+        END,
+
+        features = CASE tariff
+            WHEN 'Lite' THEN
+                '[
+                    "Sicherheitsupdates",
+                    "Versionsupdates",
+                    "Regelmäßige Fehlerprüfung",
+                    "Fehlerbehebung",
+                    "Kleine Designanpassungen",
+                    "Support per E-Mail oder WhatsApp"
+                ]'::jsonb
+
+            WHEN 'Normal' THEN
+                '[
+                    "Alle Leistungen aus Lite",
+                    "Erweiterte Fehlerbehebung",
+                    "Performance- und Funktionsprüfung",
+                    "Kleinere Inhaltsänderungen",
+                    "Bevorzugte Bearbeitung von Supportanfragen"
+                ]'::jsonb
+
+            WHEN 'Premium' THEN
+                '[
+                    "Alle Leistungen aus Normal",
+                    "Regelmäßige Optimierung der Webseite",
+                    "Individuelle Beratung",
+                    "Monatlicher System- und Funktionscheck",
+                    "Planung und Empfehlung zukünftiger Verbesserungen"
+                ]'::jsonb
+
+            ELSE '[]'::jsonb
+        END,
+
+        recommended =
+            CASE
+                WHEN tariff = 'Normal' THEN true
+                ELSE false
+            END,
+
+        recommendation_text =
+            CASE
+                WHEN tariff = 'Normal'
+                    THEN 'Beliebteste Wahl'
+                ELSE ''
+            END,
+
+        sort_order = CASE tariff
+            WHEN 'Lite' THEN 1
+            WHEN 'Normal' THEN 2
+            WHEN 'Premium' THEN 3
+            ELSE id
+        END
+
+    WHERE display_name IS NULL
+`);
+
+await pool.query(`
+    ALTER TABLE service_packages
+    ALTER COLUMN display_name SET DEFAULT '',
+    ALTER COLUMN subtitle SET DEFAULT '',
+    ALTER COLUMN description SET DEFAULT '',
+    ALTER COLUMN icon SET DEFAULT '📦',
+    ALTER COLUMN features SET DEFAULT '[]'::jsonb,
+    ALTER COLUMN recommended SET DEFAULT false,
+    ALTER COLUMN recommendation_text SET DEFAULT '',
+    ALTER COLUMN sort_order SET DEFAULT 0
+`);
+
+await pool.query(`
+    ALTER TABLE service_addons
+    ADD COLUMN IF NOT EXISTS display_name TEXT,
+    ADD COLUMN IF NOT EXISTS description TEXT,
+    ADD COLUMN IF NOT EXISTS icon TEXT,
+    ADD COLUMN IF NOT EXISTS price_prefix TEXT,
+    ADD COLUMN IF NOT EXISTS sort_order INTEGER
+`);
+
+await pool.query(`
+    UPDATE service_addons
+    SET
+        display_name = CASE service_name
+            WHEN 'Umfangreiche Designänderungen'
+                THEN 'Designänderungen'
+            WHEN 'Schnittstellen und Integrationen'
+                THEN 'Schnittstellen & Integrationen'
+            ELSE service_name
+        END,
+
+        description = CASE service_name
+            WHEN 'Neue Webseite'
+                THEN 'Komplette Erstellung einer neuen Webseite.'
+            WHEN 'Neue Unterseite'
+                THEN 'Erweiterung einer bestehenden Webseite.'
+            WHEN 'Umfangreiche Designänderungen'
+                THEN 'Umfangreiche optische Anpassungen.'
+            WHEN 'Individuelle Funktionen'
+                THEN 'Neue Funktionen passend zur Webseite.'
+            WHEN 'Schnittstellen und Integrationen'
+                THEN 'Anbindung externer Dienste und Systeme.'
+            ELSE ''
+        END,
+
+        icon = CASE service_name
+            WHEN 'Neue Webseite' THEN '🖥️'
+            WHEN 'Neue Unterseite' THEN '📄'
+            WHEN 'Umfangreiche Designänderungen' THEN '🎨'
+            WHEN 'Individuelle Funktionen' THEN '💻'
+            WHEN 'Schnittstellen und Integrationen' THEN '🧩'
+            ELSE '🛠️'
+        END,
+
+        price_prefix = 'ab',
+
+        sort_order = CASE service_name
+            WHEN 'Neue Webseite' THEN 1
+            WHEN 'Neue Unterseite' THEN 2
+            WHEN 'Umfangreiche Designänderungen' THEN 3
+            WHEN 'Individuelle Funktionen' THEN 4
+            WHEN 'Schnittstellen und Integrationen' THEN 5
+            ELSE id
+        END
+
+    WHERE display_name IS NULL
+`);
+
+await pool.query(`
+    ALTER TABLE service_addons
+    ALTER COLUMN display_name SET DEFAULT '',
+    ALTER COLUMN description SET DEFAULT '',
+    ALTER COLUMN icon SET DEFAULT '🛠️',
+    ALTER COLUMN price_prefix SET DEFAULT 'ab',
+    ALTER COLUMN sort_order SET DEFAULT 0
+`);
+
     await pool.query(`
     ALTER TABLE service_tariffs
     ADD COLUMN IF NOT EXISTS first_payment TEXT DEFAULT ''
