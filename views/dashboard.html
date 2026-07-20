@@ -5105,29 +5105,22 @@ content.innerHTML = `
                 <label>
                     Verfügbarkeit
 
-                    <select id="servicePackageStatus-${packageItem.id}">
-                        <option
-                            value="available"
-                            ${packageItem.status === "available" ? "selected" : ""}
-                        >
-                            🟢 Verfügbar
-                        </option>
+<select id="servicePackageStatus-${packageItem.id}">
+    <option
+        value="available"
+        ${packageItem.status === "available" ? "selected" : ""}
+    >
+        🟢 Verfügbar
+    </option>
 
-                        <option
-                            value="waiting"
-                            ${packageItem.status === "waiting" ? "selected" : ""}
-                        >
-                            🟡 Warteliste
-                        </option>
-
-                        <option
-                            value="unavailable"
-                            ${packageItem.status === "unavailable" ? "selected" : ""}
-                        >
-                            🔴 Nicht verfügbar
-                        </option>
-                    </select>
-                </label>
+    <option
+        value="unavailable"
+        ${packageItem.status === "unavailable" ? "selected" : ""}
+    >
+        🔴 Nicht verfügbar
+    </option>
+</select>
+</label>
 
                 <div class="service-offer-box">
 
@@ -5287,13 +5280,6 @@ content.innerHTML = `
                             ${addon.status === "available" ? "selected" : ""}
                         >
                             🟢 Verfügbar
-                        </option>
-
-                        <option
-                            value="waiting"
-                            ${addon.status === "waiting" ? "selected" : ""}
-                        >
-                            🟡 Warteliste
                         </option>
 
                         <option
