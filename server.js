@@ -4209,63 +4209,258 @@ app.post("/delete-service-package", async (req, res) => {
 });
 
 app.get("/service-addons", async (req, res) => {
-
     try{
-
         const result = await pool.query(`
             SELECT *
             FROM service_addons
-            ORDER BY id
+            ORDER BY sort_order ASC, id ASC
         `);
 
         res.json(result.rows);
 
     }catch(error){
-
         console.error(error);
 
         res.status(500).json({
-            error:"Zusatzleistungen konnten nicht geladen werden."
+            error: "Zusatzleistungen konnten nicht geladen werden."
         });
-
     }
+});
 
+app.post("/create-service-addon", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            display_name,
+            description,
+            icon,
+            price_prefix,
+            price_once,
+            status,
+            sort_order
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        const cleanName =
+            String(display_name || "").trim();
+
+        const cleanStatus =
+            String(status || "available");
+
+        if(!cleanName){
+            return res.status(400).send(
+                "Name der Zusatzleistung fehlt"
+            );
+        }
+
+        if(!serviceCatalogStatuses.has(cleanStatus)){
+            return res.status(400).send(
+                "Ungültige Verfügbarkeit"
+            );
+        }
+
+        const existing = await pool.query(`
+            SELECT id
+            FROM service_addons
+            WHERE LOWER(display_name) = LOWER($1)
+            LIMIT 1
+        `,[
+            cleanName
+        ]);
+
+        if(existing.rows.length > 0){
+            return res.status(409).send(
+                "Diese Zusatzleistung existiert bereits"
+            );
+        }
+
+        const serviceKey =
+            `addon-${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2, 8)}`;
+
+        await pool.query(`
+            INSERT INTO service_addons (
+                service_name,
+                display_name,
+                description,
+                icon,
+                price_prefix,
+                price_once,
+                status,
+                sort_order,
+                updated_at
+            )
+            VALUES (
+                $1,$2,$3,$4,$5,$6,$7,$8,$9
+            )
+        `,[
+            serviceKey,
+            cleanName,
+            String(description || "").trim(),
+            String(icon || "🛠️").trim() || "🛠️",
+            String(price_prefix || "ab").trim(),
+            Math.max(
+                0,
+                Number(price_once) || 0
+            ),
+            cleanStatus,
+            Number(sort_order) || 0,
+            new Date().toISOString()
+        ]);
+
+        res.send("Zusatzleistung angelegt");
+
+    }catch(error){
+        console.error(error);
+
+        res.status(500).send(
+            "Zusatzleistung konnte nicht angelegt werden"
+        );
+    }
 });
 
 app.post("/save-service-addon", async (req, res) => {
-
     try{
-
         const {
+            adminUsername,
             id,
+            display_name,
+            description,
+            icon,
+            price_prefix,
             price_once,
-            status
+            status,
+            sort_order
         } = req.body;
 
-        await pool.query(`
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        const cleanName =
+            String(display_name || "").trim();
+
+        const cleanStatus =
+            String(status || "available");
+
+        if(!id || !cleanName){
+            return res.status(400).send(
+                "Daten der Zusatzleistung fehlen"
+            );
+        }
+
+        if(!serviceCatalogStatuses.has(cleanStatus)){
+            return res.status(400).send(
+                "Ungültige Verfügbarkeit"
+            );
+        }
+
+        const existing = await pool.query(`
+            SELECT id
+            FROM service_addons
+            WHERE LOWER(display_name) = LOWER($1)
+            AND id != $2
+            LIMIT 1
+        `,[
+            cleanName,
+            id
+        ]);
+
+        if(existing.rows.length > 0){
+            return res.status(409).send(
+                "Diese Zusatzleistung existiert bereits"
+            );
+        }
+
+        const result = await pool.query(`
             UPDATE service_addons
             SET
-                price_once = $1,
-                status = $2,
-                updated_at = $3
-            WHERE id = $4
+                display_name = $1,
+                description = $2,
+                icon = $3,
+                price_prefix = $4,
+                price_once = $5,
+                status = $6,
+                sort_order = $7,
+                updated_at = $8
+            WHERE id = $9
+            RETURNING id
         `,[
-            Number(price_once) || 0,
-            status,
+            cleanName,
+            String(description || "").trim(),
+            String(icon || "🛠️").trim() || "🛠️",
+            String(price_prefix || "ab").trim(),
+            Math.max(
+                0,
+                Number(price_once) || 0
+            ),
+            cleanStatus,
+            Number(sort_order) || 0,
             new Date().toISOString(),
             id
         ]);
 
+        if(result.rows.length === 0){
+            return res.status(404).send(
+                "Zusatzleistung nicht gefunden"
+            );
+        }
+
         res.send("Zusatzleistung gespeichert");
 
     }catch(error){
-
         console.error(error);
 
-        res.status(500).send("Zusatzleistung konnte nicht gespeichert werden");
-
+        res.status(500).send(
+            "Zusatzleistung konnte nicht gespeichert werden"
+        );
     }
+});
 
+app.post("/delete-service-addon", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            id
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        const result = await pool.query(`
+            DELETE FROM service_addons
+            WHERE id = $1
+            RETURNING id
+        `,[
+            id
+        ]);
+
+        if(result.rows.length === 0){
+            return res.status(404).send(
+                "Zusatzleistung nicht gefunden"
+            );
+        }
+
+        res.send("Zusatzleistung gelöscht");
+
+    }catch(error){
+        console.error(error);
+
+        res.status(500).send(
+            "Zusatzleistung konnte nicht gelöscht werden"
+        );
+    }
 });
 app.use((err, req, res, next) => {
     console.log(err);
