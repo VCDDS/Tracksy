@@ -5204,10 +5204,50 @@ const management = await apiGet("/service-management");
 servicePackages = await apiGet("/service-packages");
 serviceAddons = await apiGet("/service-addons");
 
-const activeServiceTariffs = management.tariffs.filter(service =>
-    (service.status || "").toLowerCase() !== "gekündigt" &&
-    (service.status || "").toLowerCase() !== "cancelled"
-);
+const activeServiceTariffs =
+    management.tariffs.filter(service => {
+
+        const status =
+            String(service.status || "")
+                .trim()
+                .toLowerCase();
+
+        const tariff =
+            String(service.tariff || "")
+                .trim();
+
+        const hasActiveTariff =
+            tariff !== "" &&
+            tariff.toLowerCase() !== "keiner";
+
+        const isCancelled =
+            status === "gekündigt" ||
+            status === "cancelled";
+
+        return (
+            hasActiveTariff &&
+            !isCancelled
+        );
+    });
+
+const activeServiceProjects =
+    new Set(
+        activeServiceTariffs.map(
+            service => service.project
+        )
+    );
+
+const serviceRequestsWithoutTariff =
+    management.requests.filter(request => {
+
+        return (
+            request.status === "Offen" &&
+            request.project &&
+            !activeServiceProjects.has(
+                request.project
+            )
+        );
+    });
 
 content.innerHTML = `
 <div class="service-page">
@@ -6018,13 +6058,177 @@ content.innerHTML = `
 
 </section>
 
+${
+    serviceRequestsWithoutTariff.length === 0
+    ? ""
+    : `
+        <section class="service-pending-overview">
+
+            <div class="service-pending-overview-head">
+
+                <div>
+                    <small>Neue Buchungen</small>
+                    <h3>📨 Offene Serviceanfragen</h3>
+
+                    <p>
+                        Diese Projekte besitzen noch keinen aktiven Tarif.
+                    </p>
+                </div>
+
+                <span class="service-pending-count">
+                    ${serviceRequestsWithoutTariff.length}
+                </span>
+
+            </div>
+
+            <div class="service-pending-grid">
+
+                ${serviceRequestsWithoutTariff.map(request => `
+
+                    <article class="service-pending-card">
+
+                        <div class="service-pending-card-head">
+
+                            <div>
+                                <span>
+                                    ${
+                                        request.request_type === "tariff"
+                                            ? "📦 Tarifanfrage"
+                                            : request.request_type === "addon"
+                                            ? "🛠️ Zusatzleistung"
+                                            : "📨 Serviceanfrage"
+                                    }
+                                </span>
+
+                                <h4>
+                                    ${escapeServiceHtml(
+                                        request.project
+                                    )}
+                                </h4>
+                            </div>
+
+                            <small>Offen</small>
+
+                        </div>
+
+                        <strong class="service-pending-title">
+                            ${escapeServiceHtml(
+                                request.title ||
+                                "Neue Serviceanfrage"
+                            )}
+                        </strong>
+
+                        ${
+                            request.description
+                            ? `
+                                <p>
+                                    ${escapeServiceHtml(
+                                        request.description
+                                    )}
+                                </p>
+                            `
+                            : ""
+                        }
+
+                        <div class="service-pending-meta">
+
+                            ${
+                                request.request_type === "tariff"
+                                ? `
+                                    <span>
+                                        Monatlich:
+                                        <strong>
+                                            ${Number(
+                                                request.price_monthly || 0
+                                            ).toLocaleString(
+                                                "de-DE",
+                                                {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                }
+                                            )} €
+                                        </strong>
+                                    </span>
+
+                                    <span>
+                                        Jährlich:
+                                        <strong>
+                                            ${Number(
+                                                request.price_yearly || 0
+                                            ).toLocaleString(
+                                                "de-DE",
+                                                {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                }
+                                            )} €
+                                        </strong>
+                                    </span>
+
+                                    <span>
+                                        ${escapeServiceHtml(
+                                            request.billing_cycle ||
+                                            "Keine Abrechnung"
+                                        )}
+                                    </span>
+                                `
+                                : `
+                                    <span>
+                                        Einmalig:
+                                        <strong>
+                                            ${Number(
+                                                request.price_once || 0
+                                            ).toLocaleString(
+                                                "de-DE",
+                                                {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                }
+                                            )} €
+                                        </strong>
+                                    </span>
+                                `
+                            }
+
+                        </div>
+
+                        <div class="service-pending-actions">
+
+                            <button
+                                class="service-pending-accept"
+                                onclick="serviceAction(
+                                    ${Number(request.id)},
+                                    'accept'
+                                )"
+                            >
+                                ✅ Annehmen
+                            </button>
+
+                            <button
+                                class="service-pending-reject"
+                                onclick="serviceAction(
+                                    ${Number(request.id)},
+                                    'reject'
+                                )"
+                            >
+                                ❌ Ablehnen
+                            </button>
+
+                        </div>
+
+                    </article>
+
+                `).join("")}
+
+            </div>
+
+        </section>
+    `
+}
+
     ${
         activeServiceTariffs.length === 0
-        ? `
-            <div class="service-empty">
-                Noch keine Serviceverträge vorhanden.
-            </div>
-        `
+        ? ""
         : activeServiceTariffs.map(service => {
 
             const activeAddons = management.requests.filter(request =>
