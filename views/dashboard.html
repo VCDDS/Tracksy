@@ -374,14 +374,19 @@ async function checkTracksyAutomaticLogout(){
         );
 
         localStorage.removeItem("username");
-        localStorage.removeItem("isAdmin");
-        localStorage.removeItem("userRole");
-        localStorage.removeItem("assignedProject");
-        localStorage.removeItem(
-            "tracksyLastActivity"
-        );
+localStorage.removeItem("isAdmin");
+localStorage.removeItem("userRole");
+localStorage.removeItem("assignedProject");
+localStorage.removeItem(
+    "tracksyLastActivity"
+);
 
-        location.href = "/login";
+sessionStorage.setItem(
+    "tracksyLoginMessage",
+    "Du wurdest nach 60 Minuten Inaktivität automatisch abgemeldet."
+);
+
+location.href = "/login";
 
     }catch(error){
 
@@ -4325,11 +4330,6 @@ localStorage.removeItem("userRole");
 localStorage.removeItem("assignedProject");
 localStorage.removeItem(
     "tracksyLastActivity"
-);
-
-sessionStorage.setItem(
-    "tracksyLoginMessage",
-    "Du wurdest nach 60 Minuten Inaktivität automatisch abgemeldet."
 );
 
 location.href = "/login";
