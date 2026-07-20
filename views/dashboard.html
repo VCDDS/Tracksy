@@ -5044,172 +5044,484 @@ content.innerHTML = `
     <section class="service-package-management">
 
     <div class="service-package-management-head">
+
         <div>
             <small>Globale Verwaltung</small>
             <h3>📦 Tarife & Angebote</h3>
+
             <p>
-                Preise, Verfügbarkeit und Sonderangebote zentral verwalten.
+                Alle Tarife zentral anlegen, vollständig bearbeiten
+                oder entfernen.
             </p>
         </div>
+
+        <button
+            class="service-add-button"
+            onclick="toggleNewServicePackageForm()"
+        >
+            ➕ Neuen Tarif anlegen
+        </button>
+
     </div>
 
     <div class="service-package-grid">
 
-        ${servicePackages.map(packageItem => `
+        <article
+            id="newServicePackageForm"
+            class="service-package-card service-create-card"
+            style="display:none;"
+        >
 
-            <article class="service-package-card">
-
-                <div class="service-package-card-head">
-
-                    <div>
-                        <small>Betreuungstarif</small>
-                        <h4>${packageItem.tariff}</h4>
-                    </div>
-
-                    <span class="service-package-status status-${packageItem.status}">
-                        ${
-                            packageItem.status === "available"
-                             ? "🟢 Verfügbar"
-                             : "🔴 Nicht verfügbar"
-                        }
-                    </span>
-
+            <div class="service-package-card-head">
+                <div>
+                    <small>Neuer Betreuungstarif</small>
+                    <h4>Tarif anlegen</h4>
                 </div>
+            </div>
 
-                <div class="service-package-price-grid">
+            <label>
+                Name
+                <input
+                    id="newPackageName"
+                    placeholder="z. B. Business"
+                >
+            </label>
 
-                    <label>
-                        Monatspreis
-                        <input
-                            type="number"
-                            step="0.01"
-                            id="monthlyPrice-${packageItem.id}"
-                            value="${packageItem.monthly_price}"
-                        >
-                    </label>
+            <label>
+                Untertitel
+                <input
+                    id="newPackageSubtitle"
+                    placeholder="z. B. Für größere Webseiten"
+                >
+            </label>
 
-                    <label>
-                        Jahrespreis
-                        <input
-                            type="number"
-                            step="0.01"
-                            id="yearlyPrice-${packageItem.id}"
-                            value="${packageItem.yearly_price}"
-                        >
-                    </label>
+            <label>
+                Beschreibung
+                <textarea
+                    id="newPackageDescription"
+                    placeholder="Kurze Beschreibung des Tarifs"
+                ></textarea>
+            </label>
 
-                </div>
+            <div class="service-package-price-grid">
 
                 <label>
-                    Verfügbarkeit
+                    Symbol
+                    <input
+                        id="newPackageIcon"
+                        value="📦"
+                    >
+                </label>
 
-<select id="servicePackageStatus-${packageItem.id}">
-    <option
-        value="available"
-        ${packageItem.status === "available" ? "selected" : ""}
-    >
-        🟢 Verfügbar
-    </option>
+                <label>
+                    Reihenfolge
+                    <input
+                        id="newPackageSortOrder"
+                        type="number"
+                        value="0"
+                    >
+                </label>
 
-    <option
-        value="unavailable"
-        ${packageItem.status === "unavailable" ? "selected" : ""}
-    >
-        🔴 Nicht verfügbar
-    </option>
-</select>
-</label>
+            </div>
 
-                <div class="service-offer-box">
+            <label>
+                Enthaltene Leistungen
 
-                    <label class="service-switch-row">
+                <textarea
+                    id="newPackageFeatures"
+                    placeholder="Eine Leistung pro Zeile"
+                ></textarea>
+            </label>
 
-                        <span>
-                            <strong>🏷️ Sonderangebot</strong>
-                            <small>Angebot aktivieren</small>
+            <div class="service-package-price-grid">
+
+                <label>
+                    Monatspreis
+
+                    <input
+                        id="newPackageMonthlyPrice"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value="0"
+                    >
+                </label>
+
+                <label>
+                    Jahrespreis
+
+                    <input
+                        id="newPackageYearlyPrice"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value="0"
+                    >
+                </label>
+
+            </div>
+
+            <label>
+                Verfügbarkeit
+
+                <select id="newPackageStatus">
+                    <option value="available">
+                        🟢 Verfügbar
+                    </option>
+
+                    <option value="unavailable">
+                        🔴 Nicht verfügbar
+                    </option>
+                </select>
+            </label>
+
+            <label class="service-switch-row">
+
+                <span>
+                    <strong>⭐ Empfohlener Tarif</strong>
+                    <small>Tarif besonders hervorheben</small>
+                </span>
+
+                <input
+                    id="newPackageRecommended"
+                    type="checkbox"
+                >
+
+            </label>
+
+            <label>
+                Empfehlungstext
+
+                <input
+                    id="newPackageRecommendationText"
+                    placeholder="z. B. Beliebteste Wahl"
+                >
+            </label>
+
+            <button
+                class="service-save-button"
+                onclick="createServicePackage()"
+            >
+                ➕ Tarif anlegen
+            </button>
+
+        </article>
+
+        ${servicePackages.map(packageItem => {
+
+            const displayName =
+                packageItem.display_name ||
+                packageItem.tariff;
+
+            const featureText =
+                getServiceFeatureText(
+                    packageItem.features
+                );
+
+            return `
+
+                <article class="service-package-card">
+
+                    <div class="service-package-card-head">
+
+                        <div>
+                            <small>Betreuungstarif</small>
+
+                            <h4>
+                                ${escapeServiceHtml(displayName)}
+                            </h4>
+                        </div>
+
+                        <span
+                            class="
+                                service-package-status
+                                status-${packageItem.status}
+                            "
+                        >
+                            ${
+                                packageItem.status === "available"
+                                    ? "🟢 Verfügbar"
+                                    : "🔴 Nicht verfügbar"
+                            }
                         </span>
 
-                        <input
-                            type="checkbox"
-                            id="offerEnabled-${packageItem.id}"
-                            ${packageItem.offer_enabled ? "checked" : ""}
-                        >
+                    </div>
 
+                    <label>
+                        Name
+
+                        <input
+                            id="packageName-${packageItem.id}"
+                            value="${escapeServiceHtml(displayName)}"
+                        >
                     </label>
 
                     <label>
-                        Angebotsname
+                        Untertitel
 
                         <input
-                            id="offerName-${packageItem.id}"
-                            value="${packageItem.offer_name || ""}"
-                            placeholder="z. B. Sommerangebot"
+                            id="packageSubtitle-${packageItem.id}"
+                            value="${escapeServiceHtml(
+                                packageItem.subtitle || ""
+                            )}"
                         >
+                    </label>
+
+                    <label>
+                        Beschreibung
+
+                        <textarea
+                            id="packageDescription-${packageItem.id}"
+                        >${escapeServiceHtml(
+                            packageItem.description || ""
+                        )}</textarea>
                     </label>
 
                     <div class="service-package-price-grid">
 
                         <label>
-                            Angebot monatlich
+                            Symbol
 
                             <input
-                                type="number"
-                                step="0.01"
-                                id="offerMonthlyPrice-${packageItem.id}"
-                                value="${packageItem.offer_monthly_price || 0}"
+                                id="packageIcon-${packageItem.id}"
+                                value="${escapeServiceHtml(
+                                    packageItem.icon || "📦"
+                                )}"
                             >
                         </label>
 
                         <label>
-                            Angebot jährlich
+                            Reihenfolge
 
                             <input
+                                id="packageSortOrder-${packageItem.id}"
                                 type="number"
-                                step="0.01"
-                                id="offerYearlyPrice-${packageItem.id}"
-                                value="${packageItem.offer_yearly_price || 0}"
+                                value="${Number(
+                                    packageItem.sort_order
+                                ) || 0}"
                             >
                         </label>
 
                     </div>
 
+                    <label>
+                        Enthaltene Leistungen
+
+                        <textarea
+                            id="packageFeatures-${packageItem.id}"
+                            placeholder="Eine Leistung pro Zeile"
+                        >${escapeServiceHtml(featureText)}</textarea>
+                    </label>
+
+                    <div class="service-package-price-grid">
+
+                        <label>
+                            Monatspreis
+
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                id="monthlyPrice-${packageItem.id}"
+                                value="${packageItem.monthly_price}"
+                            >
+                        </label>
+
+                        <label>
+                            Jahrespreis
+
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                id="yearlyPrice-${packageItem.id}"
+                                value="${packageItem.yearly_price}"
+                            >
+                        </label>
+
+                    </div>
+
+                    <label>
+                        Verfügbarkeit
+
+                        <select
+                            id="servicePackageStatus-${packageItem.id}"
+                        >
+                            <option
+                                value="available"
+                                ${
+                                    packageItem.status === "available"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                🟢 Verfügbar
+                            </option>
+
+                            <option
+                                value="unavailable"
+                                ${
+                                    packageItem.status === "unavailable"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                🔴 Nicht verfügbar
+                            </option>
+                        </select>
+                    </label>
+
                     <label class="service-switch-row">
 
                         <span>
-                            <strong>📅 Ablaufdatum</strong>
-                            <small>Nur verwenden, wenn benötigt</small>
+                            <strong>⭐ Empfohlener Tarif</strong>
+                            <small>Tarif besonders hervorheben</small>
                         </span>
 
                         <input
                             type="checkbox"
-                            id="offerUseEndDate-${packageItem.id}"
-                            ${packageItem.offer_use_end_date ? "checked" : ""}
+                            id="packageRecommended-${packageItem.id}"
+                            ${packageItem.recommended ? "checked" : ""}
                         >
 
                     </label>
 
                     <label>
-                        Gültig bis
+                        Empfehlungstext
 
                         <input
-                            type="date"
-                            id="offerEndDate-${packageItem.id}"
-                            value="${packageItem.offer_end_date || ""}"
+                            id="packageRecommendationText-${packageItem.id}"
+                            value="${escapeServiceHtml(
+                                packageItem.recommendation_text || ""
+                            )}"
+                            placeholder="z. B. Beliebteste Wahl"
                         >
                     </label>
 
-                </div>
+                    <div class="service-offer-box">
 
-                <button
-                    class="service-save-button"
-                    onclick="saveServicePackageStatus(${packageItem.id})"
-                >
-                    💾 Tarif speichern
-                </button>
+                        <label class="service-switch-row">
 
-            </article>
+                            <span>
+                                <strong>🏷️ Sonderangebot</strong>
+                                <small>Angebot aktivieren</small>
+                            </span>
 
-        `).join("")}
+                            <input
+                                type="checkbox"
+                                id="offerEnabled-${packageItem.id}"
+                                ${packageItem.offer_enabled ? "checked" : ""}
+                            >
+
+                        </label>
+
+                        <label>
+                            Angebotsname
+
+                            <input
+                                id="offerName-${packageItem.id}"
+                                value="${escapeServiceHtml(
+                                    packageItem.offer_name || ""
+                                )}"
+                                placeholder="z. B. Sommerangebot"
+                            >
+                        </label>
+
+                        <div class="service-package-price-grid">
+
+                            <label>
+                                Angebot monatlich
+
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    id="offerMonthlyPrice-${packageItem.id}"
+                                    value="${
+                                        packageItem.offer_monthly_price || 0
+                                    }"
+                                >
+                            </label>
+
+                            <label>
+                                Angebot jährlich
+
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    id="offerYearlyPrice-${packageItem.id}"
+                                    value="${
+                                        packageItem.offer_yearly_price || 0
+                                    }"
+                                >
+                            </label>
+
+                        </div>
+
+                        <label class="service-switch-row">
+
+                            <span>
+                                <strong>📅 Ablaufdatum</strong>
+                                <small>Nur verwenden, wenn benötigt</small>
+                            </span>
+
+                            <input
+                                type="checkbox"
+                                id="offerUseEndDate-${packageItem.id}"
+                                ${
+                                    packageItem.offer_use_end_date
+                                        ? "checked"
+                                        : ""
+                                }
+                            >
+
+                        </label>
+
+                        <label>
+                            Gültig bis
+
+                            <input
+                                type="date"
+                                id="offerEndDate-${packageItem.id}"
+                                value="${escapeServiceHtml(
+                                    packageItem.offer_end_date || ""
+                                )}"
+                            >
+                        </label>
+
+                    </div>
+
+                    <div class="service-card-actions">
+
+                        <button
+                            class="service-save-button"
+                            onclick="
+                                saveServicePackageStatus(
+                                    ${packageItem.id}
+                                )
+                            "
+                        >
+                            💾 Tarif speichern
+                        </button>
+
+                        <button
+                            class="service-delete-button"
+                            onclick="
+                                deleteServicePackage(
+                                    ${packageItem.id}
+                                )
+                            "
+                        >
+                            🗑️ Tarif löschen
+                        </button>
+
+                    </div>
+
+                </article>
+            `;
+
+        }).join("")}
 
     </div>
 
@@ -5915,74 +6227,271 @@ alert(result);
 showServiceTariffs();
 }
 
-async function saveServicePackageStatus(id){
+function toggleNewServicePackageForm(){
 
-const status =
+const form =
     document.getElementById(
-        `servicePackageStatus-${id}`
-    ).value;
+        "newServicePackageForm"
+    );
 
-const monthlyPrice =
-    document.getElementById(
-        `monthlyPrice-${id}`
-    ).value;
+if(!form){
+    return;
+}
 
-const yearlyPrice =
-    document.getElementById(
-        `yearlyPrice-${id}`
-    ).value;
+form.style.display =
+    form.style.display === "none"
+        ? ""
+        : "none";
+}
 
-const offerEnabled =
-    document.getElementById(
-        `offerEnabled-${id}`
-    ).checked;
+function readServiceFeatures(elementId){
 
-const offerName =
-    document.getElementById(
-        `offerName-${id}`
-    ).value;
+const element =
+    document.getElementById(elementId);
 
-const offerMonthlyPrice =
-    document.getElementById(
-        `offerMonthlyPrice-${id}`
-    ).value;
+if(!element){
+    return [];
+}
 
-const offerYearlyPrice =
-    document.getElementById(
-        `offerYearlyPrice-${id}`
-    ).value;
+return element.value
+    .split("\n")
+    .map(item => item.trim())
+    .filter(Boolean);
+}
 
-const offerUseEndDate =
-    document.getElementById(
-        `offerUseEndDate-${id}`
-    ).checked;
+async function createServicePackage(){
 
-const offerEndDate =
+const displayName =
     document.getElementById(
-        `offerEndDate-${id}`
-    ).value;
+        "newPackageName"
+    ).value.trim();
+
+if(!displayName){
+    alert("Bitte einen Tarifnamen eingeben.");
+    return;
+}
 
 const result = await apiPost(
-    "/save-service-package",
+    "/create-service-package",
     {
-        id,
-        monthly_price: monthlyPrice,
-        yearly_price: yearlyPrice,
-        status,
-        offer_enabled: offerEnabled,
-        offer_name: offerName,
-        offer_monthly_price: offerMonthlyPrice,
-        offer_yearly_price: offerYearlyPrice,
-        offer_use_end_date: offerUseEndDate,
-        offer_end_date: offerUseEndDate
-            ? offerEndDate
-            : ""
+        adminUsername: currentUser,
+
+        display_name: displayName,
+
+        subtitle:
+            document.getElementById(
+                "newPackageSubtitle"
+            ).value.trim(),
+
+        description:
+            document.getElementById(
+                "newPackageDescription"
+            ).value.trim(),
+
+        icon:
+            document.getElementById(
+                "newPackageIcon"
+            ).value.trim() || "📦",
+
+        features:
+            readServiceFeatures(
+                "newPackageFeatures"
+            ),
+
+        monthly_price:
+            Number(
+                document.getElementById(
+                    "newPackageMonthlyPrice"
+                ).value
+            ) || 0,
+
+        yearly_price:
+            Number(
+                document.getElementById(
+                    "newPackageYearlyPrice"
+                ).value
+            ) || 0,
+
+        status:
+            document.getElementById(
+                "newPackageStatus"
+            ).value,
+
+        recommended:
+            document.getElementById(
+                "newPackageRecommended"
+            ).checked,
+
+        recommendation_text:
+            document.getElementById(
+                "newPackageRecommendationText"
+            ).value.trim(),
+
+        sort_order:
+            Number(
+                document.getElementById(
+                    "newPackageSortOrder"
+                ).value
+            ) || 0
     }
 );
 
 alert(result);
 
-showServiceTariffs();
+if(result === "Tarif angelegt"){
+    await showServiceTariffs();
+}
+}
+
+async function saveServicePackageStatus(id){
+
+const result = await apiPost(
+    "/save-service-package",
+    {
+        adminUsername: currentUser,
+        id,
+
+        display_name:
+            document.getElementById(
+                `packageName-${id}`
+            ).value.trim(),
+
+        subtitle:
+            document.getElementById(
+                `packageSubtitle-${id}`
+            ).value.trim(),
+
+        description:
+            document.getElementById(
+                `packageDescription-${id}`
+            ).value.trim(),
+
+        icon:
+            document.getElementById(
+                `packageIcon-${id}`
+            ).value.trim() || "📦",
+
+        features:
+            readServiceFeatures(
+                `packageFeatures-${id}`
+            ),
+
+        monthly_price:
+            Number(
+                document.getElementById(
+                    `monthlyPrice-${id}`
+                ).value
+            ) || 0,
+
+        yearly_price:
+            Number(
+                document.getElementById(
+                    `yearlyPrice-${id}`
+                ).value
+            ) || 0,
+
+        status:
+            document.getElementById(
+                `servicePackageStatus-${id}`
+            ).value,
+
+        recommended:
+            document.getElementById(
+                `packageRecommended-${id}`
+            ).checked,
+
+        recommendation_text:
+            document.getElementById(
+                `packageRecommendationText-${id}`
+            ).value.trim(),
+
+        sort_order:
+            Number(
+                document.getElementById(
+                    `packageSortOrder-${id}`
+                ).value
+            ) || 0,
+
+        offer_enabled:
+            document.getElementById(
+                `offerEnabled-${id}`
+            ).checked,
+
+        offer_name:
+            document.getElementById(
+                `offerName-${id}`
+            ).value.trim(),
+
+        offer_monthly_price:
+            Number(
+                document.getElementById(
+                    `offerMonthlyPrice-${id}`
+                ).value
+            ) || 0,
+
+        offer_yearly_price:
+            Number(
+                document.getElementById(
+                    `offerYearlyPrice-${id}`
+                ).value
+            ) || 0,
+
+        offer_use_end_date:
+            document.getElementById(
+                `offerUseEndDate-${id}`
+            ).checked,
+
+        offer_end_date:
+            document.getElementById(
+                `offerUseEndDate-${id}`
+            ).checked
+                ? document.getElementById(
+                    `offerEndDate-${id}`
+                ).value
+                : ""
+    }
+);
+
+alert(result);
+
+if(result === "Tarif gespeichert"){
+    await showServiceTariffs();
+}
+}
+
+async function deleteServicePackage(id){
+
+const packageItem =
+    servicePackages.find(
+        item => Number(item.id) === Number(id)
+    );
+
+const displayName =
+    packageItem?.display_name ||
+    packageItem?.tariff ||
+    "diesen Tarif";
+
+if(
+    !confirm(
+        `"${displayName}" wirklich löschen?`
+    )
+){
+    return;
+}
+
+const result = await apiPost(
+    "/delete-service-package",
+    {
+        adminUsername: currentUser,
+        id
+    }
+);
+
+alert(result);
+
+if(result === "Tarif gelöscht"){
+    await showServiceTariffs();
+}
 }
 
 async function saveServiceAddon(id){
