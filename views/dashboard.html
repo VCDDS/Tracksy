@@ -5549,81 +5549,305 @@ content.innerHTML = `
         <div>
             <small>Einmalige Leistungen</small>
             <h3>🛠 Zusatzleistungen</h3>
+
             <p>
-                Preise und Verfügbarkeit für alle verbundenen Webseiten verwalten.
+                Zusatzleistungen zentral anlegen,
+                vollständig bearbeiten oder entfernen.
             </p>
         </div>
+
+        <button
+            class="service-add-button"
+            onclick="toggleNewServiceAddonForm()"
+        >
+            ➕ Neue Zusatzleistung
+        </button>
 
     </div>
 
     <div class="service-addon-grid">
 
-        ${serviceAddons.map(addon => `
+        <article
+            id="newServiceAddonForm"
+            class="service-addon-card service-create-card"
+            style="display:none;"
+        >
 
-            <article class="service-addon-card">
+            <div class="service-addon-card-head">
 
-                <div class="service-addon-card-head">
-
-                    <div>
-                        <small>Zusatzleistung</small>
-                        <h4>${addon.service_name}</h4>
-                    </div>
-
-                    <span class="service-package-status status-${addon.status}">
-                        ${
-                            addon.status === "available"
-                             ? "🟢 Verfügbar"
-                             : "🔴 Nicht verfügbar"
-                        }
-                    </span>
-
+                <div>
+                    <small>Neue Zusatzleistung</small>
+                    <h4>Leistung anlegen</h4>
                 </div>
 
-                <label>
-                    Preis ab
+            </div>
 
-                    <div class="service-price-input">
-                        <input
-                            type="number"
-                            step="0.01"
-                            id="addonPrice-${addon.id}"
-                            value="${addon.price_once}"
-                        >
+            <label>
+                Name
 
-                        <span>€</span>
-                    </div>
-                </label>
-
-                <label>
-                    Verfügbarkeit
-
-                    <select id="addonStatus-${addon.id}">
-                        <option
-                            value="available"
-                            ${addon.status === "available" ? "selected" : ""}
-                        >
-                            🟢 Verfügbar
-                        </option>
-
-                        <option
-                            value="unavailable"
-                            ${addon.status === "unavailable" ? "selected" : ""}
-                        >
-                            🔴 Nicht verfügbar
-                        </option>
-                    </select>
-                </label>
-
-                <button
-                    class="service-save-button"
-                    onclick="saveServiceAddon(${addon.id})"
+                <input
+                    id="newAddonName"
+                    placeholder="z. B. Logo-Erstellung"
                 >
-                    💾 Leistung speichern
-                </button>
+            </label>
 
-            </article>
+            <label>
+                Beschreibung
 
-        `).join("")}
+                <textarea
+                    id="newAddonDescription"
+                    placeholder="Kurze Beschreibung der Leistung"
+                ></textarea>
+            </label>
+
+            <div class="service-package-price-grid">
+
+                <label>
+                    Symbol
+
+                    <input
+                        id="newAddonIcon"
+                        value="🛠️"
+                    >
+                </label>
+
+                <label>
+                    Reihenfolge
+
+                    <input
+                        id="newAddonSortOrder"
+                        type="number"
+                        value="0"
+                    >
+                </label>
+
+            </div>
+
+            <div class="service-package-price-grid">
+
+                <label>
+                    Preisangabe
+
+                    <input
+                        id="newAddonPricePrefix"
+                        value="ab"
+                        placeholder="z. B. ab"
+                    >
+                </label>
+
+                <label>
+                    Preis
+
+                    <input
+                        id="newAddonPrice"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value="0"
+                    >
+                </label>
+
+            </div>
+
+            <label>
+                Verfügbarkeit
+
+                <select id="newAddonStatus">
+
+                    <option value="available">
+                        🟢 Verfügbar
+                    </option>
+
+                    <option value="unavailable">
+                        🔴 Nicht verfügbar
+                    </option>
+
+                </select>
+            </label>
+
+            <button
+                class="service-save-button"
+                onclick="createServiceAddon()"
+            >
+                ➕ Zusatzleistung anlegen
+            </button>
+
+        </article>
+
+        ${serviceAddons.map(addon => {
+
+            const displayName =
+                addon.display_name ||
+                addon.service_name;
+
+            return `
+
+                <article class="service-addon-card">
+
+                    <div class="service-addon-card-head">
+
+                        <div>
+                            <small>Zusatzleistung</small>
+
+                            <h4>
+                                ${escapeServiceHtml(displayName)}
+                            </h4>
+                        </div>
+
+                        <span
+                            class="
+                                service-package-status
+                                status-${addon.status}
+                            "
+                        >
+                            ${
+                                addon.status === "available"
+                                    ? "🟢 Verfügbar"
+                                    : "🔴 Nicht verfügbar"
+                            }
+                        </span>
+
+                    </div>
+
+                    <label>
+                        Name
+
+                        <input
+                            id="addonName-${addon.id}"
+                            value="${escapeServiceHtml(displayName)}"
+                        >
+                    </label>
+
+                    <label>
+                        Beschreibung
+
+                        <textarea
+                            id="addonDescription-${addon.id}"
+                        >${escapeServiceHtml(
+                            addon.description || ""
+                        )}</textarea>
+                    </label>
+
+                    <div class="service-package-price-grid">
+
+                        <label>
+                            Symbol
+
+                            <input
+                                id="addonIcon-${addon.id}"
+                                value="${escapeServiceHtml(
+                                    addon.icon || "🛠️"
+                                )}"
+                            >
+                        </label>
+
+                        <label>
+                            Reihenfolge
+
+                            <input
+                                id="addonSortOrder-${addon.id}"
+                                type="number"
+                                value="${
+                                    Number(addon.sort_order) || 0
+                                }"
+                            >
+                        </label>
+
+                    </div>
+
+                    <div class="service-package-price-grid">
+
+                        <label>
+                            Preisangabe
+
+                            <input
+                                id="addonPricePrefix-${addon.id}"
+                                value="${escapeServiceHtml(
+                                    addon.price_prefix || "ab"
+                                )}"
+                            >
+                        </label>
+
+                        <label>
+                            Preis
+
+                            <div class="service-price-input">
+
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    id="addonPrice-${addon.id}"
+                                    value="${addon.price_once}"
+                                >
+
+                                <span>€</span>
+
+                            </div>
+                        </label>
+
+                    </div>
+
+                    <label>
+                        Verfügbarkeit
+
+                        <select id="addonStatus-${addon.id}">
+
+                            <option
+                                value="available"
+                                ${
+                                    addon.status === "available"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                🟢 Verfügbar
+                            </option>
+
+                            <option
+                                value="unavailable"
+                                ${
+                                    addon.status === "unavailable"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                🔴 Nicht verfügbar
+                            </option>
+
+                        </select>
+                    </label>
+
+                    <div class="service-card-actions">
+
+                        <button
+                            class="service-save-button"
+                            onclick="
+                                saveServiceAddon(
+                                    ${addon.id}
+                                )
+                            "
+                        >
+                            💾 Leistung speichern
+                        </button>
+
+                        <button
+                            class="service-delete-button"
+                            onclick="
+                                deleteServiceAddon(
+                                    ${addon.id}
+                                )
+                            "
+                        >
+                            🗑️ Leistung löschen
+                        </button>
+
+                    </div>
+
+                </article>
+            `;
+
+        }).join("")}
 
     </div>
 
@@ -6509,31 +6733,177 @@ if(result === "Tarif gelöscht"){
 }
 }
 
-async function saveServiceAddon(id){
+function toggleNewServiceAddonForm(){
 
-const priceInput =
-    document.getElementById(`addonPrice-${id}`);
+const form =
+    document.getElementById(
+        "newServiceAddonForm"
+    );
 
-const statusSelect =
-    document.getElementById(`addonStatus-${id}`);
+if(!form){
+    return;
+}
 
-if(!priceInput || !statusSelect){
-    alert("Zusatzleistung konnte nicht gefunden werden.");
+form.style.display =
+    form.style.display === "none"
+        ? ""
+        : "none";
+}
+
+async function createServiceAddon(){
+
+const displayName =
+    document.getElementById(
+        "newAddonName"
+    ).value.trim();
+
+if(!displayName){
+    alert(
+        "Bitte einen Namen für die Zusatzleistung eingeben."
+    );
+
     return;
 }
 
 const result = await apiPost(
-    "/save-service-addon",
+    "/create-service-addon",
     {
-        id,
-        price_once: Number(priceInput.value) || 0,
-        status: statusSelect.value
+        adminUsername: currentUser,
+
+        display_name: displayName,
+
+        description:
+            document.getElementById(
+                "newAddonDescription"
+            ).value.trim(),
+
+        icon:
+            document.getElementById(
+                "newAddonIcon"
+            ).value.trim() || "🛠️",
+
+        price_prefix:
+            document.getElementById(
+                "newAddonPricePrefix"
+            ).value.trim() || "ab",
+
+        price_once:
+            Number(
+                document.getElementById(
+                    "newAddonPrice"
+                ).value
+            ) || 0,
+
+        status:
+            document.getElementById(
+                "newAddonStatus"
+            ).value,
+
+        sort_order:
+            Number(
+                document.getElementById(
+                    "newAddonSortOrder"
+                ).value
+            ) || 0
     }
 );
 
 alert(result);
 
-showServiceTariffs();
+if(result === "Zusatzleistung angelegt"){
+    await showServiceTariffs();
+}
+}
+
+async function saveServiceAddon(id){
+
+const result = await apiPost(
+    "/save-service-addon",
+    {
+        adminUsername: currentUser,
+        id,
+
+        display_name:
+            document.getElementById(
+                `addonName-${id}`
+            ).value.trim(),
+
+        description:
+            document.getElementById(
+                `addonDescription-${id}`
+            ).value.trim(),
+
+        icon:
+            document.getElementById(
+                `addonIcon-${id}`
+            ).value.trim() || "🛠️",
+
+        price_prefix:
+            document.getElementById(
+                `addonPricePrefix-${id}`
+            ).value.trim() || "ab",
+
+        price_once:
+            Number(
+                document.getElementById(
+                    `addonPrice-${id}`
+                ).value
+            ) || 0,
+
+        status:
+            document.getElementById(
+                `addonStatus-${id}`
+            ).value,
+
+        sort_order:
+            Number(
+                document.getElementById(
+                    `addonSortOrder-${id}`
+                ).value
+            ) || 0
+    }
+);
+
+alert(result);
+
+if(result === "Zusatzleistung gespeichert"){
+    await showServiceTariffs();
+}
+}
+
+async function deleteServiceAddon(id){
+
+const addon =
+    serviceAddons.find(
+        item => Number(item.id) === Number(id)
+    );
+
+const displayName =
+    addon?.display_name ||
+    addon?.service_name ||
+    "diese Zusatzleistung";
+
+if(
+    !confirm(
+        `"${displayName}" wirklich löschen?`
+    )
+){
+    return;
+}
+
+const result = await apiPost(
+    "/delete-service-addon",
+    {
+        adminUsername: currentUser,
+        id
+    }
+);
+
+alert(result);
+
+if(result === "Zusatzleistung gelöscht"){
+    await showServiceTariffs();
+}
 }
 
 async function terminateServiceContract(id){
