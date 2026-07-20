@@ -250,6 +250,192 @@ async function apiPost(url, data){
     return await res.text();
 }
 
+/* =====================================================
+   AUTOMATISCHE ABMELDUNG
+===================================================== */
+
+const TRACKSY_AUTO_LOGOUT_AFTER =
+    60 * 60 * 1000;
+
+const TRACKSY_AUTO_LOGOUT_CHECK_INTERVAL =
+    30 * 1000;
+
+const TRACKSY_ACTIVITY_SAVE_INTERVAL =
+    5 * 1000;
+
+let tracksyLastActivitySave = 0;
+let tracksyAutoLogoutRunning = false;
+
+function getTracksyLastActivity(){
+
+    const value = Number(
+        localStorage.getItem(
+            "tracksyLastActivity"
+        )
+    );
+
+    return (
+        Number.isFinite(value) &&
+        value > 0
+    )
+        ? value
+        : Date.now();
+}
+
+function saveTracksyActivity(force = false){
+
+    const now = Date.now();
+
+    if(
+        !force &&
+        now - tracksyLastActivitySave <
+            TRACKSY_ACTIVITY_SAVE_INTERVAL
+    ){
+        return;
+    }
+
+    tracksyLastActivitySave = now;
+
+    localStorage.setItem(
+        "tracksyLastActivity",
+        String(now)
+    );
+}
+
+async function checkTracksyAutomaticLogout(){
+
+    if(tracksyAutoLogoutRunning){
+        return;
+    }
+
+    const inactiveTime =
+        Date.now() -
+        getTracksyLastActivity();
+
+    if(
+        inactiveTime <
+        TRACKSY_AUTO_LOGOUT_AFTER
+    ){
+        return;
+    }
+
+    tracksyAutoLogoutRunning = true;
+
+    try{
+
+        const times = await apiGet("/times");
+
+        if(!Array.isArray(times)){
+            throw new Error(
+                "Zeiten konnten nicht geprüft werden."
+            );
+        }
+
+        /*
+         * Falls während der Serveranfrage wieder
+         * Aktivität erkannt wurde, nicht abmelden.
+         */
+        const currentInactiveTime =
+            Date.now() -
+            getTracksyLastActivity();
+
+        if(
+            currentInactiveTime <
+            TRACKSY_AUTO_LOGOUT_AFTER
+        ){
+            return;
+        }
+
+        /*
+         * Auch eine pausierte Zeit besitzt noch keine
+         * stop_time und verhindert deshalb die Abmeldung.
+         */
+        const runningTime = times.find(
+            time =>
+                time.username === currentUser &&
+                !time.stop_time
+        );
+
+        if(runningTime){
+
+            /*
+             * Solange ein Projekt aktiv oder pausiert ist,
+             * beginnt keine automatische Abmeldung.
+             */
+            saveTracksyActivity(true);
+            return;
+        }
+
+        await apiPost(
+            "/logout-user",
+            {
+                username: currentUser
+            }
+        );
+
+        localStorage.removeItem("username");
+        localStorage.removeItem("isAdmin");
+        localStorage.removeItem("userRole");
+        localStorage.removeItem("assignedProject");
+        localStorage.removeItem(
+            "tracksyLastActivity"
+        );
+
+        location.href = "/login";
+
+    }catch(error){
+
+        console.error(
+            "Automatische Abmeldung konnte nicht geprüft werden:",
+            error
+        );
+
+    }finally{
+
+        tracksyAutoLogoutRunning = false;
+    }
+}
+
+[
+    "pointerdown",
+    "keydown",
+    "mousemove",
+    "scroll",
+    "touchstart"
+].forEach(eventName => {
+
+    window.addEventListener(
+        eventName,
+        () => saveTracksyActivity(),
+        {
+            passive: true
+        }
+    );
+});
+
+document.addEventListener(
+    "visibilitychange",
+    () => {
+
+        if(!document.hidden){
+            saveTracksyActivity(true);
+        }
+    }
+);
+
+if(
+    !localStorage.getItem(
+        "tracksyLastActivity"
+    )
+){
+    saveTracksyActivity(true);
+}
+
+setInterval(
+    checkTracksyAutomaticLogout,
+    TRACKSY_AUTO_LOGOUT_CHECK_INTERVAL
+);
+
 function parseGermanDate(str){
     if(!str) return null;
 
@@ -4137,6 +4323,14 @@ localStorage.removeItem("username");
 localStorage.removeItem("isAdmin");
 localStorage.removeItem("userRole");
 localStorage.removeItem("assignedProject");
+localStorage.removeItem(
+    "tracksyLastActivity"
+);
+
+sessionStorage.setItem(
+    "tracksyLoginMessage",
+    "Du wurdest nach 60 Minuten Inaktivität automatisch abgemeldet."
+);
 
 location.href = "/login";
 }
