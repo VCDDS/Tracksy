@@ -616,6 +616,18 @@ await pool.query(`
     ALTER COLUMN sort_order SET DEFAULT 0
 `);
 
+await pool.query(`
+    UPDATE service_packages
+    SET status = 'unavailable'
+    WHERE status = 'waiting'
+`);
+
+await pool.query(`
+    UPDATE service_addons
+    SET status = 'unavailable'
+    WHERE status = 'waiting'
+`);
+
     await pool.query(`
     ALTER TABLE service_tariffs
     ADD COLUMN IF NOT EXISTS first_payment TEXT DEFAULT ''
@@ -3876,7 +3888,6 @@ app.post("/restore-service-contract", async (req, res) => {
 
 const serviceCatalogStatuses = new Set([
     "available",
-    "waiting",
     "unavailable"
 ]);
 
