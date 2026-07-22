@@ -2538,6 +2538,11 @@ function planningStatusClass(status){
     return "planning-status-open";
 }
 
+function isPlanningDayOff(schedule){
+    return schedule?.is_day_off === true ||
+        schedule?.is_day_off === "true";
+}
+
 function findAdminPlanningSchedule(
     userId,
     workDate
@@ -2759,10 +2764,13 @@ function renderAdminPlanningPage(){
                     workDate
                 );
 
-            const tasks =
-                schedule?.tasks || [];
+                const tasks =
+    schedule?.tasks || [];
 
-            const selected =
+const isDayOff =
+    isPlanningDayOff(schedule);
+
+const selected =
                 Number(user.id) ===
                     Number(
                         adminPlanningState
@@ -2772,11 +2780,13 @@ function renderAdminPlanningPage(){
                     adminPlanningState
                         .selectedDate;
 
-            const timeText =
-                schedule?.start_time &&
-                schedule?.end_time
-                    ? `${schedule.start_time} – ${schedule.end_time}`
-                    : "Zeit eintragen";
+                        const timeText =
+    isDayOff
+        ? "Frei – Keine Entwicklung"
+        : schedule?.start_time &&
+        schedule?.end_time
+        ? `${schedule.start_time} – ${schedule.end_time}`
+        : "Zeit eintragen";
 
             const taskPreview = tasks
                 .slice(0, 3)
@@ -2804,10 +2814,15 @@ function renderAdminPlanningPage(){
                         planning-cell
                         ${selected ? "selected" : ""}
                         ${
-                            schedule
-                                ? "has-entry"
-                                : ""
-                        }
+    schedule
+        ? "has-entry"
+        : ""
+}
+${
+    isDayOff
+        ? "is-day-off"
+        : ""
+}
                     "
 
                     onclick="
@@ -3073,6 +3088,7 @@ function renderAdminPlanningDetail(
     schedule
 ){
     const tasks = schedule?.tasks || [];
+    const isDayOff = isPlanningDayOff(schedule);
 
     return `
         <div class="planning-detail-head">
@@ -3105,7 +3121,21 @@ function renderAdminPlanningDetail(
 
         <section class="planning-detail-section">
 
-            <div class="planning-section-title">
+    ${
+        isDayOff
+            ? `
+                <div class="planning-day-off-notice">
+                    <strong>Frei – Keine Entwicklung</strong>
+
+                    <span>
+                        Für diesen Tag ist keine Entwicklung geplant.
+                    </span>
+                </div>
+            `
+            : ""
+    }
+
+    <div class="planning-section-title">
 
                 <h4>
                     Dienstzeit
@@ -3145,6 +3175,21 @@ function renderAdminPlanningDetail(
                 >
                     💾 Dienstzeit speichern
                 </button>
+
+                <button
+    class="${
+        isDayOff
+            ? ""
+            : "planning-day-off-btn"
+    }"
+    onclick="toggleSelectedWorkDayOff()"
+>
+    ${
+        isDayOff
+            ? "↩ Freien Tag aufheben"
+            : "🌴 Keine Entwicklung"
+    }
+</button>
 
                 ${
                     schedule?.start_time ||
@@ -3401,6 +3446,48 @@ async function clearSelectedWorkSchedule(){
     await loadAdminPlanningPage();
 }
 
+async function toggleSelectedWorkDayOff(){
+
+const schedule =
+    findAdminPlanningSchedule(
+        adminPlanningState.selectedUserId,
+        adminPlanningState.selectedDate
+    );
+
+const isDayOff =
+    isPlanningDayOff(schedule);
+
+if(
+    !isDayOff &&
+    !confirm(
+        "Diesen Tag als Frei – Keine Entwicklung markieren? " +
+        "Eine eingetragene Dienstzeit wird entfernt. " +
+        "Aufgaben bleiben erhalten."
+    )
+){
+    return;
+}
+
+const result = await apiPost(
+    "/set-work-day-off",
+    {
+        adminUsername: currentUser,
+
+        userId:
+            adminPlanningState.selectedUserId,
+
+        workDate:
+            adminPlanningState.selectedDate,
+
+        isDayOff: !isDayOff
+    }
+);
+
+alert(result);
+
+await loadAdminPlanningPage();
+}
+
 function openPlanningTaskModal(taskId = null){
 
     const modal =
@@ -3641,17 +3728,26 @@ async function loadMyPlanningPage(){
                         workDate
                 );
 
-            const tasks =
-                schedule?.tasks || [];
+                const tasks =
+    schedule?.tasks || [];
 
-            const timeText =
-                schedule?.start_time &&
-                schedule?.end_time
-                    ? `${schedule.start_time} – ${schedule.end_time}`
-                    : "Keine Dienstzeit eingetragen";
+const isDayOff =
+    isPlanningDayOff(schedule);
+
+    const timeText =
+    isDayOff
+        ? "Frei – Keine Entwicklung"
+        : schedule?.start_time &&
+        schedule?.end_time
+        ? `${schedule.start_time} – ${schedule.end_time}`
+        : "Keine Dienstzeit eingetragen";
 
             return `
-                <article class="my-planning-day">
+                <article class="my-planning-day ${
+    isDayOff
+        ? "is-day-off"
+        : ""
+}">
 
                     <div class="my-planning-day-head">
 
@@ -3681,9 +3777,39 @@ async function loadMyPlanningPage(){
                             </strong>
                         </div>
 
-                        <div class="my-planning-time">
-                            🕒 ${timeText}
-                        </div>
+                        <div class="my-planning-time ${
+    isDayOff
+        ? "is-day-off"
+        : ""
+}">
+    ${
+        isDayOff
+            ? "🌴"
+            : "🕒"
+    }
+    ${timeText}
+</div>
+
+<div class="my-planning-day-actions">
+    <button
+        type="button"
+        class="${
+            isDayOff
+                ? ""
+                : "planning-day-off-btn"
+        }"
+        onclick="toggleMyWorkDayOff(
+            '${workDate}',
+            ${isDayOff}
+        )"
+    >
+        ${
+            isDayOff
+                ? "↩ Freien Tag aufheben"
+                : "🌴 Keine Entwicklung"
+        }
+    </button>
+</div>
 
                     </div>
 
@@ -3860,6 +3986,35 @@ async function goMyPlanningToday(){
 
     myPlanningWeekStart =
         getMondayIso(new Date());
+
+    await loadMyPlanningPage();
+}
+
+async function toggleMyWorkDayOff(
+    workDate,
+    isDayOff
+){
+    if(
+        !isDayOff &&
+        !confirm(
+            "Diesen Tag als Frei – Keine Entwicklung markieren? " +
+            "Eine eingetragene Dienstzeit wird entfernt. " +
+            "Aufgaben bleiben erhalten."
+        )
+    ){
+        return;
+    }
+
+    const result = await apiPost(
+        "/set-my-work-day-off",
+        {
+            username: currentUser,
+            workDate,
+            isDayOff: !isDayOff
+        }
+    );
+
+    alert(result);
 
     await loadMyPlanningPage();
 }

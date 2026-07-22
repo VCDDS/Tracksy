@@ -120,6 +120,63 @@ function isValidPlanningTime(value){
         /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
+async function savePlanningDayOff(
+    userId,
+    workDate,
+    isDayOff,
+    createdBy
+){
+    if(isDayOff){
+        await pool.query(`
+            INSERT INTO work_schedules (
+                user_id,
+                work_date,
+                start_time,
+                end_time,
+                is_day_off,
+                created_by
+            )
+            VALUES (
+                $1,
+                $2::date,
+                NULL,
+                NULL,
+                true,
+                $3
+            )
+            ON CONFLICT (
+                user_id,
+                work_date
+            )
+            DO UPDATE SET
+                start_time = NULL,
+                end_time = NULL,
+                is_day_off = true,
+                updated_at = NOW()
+        `, [
+            userId,
+            workDate,
+            createdBy
+        ]);
+
+        return "Tag als Frei – Keine Entwicklung gespeichert";
+    }
+
+    await pool.query(`
+        UPDATE work_schedules
+        SET
+            is_day_off = false,
+            updated_at = NOW()
+        WHERE user_id = $1
+        AND work_date = $2::date
+    `, [
+        userId,
+        workDate
+    ]);
+
+    return "Freier Tag aufgehoben";
+}
+
 async function initDatabase(){
 
     await pool.query(`
@@ -168,9 +225,10 @@ async function initDatabase(){
             work_date DATE NOT NULL,
     
             start_time TIME DEFAULT NULL,
-            end_time TIME DEFAULT NULL,
-    
-            created_by TEXT DEFAULT '',
+end_time TIME DEFAULT NULL,
+is_day_off BOOLEAN NOT NULL DEFAULT false,
+
+created_by TEXT DEFAULT '',
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW(),
     
@@ -183,6 +241,11 @@ async function initDatabase(){
                 OR end_time > start_time
             )
         )
+        `);
+
+    await pool.query(`
+        ALTER TABLE work_schedules
+        ADD COLUMN IF NOT EXISTS is_day_off BOOLEAN NOT NULL DEFAULT false
     `);
     
     await pool.query(`
@@ -1129,8 +1192,13 @@ app.get("/work-planning", async (req, res) => {
                     'HH24:MI'
                 ) AS end_time,
 
-                COALESCE(
-                    JSON_AGG(
+COALESCE(
+    ws.is_day_off,
+    false
+) AS is_day_off,
+
+COALESCE(
+    JSON_AGG(
                         JSON_BUILD_OBJECT(
                             'id', wt.id,
                             'title', wt.title,
@@ -1168,9 +1236,10 @@ app.get("/work-planning", async (req, res) => {
                 ws.user_id,
                 ws.work_date,
                 ws.start_time,
-                ws.end_time
+ws.end_time,
+ws.is_day_off
 
-            ORDER BY
+ORDER BY
                 ws.work_date ASC,
                 ws.user_id ASC
         `, [
@@ -1252,8 +1321,13 @@ app.get("/my-work-plan/:username", async (req, res) => {
                     'HH24:MI'
                 ) AS end_time,
 
-                COALESCE(
-                    JSON_AGG(
+COALESCE(
+    ws.is_day_off,
+    false
+) AS is_day_off,
+
+COALESCE(
+    JSON_AGG(
                         JSON_BUILD_OBJECT(
                             'id', wt.id,
                             'title', wt.title,
@@ -1292,9 +1366,10 @@ app.get("/my-work-plan/:username", async (req, res) => {
                 ws.user_id,
                 ws.work_date,
                 ws.start_time,
-                ws.end_time
+ws.end_time,
+ws.is_day_off
 
-            ORDER BY ws.work_date ASC
+ORDER BY ws.work_date ASC
         `, [
             user.id,
             weekStart
@@ -1399,9 +1474,10 @@ app.post("/save-work-schedule", async (req, res) => {
             )
 
             DO UPDATE SET
-                start_time = EXCLUDED.start_time,
-                end_time = EXCLUDED.end_time,
-                updated_at = NOW()
+    start_time = EXCLUDED.start_time,
+    end_time = EXCLUDED.end_time,
+    is_day_off = false,
+    updated_at = NOW()
         `, [
             userId,
             workDate,
@@ -1415,6 +1491,123 @@ app.post("/save-work-schedule", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Dienstzeit konnte nicht gespeichert werden");
+    }
+});
+
+app.post("/set-work-day-off", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            userId,
+            workDate,
+            isDayOff
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        if(
+            !userId ||
+            !isValidPlanningDate(workDate) ||
+            typeof isDayOff !== "boolean"
+        ){
+            return res.send(
+                "Ungültige Tagesdaten"
+            );
+        }
+
+        const userCheck = await pool.query(`
+            SELECT id
+            FROM users
+            WHERE id = $1
+        `, [
+            userId
+        ]);
+
+        if(userCheck.rows.length === 0){
+            return res.send(
+                "Benutzer nicht gefunden"
+            );
+        }
+
+        const message = await savePlanningDayOff(
+            userId,
+            workDate,
+            isDayOff,
+            adminUsername
+        );
+
+        res.send(message);
+
+    }catch(err){
+        console.log(err);
+        res.send(
+            "Tagesstatus konnte nicht gespeichert werden"
+        );
+    }
+});
+
+app.post("/set-my-work-day-off", async (req, res) => {
+    try{
+        const {
+            username,
+            workDate,
+            isDayOff
+        } = req.body;
+
+        if(
+            !username ||
+            !isValidPlanningDate(workDate) ||
+            typeof isDayOff !== "boolean"
+        ){
+            return res.send(
+                "Ungültige Tagesdaten"
+            );
+        }
+
+        const userResult = await pool.query(`
+            SELECT id
+            FROM users
+            WHERE username = $1
+
+            AND COALESCE(
+                NULLIF(role, ''),
+                CASE
+                    WHEN is_admin = true THEN 'admin'
+                    ELSE 'user'
+                END
+            ) != 'kunde'
+
+            LIMIT 1
+        `, [
+            username
+        ]);
+
+        if(userResult.rows.length === 0){
+            return res.send(
+                "Benutzer nicht gefunden"
+            );
+        }
+
+        const userId = userResult.rows[0].id;
+
+        const message = await savePlanningDayOff(
+            userId,
+            workDate,
+            isDayOff,
+            username
+        );
+
+        res.send(message);
+
+    }catch(err){
+        console.log(err);
+        res.send(
+            "Tagesstatus konnte nicht gespeichert werden"
+        );
     }
 });
 
@@ -1505,9 +1698,10 @@ app.post("/create-work-task", async (req, res) => {
                 )
 
                 DO UPDATE SET
-                    updated_at = NOW()
+    is_day_off = false,
+    updated_at = NOW()
 
-                RETURNING id
+RETURNING id
             )
 
             INSERT INTO work_tasks (
