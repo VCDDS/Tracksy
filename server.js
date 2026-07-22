@@ -739,21 +739,6 @@ await pool.query(`
         ALTER TABLE documents
         ADD COLUMN IF NOT EXISTS doc_password TEXT DEFAULT ''
     `);
-
-    const adminHash = await bcrypt.hash("admin123", 10);
-
-    await pool.query(
-        `INSERT INTO users (username, password, email, is_admin, last_change)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (username) DO NOTHING`,
-        ["admin", adminHash, "", true, ""]
-    );
-    
-    await pool.query(
-        "UPDATE users SET password = $1 WHERE username = $2 AND password = $3",
-        [adminHash, "admin", "admin123"]
-    );
-
     await pool.query(`
         CREATE TABLE IF NOT EXISTS calendar_entries (
             id SERIAL PRIMARY KEY,
