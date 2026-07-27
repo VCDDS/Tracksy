@@ -1264,6 +1264,62 @@ await pool.query(`
 `);
 
 /* =====================================================
+   PROJEKTANFRAGEN
+===================================================== */
+
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS project_requests (
+        id SERIAL PRIMARY KEY,
+
+        name TEXT NOT NULL,
+        company TEXT DEFAULT '',
+        email TEXT NOT NULL,
+        phone TEXT NOT NULL,
+
+        project_name TEXT NOT NULL,
+        project_type TEXT NOT NULL,
+
+        description TEXT NOT NULL,
+        requested_functions TEXT NOT NULL,
+
+        project_start DATE DEFAULT NULL,
+        deadline DATE NOT NULL,
+
+        budget TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+
+        status TEXT NOT NULL DEFAULT 'Offen',
+
+        admin_note TEXT DEFAULT '',
+        created_project_id INTEGER DEFAULT NULL,
+
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+        CONSTRAINT project_requests_status_check
+        CHECK (
+            status IN (
+                'Offen',
+                'In Bearbeitung',
+                'Angenommen',
+                'Abgelehnt',
+                'Projekt erstellt'
+            )
+        )
+    )
+`);
+
+await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_project_requests_status
+    ON project_requests(status)
+`);
+
+await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_project_requests_created_at
+    ON project_requests(created_at DESC)
+`);
+
+/* =====================================================
    WEBSEITEN-MONITORING
 ===================================================== */
 
@@ -1361,6 +1417,286 @@ app.get("/login", (req, res) => {
 app.get("/dashboard", (req, res) => {
     res.sendFile(path.join(__dirname, "views", "dashboard.html"));
 });
+
+/* =====================================================
+   ÖFFENTLICHE PROJEKTANFRAGEN
+===================================================== */
+
+function cleanProjectRequestText(
+    value,
+    maximumLength = 1000
+){
+    if(typeof value !== "string"){
+        return "";
+    }
+
+    return value
+        .replace(/\0/g, "")
+        .trim()
+        .slice(0, maximumLength);
+}
+
+function isValidProjectRequestEmail(value){
+
+    if(typeof value !== "string"){
+        return false;
+    }
+
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        value.trim()
+    );
+}
+
+function isValidProjectRequestDate(value){
+
+    if(value === ""){
+        return true;
+    }
+
+    if(
+        typeof value !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(value)
+    ){
+        return false;
+    }
+
+    const [
+        year,
+        month,
+        day
+    ] = value
+        .split("-")
+        .map(Number);
+
+    const date = new Date(
+        Date.UTC(
+            year,
+            month - 1,
+            day
+        )
+    );
+
+    return (
+        date.getUTCFullYear() === year &&
+        date.getUTCMonth() === month - 1 &&
+        date.getUTCDate() === day
+    );
+}
+
+app.post(
+    "/create-project-request",
+    async (req, res) => {
+
+        try{
+
+            const name =
+                cleanProjectRequestText(
+                    req.body.name,
+                    150
+                );
+
+            const company =
+                cleanProjectRequestText(
+                    req.body.company,
+                    150
+                );
+
+            const email =
+                cleanProjectRequestText(
+                    req.body.email,
+                    250
+                ).toLowerCase();
+
+            const phone =
+                cleanProjectRequestText(
+                    req.body.phone,
+                    80
+                );
+
+            const projectName =
+                cleanProjectRequestText(
+                    req.body.projectName,
+                    200
+                );
+
+            const projectType =
+                cleanProjectRequestText(
+                    req.body.projectType,
+                    150
+                );
+
+            const description =
+                cleanProjectRequestText(
+                    req.body.description,
+                    5000
+                );
+
+            const requestedFunctions =
+                cleanProjectRequestText(
+                    req.body.requestedFunctions,
+                    5000
+                );
+
+            const projectStart =
+                cleanProjectRequestText(
+                    req.body.projectStart,
+                    10
+                );
+
+            const deadline =
+                cleanProjectRequestText(
+                    req.body.deadline,
+                    10
+                );
+
+            const budget =
+                cleanProjectRequestText(
+                    req.body.budget,
+                    150
+                );
+
+            const notes =
+                cleanProjectRequestText(
+                    req.body.notes,
+                    5000
+                );
+
+            if(
+                !name ||
+                !email ||
+                !phone ||
+                !projectName ||
+                !projectType ||
+                !description ||
+                !requestedFunctions ||
+                !deadline
+            ){
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Bitte alle Pflichtfelder ausfüllen."
+                });
+            }
+
+            if(
+                !isValidProjectRequestEmail(
+                    email
+                )
+            ){
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Bitte eine gültige E-Mail-Adresse eingeben."
+                });
+            }
+
+            if(
+                !isValidProjectRequestDate(
+                    projectStart
+                ) ||
+                !isValidProjectRequestDate(
+                    deadline
+                )
+            ){
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Bitte gültige Datumswerte eingeben."
+                });
+            }
+
+            if(!deadline){
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Bitte einen gewünschten Fertigstellungstermin eingeben."
+                });
+            }
+
+            if(
+                projectStart &&
+                deadline < projectStart
+            ){
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Der Fertigstellungstermin darf nicht vor dem Projektstart liegen."
+                });
+            }
+
+            const result = await pool.query(`
+                INSERT INTO project_requests (
+                    name,
+                    company,
+                    email,
+                    phone,
+                    project_name,
+                    project_type,
+                    description,
+                    requested_functions,
+                    project_start,
+                    deadline,
+                    budget,
+                    notes
+                )
+
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8,
+                    NULLIF($9, '')::date,
+                    $10::date,
+                    $11,
+                    $12
+                )
+
+                RETURNING
+                    id,
+                    status,
+                    created_at
+            `, [
+                name,
+                company,
+                email,
+                phone,
+                projectName,
+                projectType,
+                description,
+                requestedFunctions,
+                projectStart,
+                deadline,
+                budget,
+                notes
+            ]);
+
+            return res.status(201).json({
+                success: true,
+                message:
+                    "Projektanfrage wurde erfolgreich gesendet.",
+                requestId:
+                    result.rows[0].id
+            });
+
+        }catch(error){
+
+            console.error(
+                "Projektanfrage konnte nicht gespeichert werden:",
+                error
+            );
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Projektanfrage konnte nicht gespeichert werden."
+            });
+        }
+    }
+);
 
 /* LOGIN */
 

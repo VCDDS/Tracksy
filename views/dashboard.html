@@ -425,6 +425,266 @@ location.href = "/login";
     );
 });
 
+function openProjectRequest(){
+
+const modal =
+    document.getElementById(
+        "project-request-modal"
+    );
+
+const message =
+    document.getElementById(
+        "project-request-message"
+    );
+
+if(!modal){
+    return;
+}
+
+if(message){
+    message.textContent = "";
+    message.className =
+        "project-request-message";
+}
+
+modal.classList.add("is-open");
+
+document.body.classList.add(
+    "modal-open"
+);
+
+window.setTimeout(() => {
+
+    document.getElementById(
+        "request-name"
+    )?.focus();
+
+}, 50);
+}
+
+function closeProjectRequest(){
+
+const modal =
+    document.getElementById(
+        "project-request-modal"
+    );
+
+if(!modal){
+    return;
+}
+
+modal.classList.remove("is-open");
+
+document.body.classList.remove(
+    "modal-open"
+);
+}
+
+async function sendProjectRequest(event){
+
+event.preventDefault();
+
+const form =
+    document.getElementById(
+        "project-request-form"
+    );
+
+const submitButton =
+    document.getElementById(
+        "project-request-submit"
+    );
+
+const message =
+    document.getElementById(
+        "project-request-message"
+    );
+
+if(
+    !form ||
+    !submitButton ||
+    !message
+){
+    return;
+}
+
+message.textContent = "";
+message.className =
+    "project-request-message";
+
+if(!form.reportValidity()){
+    return;
+}
+
+const projectStart =
+    document.getElementById(
+        "request-start"
+    ).value;
+
+const deadline =
+    document.getElementById(
+        "request-deadline"
+    ).value;
+
+if(
+    projectStart &&
+    deadline &&
+    deadline < projectStart
+){
+    message.textContent =
+        "Der Fertigstellungstermin darf nicht vor dem Projektstart liegen.";
+
+    message.classList.add(
+        "is-error"
+    );
+
+    return;
+}
+
+const requestData = {
+
+    name:
+        document.getElementById(
+            "request-name"
+        ).value.trim(),
+
+    company:
+        document.getElementById(
+            "request-company"
+        ).value.trim(),
+
+    email:
+        document.getElementById(
+            "request-email"
+        ).value.trim(),
+
+    phone:
+        document.getElementById(
+            "request-phone"
+        ).value.trim(),
+
+    projectName:
+        document.getElementById(
+            "request-project-name"
+        ).value.trim(),
+
+    projectType:
+        document.getElementById(
+            "request-project-type"
+        ).value,
+
+    description:
+        document.getElementById(
+            "request-description"
+        ).value.trim(),
+
+    requestedFunctions:
+        document.getElementById(
+            "request-functions"
+        ).value.trim(),
+
+    projectStart,
+
+    deadline,
+
+    budget:
+        document.getElementById(
+            "request-budget"
+        ).value.trim(),
+
+    notes:
+        document.getElementById(
+            "request-notes"
+        ).value.trim()
+};
+
+submitButton.disabled = true;
+
+submitButton.textContent =
+    "Anfrage wird gesendet …";
+
+message.textContent =
+    "Projektanfrage wird gespeichert …";
+
+try{
+
+    const response = await fetch(
+        "/create-project-request",
+        {
+            method:"POST",
+
+            headers:{
+                "Content-Type":
+                    "application/json"
+            },
+
+            body:JSON.stringify(
+                requestData
+            )
+        }
+    );
+
+    const data = await response.json();
+
+    if(!response.ok || !data.success){
+
+        throw new Error(
+            data.message ||
+            "Projektanfrage konnte nicht gesendet werden."
+        );
+    }
+
+    message.textContent =
+        data.message ||
+        "Projektanfrage wurde erfolgreich gesendet.";
+
+    message.classList.add(
+        "is-success"
+    );
+
+    form.reset();
+
+    window.setTimeout(() => {
+        closeProjectRequest();
+    }, 1800);
+
+}catch(error){
+
+    console.error(
+        "Projektanfrage fehlgeschlagen:",
+        error
+    );
+
+    message.textContent =
+        error.message ||
+        "Projektanfrage konnte nicht gesendet werden.";
+
+    message.classList.add(
+        "is-error"
+    );
+
+}finally{
+
+    submitButton.disabled = false;
+
+    submitButton.textContent =
+        "Projektanfrage senden";
+}
+}
+
+document
+.getElementById(
+    "project-request-modal"
+)
+?.addEventListener(
+    "click",
+    function(event){
+
+        if(event.target === this){
+            closeProjectRequest();
+        }
+    }
+);
+
 document.addEventListener(
     "visibilitychange",
     () => {
