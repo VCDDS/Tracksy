@@ -243,8 +243,26 @@ if(isCustomer){
 }
 
 async function apiGet(url){
-    let res = await fetch(url);
-    return await res.json();
+
+const start = performance.now();
+
+const res = await fetch(url);
+
+const duration = Math.round(
+    performance.now() - start
+);
+
+console.log(
+    `[Tracksy] ${url}: ${duration} ms`
+);
+
+if(!res.ok){
+    throw new Error(
+        `${url} konnte nicht geladen werden`
+    );
+}
+
+return await res.json();
 }
 
 async function apiPost(url, data){
@@ -840,8 +858,10 @@ if(isCustomer){
     return;
 }
 
-let projects = await apiGet("/projects");
-    let times = await apiGet("/times");
+const [projects, times] = await Promise.all([
+    apiGet("/projects"),
+    apiGet("/times")
+]);
 
     let running = times.find(t => t.username === currentUser && !t.stop_time);
 
@@ -6526,7 +6546,12 @@ box.innerHTML = users
     .join(", ");
 }
 
-setInterval(loadOnlineUsers, 5000);
+setInterval(loadOnlineUsers, 30000);
+
+setInterval(checkNewSuggestions, 60000);
+setInterval(checkNewMessages, 60000);
+setInterval(checkNewDocuments, 60000);
+setInterval(checkNewProjects, 60000);
 
 async function createTracksyTicket(){
 
@@ -6737,10 +6762,12 @@ if(badge){
 }
 }
 
-checkNewSuggestions();
-checkNewMessages();
-checkNewDocuments();
-checkNewProjects();
+setTimeout(() => {
+    checkNewSuggestions();
+    checkNewMessages();
+    checkNewDocuments();
+    checkNewProjects();
+}, 2000);
 
 setInterval(checkNewSuggestions, 10000);
 setInterval(checkNewMessages, 10000);
