@@ -1686,6 +1686,42 @@ app.post(
                 notes
             ]);
 
+            await mailTransporter.sendMail({
+                from: `"Tracksy Projektanfragen" <${process.env.SMTP_USER}>`,
+                to: process.env.PROJECT_REQUEST_EMAIL,
+                replyTo: email,
+                subject: `Neue Projektanfrage: ${projectName}`,
+                text: `
+            Neue Projektanfrage über Tracksy
+            
+            KONTAKTDATEN
+            Name: ${name}
+            Unternehmen: ${company || "Nicht angegeben"}
+            E-Mail: ${email}
+            Telefon: ${phone}
+            
+            PROJEKT
+            Projektname: ${projectName}
+            Projektart: ${projectType}
+            
+            BESCHREIBUNG
+            ${description}
+            
+            GEWÜNSCHTE FUNKTIONEN
+            ${requestedFunctions}
+            
+            ZEITRAUM
+            Projektstart: ${projectStart || "Nicht angegeben"}
+            Fertigstellung: ${deadline}
+            
+            BUDGET
+            ${budget || "Nicht angegeben"}
+            
+            WEITERE INFORMATIONEN
+            ${notes || "Keine weiteren Informationen"}
+                `.trim()
+            });
+
             return res.status(201).json({
                 success: true,
                 message:
