@@ -29,7 +29,9 @@
                 <a href="#" onclick="loadPage('adminDaten'); closeAdminDropdown(); return false;">🧹 Daten bereinigen</a>
                 <a href="#" onclick="loadPage('zeitenKorrigieren'); closeAdminDropdown(); return false;">🛠️ Zeiten korrigieren</a>
                 <a href="#" onclick="loadPage('dienstplanungAdmin'); closeAdminDropdown(); return false;">📅 Dienstplanung & Aufgaben</a>
-                <a href="#" onclick="loadPage('benutzerVerwaltung'); closeAdminDropdown(); return false;">👤 Benutzer verwalten</a>                <a href="#" onclick="printOrPDF(); closeAdminDropdown(); return false;">🖨️ Drucken/PDF speichern</a>
+                <a href="#" onclick="loadPage('benutzerVerwaltung'); closeAdminDropdown(); return false;">👤 Benutzer verwalten</a>   
+                <a href="#" onclick="loadPage('monitoring'); closeAdminDropdown(); return false;">📡 Webseiten-Monitoring</a>             
+                <a href="#" onclick="printOrPDF(); closeAdminDropdown(); return false;">🖨️ Drucken/PDF speichern</a>
             </div>
         </div>
 
@@ -91,6 +93,7 @@
         <button onclick="loadPage('zeitenKorrigieren'); toggleMobileMenu()">🛠️ Zeiten korrigieren</button>
         <button onclick="loadPage('dienstplanungAdmin'); toggleMobileMenu()">📅 Dienstplanung & Aufgaben</button>
         <button onclick="loadPage('benutzerVerwaltung'); toggleMobileMenu()">👤 Benutzer verwalten</button>
+        <button onclick="loadPage('monitoring'); toggleMobileMenu()">📡 Webseiten-Monitoring</button>
     </div>
     <button onclick="loadPage('zeiten'); toggleMobileMenu()">⌛ Zeiten</button>
     <button onclick="loadPage('auswertung'); toggleMobileMenu()">📊 Auswertung</button>
@@ -165,6 +168,9 @@ const adminPlanningState = {
 };
 
 let myPlanningWeekStart = null;
+
+let websiteMonitoringChart = null;
+let websiteMonitoringRefreshTimer = null;
 
 document.getElementById("user").textContent = currentUser;
 function updateDateTime(){
@@ -485,6 +491,8 @@ function toggleMobileAdminMenu(){
 }
 
 async function loadPage(page){
+
+clearWebsiteMonitoringRefresh();
 
 currentPage = page;
 
@@ -1419,6 +1427,24 @@ return;
         content.innerHTML = html;
         return;
     }
+
+    if(page === "monitoring"){
+
+if(!isAdmin){
+
+    content.innerHTML = `
+        <div class="monitoring-empty">
+            Keine Berechtigung für das Webseiten-Monitoring.
+        </div>
+    `;
+
+    return;
+}
+
+await loadWebsiteMonitoringPage();
+
+return;
+}  
 
     if(page === "projekt"){
 
@@ -2418,6 +2444,1136 @@ content.innerHTML = html;
 return;
 }
 
+}
+
+/* =====================================================
+   WEBSEITEN-MONITORING
+===================================================== */
+
+function escapeMonitoringHtml(value){
+
+return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getMonitoringStatusClass(status){
+
+const cleanStatus =
+    String(status || "")
+        .toLowerCase();
+
+if(cleanStatus === "online"){
+    return "monitoring-online";
+}
+
+if(cleanStatus === "langsam"){
+    return "monitoring-slow";
+}
+
+if(cleanStatus === "offline"){
+    return "monitoring-offline";
+}
+
+return "monitoring-unknown";
+}
+
+function formatMonitoringDate(value){
+
+if(!value){
+    return "Noch nicht geprüft";
+}
+
+const date =
+    new Date(value);
+
+if(Number.isNaN(date.getTime())){
+    return "Unbekannt";
+}
+
+return date.toLocaleString(
+    "de-DE",
+    {
+        dateStyle: "short",
+        timeStyle: "medium"
+    }
+);
+}
+
+function getMonitoringResponseValue(value){
+
+const number =
+    Number(value);
+
+if(
+    !Number.isFinite(number) ||
+    number < 0
+){
+    return "-";
+}
+
+return `${number} ms`;
+}
+
+function getMonitoringHttpValue(value){
+
+const number =
+    Number(value);
+
+if(
+    !Number.isFinite(number) ||
+    number <= 0
+){
+    return "-";
+}
+
+return String(number);
+}
+
+async function loadWebsiteMonitoringPage(){
+
+clearWebsiteMonitoringRefresh();
+
+content.innerHTML = `
+    <div class="monitoring-loading">
+        <span class="monitoring-loader"></span>
+        Webseiten-Monitoring wird geladen...
+    </div>
+`;
+
+const data = await apiGet(
+    "/website-monitoring" +
+    "?adminUsername=" +
+    encodeURIComponent(currentUser)
+);
+
+if(
+    !data ||
+    data.error ||
+    !Array.isArray(data.websites)
+){
+
+    content.innerHTML = `
+        <div class="monitoring-empty">
+            ${
+                escapeMonitoringHtml(
+                    data?.error ||
+                    "Monitoring konnte nicht geladen werden"
+                )
+            }
+        </div>
+    `;
+
+    return;
+}
+
+renderWebsiteMonitoringPage(
+    data.websites
+);
+
+websiteMonitoringRefreshTimer =
+    setTimeout(() => {
+
+        if(currentPage === "monitoring"){
+            loadWebsiteMonitoringPage();
+        }
+
+    }, 30000);
+}
+
+function clearWebsiteMonitoringRefresh(){
+
+if(websiteMonitoringRefreshTimer){
+
+    clearTimeout(
+        websiteMonitoringRefreshTimer
+    );
+
+    websiteMonitoringRefreshTimer = null;
+}
+}
+
+function renderWebsiteMonitoringPage(websites){
+
+const onlineCount =
+    websites.filter(
+        website =>
+            website.last_status === "Online"
+    ).length;
+
+const slowCount =
+    websites.filter(
+        website =>
+            website.last_status === "Langsam"
+    ).length;
+
+const offlineCount =
+    websites.filter(
+        website =>
+            website.last_status === "Offline"
+    ).length;
+
+const activeWebsites =
+    websites.filter(
+        website =>
+            website.is_active === true
+    );
+
+const validResponseTimes =
+    activeWebsites
+        .map(website =>
+            Number(
+                website.last_response_time
+            )
+        )
+        .filter(value =>
+            Number.isFinite(value) &&
+            value >= 0
+        );
+
+const averageResponse =
+    validResponseTimes.length > 0
+        ? Math.round(
+            validResponseTimes.reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            ) /
+            validResponseTimes.length
+        )
+        : null;
+
+content.innerHTML = `
+    <div class="monitoring-page">
+
+        <section class="monitoring-header">
+
+            <div>
+                <p class="dashboard-kicker">
+                    Admin Bereich
+                </p>
+
+                <h2>
+                    📡 Webseiten-Monitoring
+                </h2>
+
+                <p>
+                    Status, Antwortzeit und Verlauf deiner Webseiten.
+                </p>
+            </div>
+
+            <div class="monitoring-header-actions">
+
+                <button
+    onclick="checkAllMonitoredWebsites(this)"
+>
+                    🔄 Alle prüfen
+                </button>
+
+                <button
+                    class="start-btn"
+                    onclick="openCreateWebsiteForm()"
+                >
+                    ➕ Webseite hinzufügen
+                </button>
+
+            </div>
+
+        </section>
+
+        <section class="monitoring-summary">
+
+            <div class="monitoring-summary-card">
+
+                <span>
+                    Webseiten
+                </span>
+
+                <strong>
+                    ${websites.length}
+                </strong>
+
+                <small>
+                    Gesamt eingetragen
+                </small>
+
+            </div>
+
+            <div class="monitoring-summary-card">
+
+                <span>
+                    🟢 Online
+                </span>
+
+                <strong>
+                    ${onlineCount}
+                </strong>
+
+                <small>
+                    Direkt erreichbar
+                </small>
+
+            </div>
+
+            <div class="monitoring-summary-card">
+
+                <span>
+                    🟡 Langsam
+                </span>
+
+                <strong>
+                    ${slowCount}
+                </strong>
+
+                <small>
+                    Über 1.000 ms
+                </small>
+
+            </div>
+
+            <div class="monitoring-summary-card">
+
+                <span>
+                    🔴 Offline
+                </span>
+
+                <strong>
+                    ${offlineCount}
+                </strong>
+
+                <small>
+                    Nicht erreichbar
+                </small>
+
+            </div>
+
+            <div class="monitoring-summary-card">
+
+                <span>
+                    Ø Antwortzeit
+                </span>
+
+                <strong>
+                    ${
+                        averageResponse !== null
+                            ? `${averageResponse} ms`
+                            : "-"
+                    }
+                </strong>
+
+                <small>
+                    Aktuelle Messungen
+                </small>
+
+            </div>
+
+        </section>
+
+        ${
+            websites.length === 0
+                ? `
+                    <div class="monitoring-empty">
+                        Noch keine Webseiten eingetragen.
+                    </div>
+                `
+                : `
+                    <section class="monitoring-site-grid">
+
+                        ${
+                            websites
+                                .map(
+                                    renderMonitoringWebsiteCard
+                                )
+                                .join("")
+                        }
+
+                    </section>
+
+                    <section class="monitoring-chart-section">
+
+                        <div class="monitoring-chart-head">
+
+                            <div>
+                                <h3>
+                                    Antwortzeit-Verlauf
+                                </h3>
+
+                                <p>
+                                    Messwerte der letzten 24 Stunden.
+                                </p>
+                            </div>
+
+                            <select
+                                id="monitoringChartWebsite"
+                                onchange="changeMonitoringChart()"
+                            >
+
+                                ${
+                                    websites.map(
+                                        website => `
+                                            <option
+                                                value="${website.id}"
+                                            >
+                                                ${
+                                                    escapeMonitoringHtml(
+                                                        website.name
+                                                    )
+                                                }
+                                            </option>
+                                        `
+                                    ).join("")
+                                }
+
+                            </select>
+
+                        </div>
+
+                        <div class="monitoring-chart-wrapper">
+
+                            <canvas
+                                id="websiteMonitoringChart"
+                            ></canvas>
+
+                        </div>
+
+                    </section>
+                `
+        }
+
+    </div>
+
+    <div
+        id="websiteMonitoringModal"
+        class="modal"
+    >
+
+        <div class="modal-box monitoring-modal-box">
+
+            <div class="monitoring-modal-head">
+
+                <h3 id="websiteMonitoringModalTitle">
+                    Webseite hinzufügen
+                </h3>
+
+                <button
+                    type="button"
+                    onclick="closeWebsiteMonitoringModal()"
+                >
+                    ✕
+                </button>
+
+            </div>
+
+            <input
+                id="monitoringWebsiteId"
+                type="hidden"
+            >
+
+            <label>
+                Name
+            </label>
+
+            <input
+                id="monitoringWebsiteName"
+                maxlength="100"
+                placeholder="Zum Beispiel Tracksy"
+            >
+
+            <label>
+                Webseiten-Adresse
+            </label>
+
+            <input
+                id="monitoringWebsiteUrl"
+                type="url"
+                placeholder="https://example.de"
+            >
+
+            <label
+                id="monitoringWebsiteActiveRow"
+                class="monitoring-active-row"
+            >
+
+                <input
+                    id="monitoringWebsiteActive"
+                    type="checkbox"
+                    checked
+                >
+
+                <span>
+                    Automatische Prüfung aktiv
+                </span>
+
+            </label>
+
+            <div class="monitoring-modal-actions">
+
+                <button
+                    class="start-btn"
+                    onclick="saveMonitoredWebsite()"
+                >
+                    💾 Speichern
+                </button>
+
+                <button
+                    onclick="closeWebsiteMonitoringModal()"
+                >
+                    Abbrechen
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+`;
+
+window.websiteMonitoringData =
+    websites;
+
+if(websites.length > 0){
+
+    requestAnimationFrame(() => {
+
+        renderWebsiteMonitoringChart(
+            websites[0]
+        );
+    });
+}
+}
+
+function renderMonitoringWebsiteCard(website){
+
+const status =
+    website.last_status ||
+    "Ungeprüft";
+
+const statusClass =
+    getMonitoringStatusClass(
+        status
+    );
+
+const isActive =
+    website.is_active === true;
+
+return `
+    <article
+        class="
+            monitoring-site-card
+            ${statusClass}
+            ${!isActive ? "monitoring-disabled" : ""}
+        "
+    >
+
+        <div class="monitoring-site-top">
+
+            <div>
+
+                <span class="monitoring-site-label">
+                    WEBSEITE
+                </span>
+
+                <h3>
+                    ${
+                        escapeMonitoringHtml(
+                            website.name
+                        )
+                    }
+                </h3>
+
+                <a
+                    href="${
+                        escapeMonitoringHtml(
+                            website.url
+                        )
+                    }"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    ${
+                        escapeMonitoringHtml(
+                            website.url
+                        )
+                    }
+                </a>
+
+            </div>
+
+            <span
+                class="
+                    monitoring-status-badge
+                    ${statusClass}
+                "
+            >
+                ${escapeMonitoringHtml(status)}
+            </span>
+
+        </div>
+
+        <div class="monitoring-digital-value">
+
+            ${
+                getMonitoringResponseValue(
+                    website.last_response_time
+                )
+            }
+
+        </div>
+
+        <div class="monitoring-data-grid">
+
+            <div>
+
+                <span>
+                    HTTP
+                </span>
+
+                <strong>
+                    ${
+                        getMonitoringHttpValue(
+                            website.last_http_code
+                        )
+                    }
+                </strong>
+
+            </div>
+
+            <div>
+
+                <span>
+                    Prüfung
+                </span>
+
+                <strong>
+                    ${
+                        formatMonitoringDate(
+                            website.last_checked_at
+                        )
+                    }
+                </strong>
+
+            </div>
+
+            <div>
+
+                <span>
+                    Automatik
+                </span>
+
+                <strong>
+                    ${
+                        isActive
+                            ? "Aktiv"
+                            : "Pausiert"
+                    }
+                </strong>
+
+            </div>
+
+        </div>
+
+        ${
+            website.last_error
+                ? `
+                    <div class="monitoring-error">
+                        ${
+                            escapeMonitoringHtml(
+                                website.last_error
+                            )
+                        }
+                    </div>
+                `
+                : ""
+        }
+
+        <div class="monitoring-site-actions">
+
+            <button
+                onclick="checkMonitoredWebsite(${website.id})"
+            >
+                🔄 Prüfen
+            </button>
+
+            <button
+                onclick="openEditWebsiteForm(${website.id})"
+            >
+                ✏️ Bearbeiten
+            </button>
+
+            <button
+                class="danger-btn"
+                onclick="deleteMonitoredWebsite(${website.id})"
+            >
+                🗑️ Löschen
+            </button>
+
+        </div>
+
+    </article>
+`;
+}
+
+function renderWebsiteMonitoringChart(website){
+
+const canvas =
+    document.getElementById(
+        "websiteMonitoringChart"
+    );
+
+if(!canvas){
+    return;
+}
+
+if(websiteMonitoringChart){
+
+    websiteMonitoringChart.destroy();
+
+    websiteMonitoringChart = null;
+}
+
+const history =
+    Array.isArray(website.history)
+        ? website.history
+        : [];
+
+const labels =
+    history.map(
+        check =>
+            new Date(
+                check.checked_at
+            ).toLocaleTimeString(
+                "de-DE",
+                {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                }
+            )
+    );
+
+const values =
+    history.map(
+        check => {
+
+            const value =
+                Number(
+                    check.response_time
+                );
+
+            return Number.isFinite(value)
+                ? value
+                : null;
+        }
+    );
+
+websiteMonitoringChart =
+    new Chart(
+        canvas,
+        {
+            type: "line",
+
+            data: {
+                labels,
+
+                datasets: [
+                    {
+                        label:
+                            `${website.name} · Antwortzeit`,
+
+                        data: values,
+
+                        borderColor:
+                            "#22d3ee",
+
+                        backgroundColor:
+                            "rgba(34, 211, 238, 0.12)",
+
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        spanGaps: true
+                    }
+                ]
+            },
+
+            options: {
+
+                responsive: true,
+                maintainAspectRatio: false,
+
+                interaction: {
+                    intersect: false,
+                    mode: "index"
+                },
+
+                plugins: {
+
+                    legend: {
+                        labels: {
+                            color: "#f8fafc"
+                        }
+                    },
+
+                    tooltip: {
+
+                        callbacks: {
+
+                            label(context){
+
+                                if(
+                                    context.raw === null
+                                ){
+                                    return "Keine Antwort";
+                                }
+
+                                return (
+                                    context.dataset.label +
+                                    ": " +
+                                    context.raw +
+                                    " ms"
+                                );
+                            }
+                        }
+                    }
+                },
+
+                scales: {
+
+                    x: {
+
+                        ticks: {
+                            color: "#94a3b8",
+                            maxRotation: 0
+                        },
+
+                        grid: {
+                            color:
+                                "rgba(255,255,255,0.06)"
+                        }
+                    },
+
+                    y: {
+
+                        beginAtZero: true,
+
+                        ticks: {
+
+                            color: "#94a3b8",
+
+                            callback(value){
+                                return value + " ms";
+                            }
+                        },
+
+                        grid: {
+                            color:
+                                "rgba(255,255,255,0.08)"
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
+
+function changeMonitoringChart(){
+
+const websiteId =
+    Number(
+        document.getElementById(
+            "monitoringChartWebsite"
+        )?.value
+    );
+
+const website =
+    (
+        window.websiteMonitoringData ||
+        []
+    ).find(
+        item =>
+            Number(item.id) ===
+            websiteId
+    );
+
+if(website){
+    renderWebsiteMonitoringChart(
+        website
+    );
+}
+}
+
+function openCreateWebsiteForm(){
+
+const modal =
+    document.getElementById(
+        "websiteMonitoringModal"
+    );
+
+if(!modal){
+    return;
+}
+
+document.getElementById(
+    "websiteMonitoringModalTitle"
+).textContent =
+    "Webseite hinzufügen";
+
+document.getElementById(
+    "monitoringWebsiteId"
+).value = "";
+
+document.getElementById(
+    "monitoringWebsiteName"
+).value = "";
+
+document.getElementById(
+    "monitoringWebsiteUrl"
+).value = "";
+
+document.getElementById(
+    "monitoringWebsiteActive"
+).checked = true;
+
+document.getElementById(
+    "monitoringWebsiteActiveRow"
+).style.display = "none";
+
+modal.style.display = "flex";
+}
+
+function openEditWebsiteForm(id){
+
+const website =
+    (
+        window.websiteMonitoringData ||
+        []
+    ).find(
+        item =>
+            Number(item.id) ===
+            Number(id)
+    );
+
+if(!website){
+    alert(
+        "Webseite wurde nicht gefunden"
+    );
+
+    return;
+}
+
+const modal =
+    document.getElementById(
+        "websiteMonitoringModal"
+    );
+
+document.getElementById(
+    "websiteMonitoringModalTitle"
+).textContent =
+    "Webseite bearbeiten";
+
+document.getElementById(
+    "monitoringWebsiteId"
+).value =
+    website.id;
+
+document.getElementById(
+    "monitoringWebsiteName"
+).value =
+    website.name || "";
+
+document.getElementById(
+    "monitoringWebsiteUrl"
+).value =
+    website.url || "";
+
+document.getElementById(
+    "monitoringWebsiteActive"
+).checked =
+    website.is_active === true;
+
+document.getElementById(
+    "monitoringWebsiteActiveRow"
+).style.display = "flex";
+
+modal.style.display = "flex";
+}
+
+function closeWebsiteMonitoringModal(){
+
+const modal =
+    document.getElementById(
+        "websiteMonitoringModal"
+    );
+
+if(modal){
+    modal.style.display = "none";
+}
+}
+
+async function saveMonitoredWebsite(){
+
+const id =
+    document.getElementById(
+        "monitoringWebsiteId"
+    ).value;
+
+const name =
+    document.getElementById(
+        "monitoringWebsiteName"
+    ).value.trim();
+
+const url =
+    document.getElementById(
+        "monitoringWebsiteUrl"
+    ).value.trim();
+
+const isActive =
+    document.getElementById(
+        "monitoringWebsiteActive"
+    ).checked;
+
+if(!name || !url){
+
+    alert(
+        "Name und Webseiten-Adresse eingeben"
+    );
+
+    return;
+}
+
+let message;
+
+if(id){
+
+    message = await apiPost(
+        "/edit-monitored-website",
+        {
+            adminUsername:
+                currentUser,
+
+            id:
+                Number(id),
+
+            name,
+            url,
+            isActive
+        }
+    );
+
+}else{
+
+    message = await apiPost(
+        "/create-monitored-website",
+        {
+            adminUsername:
+                currentUser,
+
+            name,
+            url
+        }
+    );
+}
+
+alert(message);
+
+if(
+    message.includes("gespeichert") ||
+    message.includes("hinzugefügt")
+){
+
+    closeWebsiteMonitoringModal();
+
+    await loadWebsiteMonitoringPage();
+}
+}
+
+async function deleteMonitoredWebsite(id){
+
+const website =
+    (
+        window.websiteMonitoringData ||
+        []
+    ).find(
+        item =>
+            Number(item.id) ===
+            Number(id)
+    );
+
+const confirmed =
+    confirm(
+        `"${website?.name || "Webseite"}" wirklich löschen?`
+    );
+
+if(!confirmed){
+    return;
+}
+
+const message = await apiPost(
+    "/delete-monitored-website",
+    {
+        adminUsername:
+            currentUser,
+
+        id
+    }
+);
+
+alert(message);
+
+await loadWebsiteMonitoringPage();
+}
+
+async function checkMonitoredWebsite(id){
+
+const message = await apiPost(
+    "/check-monitored-website",
+    {
+        adminUsername:
+            currentUser,
+
+        id
+    }
+);
+
+alert(message);
+
+await loadWebsiteMonitoringPage();
+}
+
+async function checkAllMonitoredWebsites(button){
+
+if(button){
+    button.disabled = true;
+    button.textContent =
+        "⏳ Prüfung läuft...";
+}
+
+try{
+
+    const message = await apiPost(
+        "/check-all-monitored-websites",
+        {
+            adminUsername:
+                currentUser
+        }
+    );
+
+    alert(message);
+
+    await loadWebsiteMonitoringPage();
+
+}finally{
+
+    if(button){
+        button.disabled = false;
+        button.textContent =
+            "🔄 Alle prüfen";
+    }
+}
 }
 
 /* =====================================================

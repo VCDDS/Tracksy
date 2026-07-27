@@ -7,6 +7,10 @@ const fs = require("fs");
 const multer = require("multer");
 const { createClient } = require("@supabase/supabase-js");
 const bcrypt = require("bcrypt");
+const http = require("http");
+const https = require("https");
+const dns = require("dns").promises;
+const net = require("net");
 
 const app = express();
 
@@ -62,6 +66,400 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
+
+/* =====================================================
+   WEBSEITEN-MONITORING
+===================================================== */
+
+const WEBSITE_MONITOR_INTERVAL = 60 * 1000;
+const WEBSITE_MONITOR_TIMEOUT = 5000;
+
+let websiteMonitorRunning = false;
+
+function isPrivateIpAddress(address){
+
+    if(!address){
+        return true;
+    }
+
+    if(net.isIPv4(address)){
+
+        const parts = address
+            .split(".")
+            .map(Number);
+
+        if(parts[0] === 10){
+            return true;
+        }
+
+        if(parts[0] === 127){
+            return true;
+        }
+
+        if(
+            parts[0] === 169 &&
+            parts[1] === 254
+        ){
+            return true;
+        }
+
+        if(
+            parts[0] === 172 &&
+            parts[1] >= 16 &&
+            parts[1] <= 31
+        ){
+            return true;
+        }
+
+        if(
+            parts[0] === 192 &&
+            parts[1] === 168
+        ){
+            return true;
+        }
+
+        if(parts[0] === 0){
+            return true;
+        }
+
+        return false;
+    }
+
+    if(net.isIPv6(address)){
+
+        const cleanAddress =
+            address.toLowerCase();
+
+        return (
+            cleanAddress === "::1" ||
+            cleanAddress.startsWith("fc") ||
+            cleanAddress.startsWith("fd") ||
+            cleanAddress.startsWith("fe80:")
+        );
+    }
+
+    return true;
+}
+
+async function validateMonitoringUrl(value){
+
+    let parsedUrl;
+
+    try{
+        parsedUrl = new URL(value);
+    }catch{
+        throw new Error("Ungültige Webseiten-Adresse");
+    }
+
+    if(
+        parsedUrl.protocol !== "https:" &&
+        parsedUrl.protocol !== "http:"
+    ){
+        throw new Error(
+            "Nur HTTP- und HTTPS-Adressen sind erlaubt"
+        );
+    }
+
+    if(
+        parsedUrl.username ||
+        parsedUrl.password
+    ){
+        throw new Error(
+            "Zugangsdaten in der URL sind nicht erlaubt"
+        );
+    }
+
+    const addresses = await dns.lookup(
+        parsedUrl.hostname,
+        {
+            all: true
+        }
+    );
+
+    if(
+        addresses.length === 0 ||
+        addresses.some(item =>
+            isPrivateIpAddress(item.address)
+        )
+    ){
+        throw new Error(
+            "Lokale oder private Adressen sind nicht erlaubt"
+        );
+    }
+
+    return parsedUrl.toString();
+}
+
+function requestWebsite(url, redirectCount = 0){
+
+    return new Promise((resolve, reject) => {
+
+        if(redirectCount > 5){
+            reject(
+                new Error("Zu viele Weiterleitungen")
+            );
+
+            return;
+        }
+
+        const parsedUrl = new URL(url);
+
+        const requestModule =
+            parsedUrl.protocol === "https:"
+                ? https
+                : http;
+
+        const startedAt = Date.now();
+
+        const request = requestModule.request(
+            parsedUrl,
+            {
+                method: "GET",
+
+                headers: {
+                    "User-Agent":
+                        "Tracksy-Monitor/1.0",
+
+                    "Accept":
+                        "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8"
+                },
+
+                timeout:
+                    WEBSITE_MONITOR_TIMEOUT
+            },
+            response => {
+
+                const responseTime =
+                    Date.now() - startedAt;
+
+                const statusCode =
+                    Number(response.statusCode) || 0;
+
+                const location =
+                    response.headers.location;
+
+                response.resume();
+
+                if(
+                    statusCode >= 300 &&
+                    statusCode < 400 &&
+                    location
+                ){
+                    const redirectUrl =
+                        new URL(
+                            location,
+                            parsedUrl
+                        ).toString();
+
+                    requestWebsite(
+                        redirectUrl,
+                        redirectCount + 1
+                    )
+                        .then(resolve)
+                        .catch(reject);
+
+                    return;
+                }
+
+                resolve({
+                    httpCode: statusCode,
+                    responseTime,
+                    isOnline:
+                        statusCode >= 200 &&
+                        statusCode < 500
+                });
+            }
+        );
+
+        request.on("timeout", () => {
+            request.destroy(
+                new Error("Zeitüberschreitung")
+            );
+        });
+
+        request.on("error", reject);
+
+        request.end();
+    });
+}
+
+async function saveWebsiteCheck(
+    website,
+    checkResult
+){
+
+    const checkedAt =
+        new Date();
+
+    const status =
+        checkResult.isOnline
+            ? (
+                checkResult.responseTime > 1000
+                    ? "Langsam"
+                    : "Online"
+            )
+            : "Offline";
+
+    await pool.query(`
+        UPDATE monitored_websites
+
+        SET
+            last_status = $1,
+            last_http_code = $2,
+            last_response_time = $3,
+            last_checked_at = $4,
+            last_error = $5,
+            updated_at = NOW()
+
+        WHERE id = $6
+    `, [
+        status,
+        checkResult.httpCode || null,
+        checkResult.responseTime || null,
+        checkedAt,
+        checkResult.error || "",
+        website.id
+    ]);
+
+    await pool.query(`
+        INSERT INTO website_monitor_checks (
+            website_id,
+            status,
+            http_code,
+            response_time,
+            error_message,
+            checked_at
+        )
+
+        VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6
+        )
+    `, [
+        website.id,
+        status,
+        checkResult.httpCode || null,
+        checkResult.responseTime || null,
+        checkResult.error || "",
+        checkedAt
+    ]);
+
+    await pool.query(`
+        DELETE FROM website_monitor_checks
+
+        WHERE id IN (
+            SELECT id
+
+            FROM website_monitor_checks
+
+            WHERE website_id = $1
+
+            ORDER BY checked_at DESC
+
+            OFFSET 500
+        )
+    `, [
+        website.id
+    ]);
+}
+
+async function checkMonitoredWebsite(website){
+
+    try{
+
+        const safeUrl =
+            await validateMonitoringUrl(
+                website.url
+            );
+
+        const result =
+            await requestWebsite(safeUrl);
+
+        await saveWebsiteCheck(
+            website,
+            result
+        );
+
+        return {
+            success: true,
+            ...result
+        };
+
+    }catch(error){
+
+        await saveWebsiteCheck(
+            website,
+            {
+                isOnline: false,
+                httpCode: null,
+                responseTime: null,
+                error:
+                    error.message ||
+                    "Webseite nicht erreichbar"
+            }
+        );
+
+        return {
+            success: false,
+            error:
+                error.message ||
+                "Webseite nicht erreichbar"
+        };
+    }
+}
+
+async function runWebsiteMonitoring(){
+
+    if(websiteMonitorRunning){
+        return;
+    }
+
+    websiteMonitorRunning = true;
+
+    try{
+
+        const result = await pool.query(`
+            SELECT *
+
+            FROM monitored_websites
+
+            WHERE is_active = true
+
+            ORDER BY id ASC
+        `);
+
+        for(const website of result.rows){
+            await checkMonitoredWebsite(
+                website
+            );
+        }
+
+    }catch(error){
+
+        console.error(
+            "Webseiten-Monitoring Fehler:",
+            error
+        );
+
+    }finally{
+
+        websiteMonitorRunning = false;
+    }
+}
+
+function startWebsiteMonitoring(){
+
+    runWebsiteMonitoring();
+
+    setInterval(
+        runWebsiteMonitoring,
+        WEBSITE_MONITOR_INTERVAL
+    );
+}
 
 async function isRealAdmin(username){
     if(!username){
@@ -864,11 +1262,93 @@ await pool.query(`
     ALTER TABLE suggestion_comments
     ADD COLUMN IF NOT EXISTS parent_comment_id INTEGER DEFAULT NULL
 `);
+
+/* =====================================================
+   WEBSEITEN-MONITORING
+===================================================== */
+
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS monitored_websites (
+        id SERIAL PRIMARY KEY,
+
+        name TEXT NOT NULL,
+        url TEXT NOT NULL UNIQUE,
+
+        is_active BOOLEAN NOT NULL DEFAULT true,
+
+        last_status TEXT NOT NULL DEFAULT 'Ungeprüft',
+        last_http_code INTEGER DEFAULT NULL,
+        last_response_time INTEGER DEFAULT NULL,
+        last_checked_at TIMESTAMPTZ DEFAULT NULL,
+        last_error TEXT NOT NULL DEFAULT '',
+
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+`);
+
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS website_monitor_checks (
+        id BIGSERIAL PRIMARY KEY,
+
+        website_id INTEGER NOT NULL
+            REFERENCES monitored_websites(id)
+            ON DELETE CASCADE,
+
+        status TEXT NOT NULL,
+        http_code INTEGER DEFAULT NULL,
+        response_time INTEGER DEFAULT NULL,
+        error_message TEXT NOT NULL DEFAULT '',
+        checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+`);
+
+await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_website_monitor_checks_website_date
+
+    ON website_monitor_checks (
+        website_id,
+        checked_at DESC
+    )
+`);
+
+await pool.query(`
+    INSERT INTO monitored_websites (
+        name,
+        url
+    )
+
+    VALUES
+        (
+            'Tracksy',
+            'https://tracksy.onrender.com'
+        ),
+        (
+            'RadioNetz',
+            'https://radionetz-zwickau.onrender.com'
+        )
+
+    ON CONFLICT (url)
+    DO NOTHING
+`);
 }
 
-initDatabase().catch(err => {
-    console.log("Datenbank Fehler:", err);
-});
+initDatabase()
+    .then(() => {
+
+        console.log(
+            "Datenbank erfolgreich initialisiert"
+        );
+
+        startWebsiteMonitoring();
+    })
+    .catch(err => {
+
+        console.log(
+            "Datenbank Fehler:",
+            err
+        );
+    });
 
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "views", "login.html"));
@@ -1892,6 +2372,404 @@ app.post("/update-my-work-task-status", async (req, res) => {
     }catch(err){
         console.log(err);
         res.send("Status konnte nicht gespeichert werden");
+    }
+});
+
+
+/* =====================================================
+   WEBSEITEN-MONITORING API
+===================================================== */
+
+app.get("/website-monitoring", async (req, res) => {
+
+    try{
+
+        const adminUsername =
+            req.query.adminUsername;
+
+        if(
+            !await isRealAdmin(
+                adminUsername
+            )
+        ){
+            return res.status(403).json({
+                error: "Keine Berechtigung"
+            });
+        }
+
+        const websitesResult =
+            await pool.query(`
+                SELECT
+                    id,
+                    name,
+                    url,
+                    is_active,
+                    last_status,
+                    last_http_code,
+                    last_response_time,
+                    last_checked_at,
+                    last_error,
+                    created_at,
+                    updated_at
+
+                FROM monitored_websites
+
+                ORDER BY name ASC
+            `);
+
+        const historyResult =
+            await pool.query(`
+                SELECT
+                    id,
+                    website_id,
+                    status,
+                    http_code,
+                    response_time,
+                    error_message,
+                    checked_at
+
+                FROM website_monitor_checks
+
+                WHERE checked_at >=
+                    NOW() - INTERVAL '24 hours'
+
+                ORDER BY checked_at ASC
+            `);
+
+        const websites =
+            websitesResult.rows.map(
+                website => ({
+                    ...website,
+
+                    history:
+                        historyResult.rows.filter(
+                            check =>
+                                Number(
+                                    check.website_id
+                                ) ===
+                                Number(
+                                    website.id
+                                )
+                        )
+                })
+            );
+
+        res.json({
+            websites
+        });
+
+    }catch(error){
+
+        console.error(error);
+
+        res.status(500).json({
+            error:
+                "Monitoring konnte nicht geladen werden"
+        });
+    }
+});
+
+app.post("/create-monitored-website", async (req, res) => {
+
+    try{
+
+        const {
+            adminUsername,
+            name,
+            url
+        } = req.body;
+
+        if(
+            !await isRealAdmin(
+                adminUsername
+            )
+        ){
+            return res
+                .status(403)
+                .send("Keine Berechtigung");
+        }
+
+        const cleanName =
+            String(name || "")
+                .trim()
+                .slice(0, 100);
+
+        if(!cleanName){
+            return res.send(
+                "Name fehlt"
+            );
+        }
+
+        const cleanUrl =
+            await validateMonitoringUrl(
+                String(url || "").trim()
+            );
+
+        const result = await pool.query(`
+            INSERT INTO monitored_websites (
+                name,
+                url
+            )
+
+            VALUES (
+                $1,
+                $2
+            )
+
+            RETURNING *
+        `, [
+            cleanName,
+            cleanUrl
+        ]);
+
+        await checkMonitoredWebsite(
+            result.rows[0]
+        );
+
+        res.send(
+            "Webseite hinzugefügt"
+        );
+
+    }catch(error){
+
+        console.error(error);
+
+        if(error.code === "23505"){
+            return res.send(
+                "Diese Webseite ist bereits vorhanden"
+            );
+        }
+
+        res.send(
+            error.message ||
+            "Webseite konnte nicht hinzugefügt werden"
+        );
+    }
+});
+
+app.post("/edit-monitored-website", async (req, res) => {
+
+    try{
+
+        const {
+            adminUsername,
+            id,
+            name,
+            url,
+            isActive
+        } = req.body;
+
+        if(
+            !await isRealAdmin(
+                adminUsername
+            )
+        ){
+            return res
+                .status(403)
+                .send("Keine Berechtigung");
+        }
+
+        const cleanName =
+            String(name || "")
+                .trim()
+                .slice(0, 100);
+
+        if(!cleanName){
+            return res.send(
+                "Name fehlt"
+            );
+        }
+
+        const cleanUrl =
+            await validateMonitoringUrl(
+                String(url || "").trim()
+            );
+
+            const result = await pool.query(`
+                UPDATE monitored_websites
+            
+                SET
+                    name = $1,
+                    url = $2,
+                    is_active = $3,
+                    updated_at = NOW()
+            
+                WHERE id = $4
+            
+                RETURNING *
+            `, [
+                cleanName,
+                cleanUrl,
+                isActive === true,
+                id
+            ]);
+            
+            if(result.rows.length === 0){
+                return res.send(
+                    "Webseite nicht gefunden"
+                );
+            }
+            
+            if(result.rows[0].is_active){
+                await checkMonitoredWebsite(
+                    result.rows[0]
+                );
+            }
+            
+            res.send(
+                "Webseite gespeichert"
+            );
+
+    }catch(error){
+
+        console.error(error);
+
+        if(error.code === "23505"){
+            return res.send(
+                "Diese URL ist bereits vorhanden"
+            );
+        }
+
+        res.send(
+            error.message ||
+            "Webseite konnte nicht gespeichert werden"
+        );
+    }
+});
+
+app.post("/delete-monitored-website", async (req, res) => {
+
+    try{
+
+        const {
+            adminUsername,
+            id
+        } = req.body;
+
+        if(
+            !await isRealAdmin(
+                adminUsername
+            )
+        ){
+            return res
+                .status(403)
+                .send("Keine Berechtigung");
+        }
+
+        const result = await pool.query(`
+            DELETE FROM monitored_websites
+
+            WHERE id = $1
+
+            RETURNING id
+        `, [
+            id
+        ]);
+
+        if(result.rows.length === 0){
+            return res.send(
+                "Webseite nicht gefunden"
+            );
+        }
+
+        res.send(
+            "Webseite gelöscht"
+        );
+
+    }catch(error){
+
+        console.error(error);
+
+        res.send(
+            "Webseite konnte nicht gelöscht werden"
+        );
+    }
+});
+
+app.post("/check-monitored-website", async (req, res) => {
+
+    try{
+
+        const {
+            adminUsername,
+            id
+        } = req.body;
+
+        if(
+            !await isRealAdmin(
+                adminUsername
+            )
+        ){
+            return res
+                .status(403)
+                .send("Keine Berechtigung");
+        }
+
+        const result = await pool.query(`
+            SELECT *
+
+            FROM monitored_websites
+
+            WHERE id = $1
+        `, [
+            id
+        ]);
+
+        if(result.rows.length === 0){
+            return res.send(
+                "Webseite nicht gefunden"
+            );
+        }
+
+        await checkMonitoredWebsite(
+            result.rows[0]
+        );
+
+        res.send(
+            "Prüfung abgeschlossen"
+        );
+
+    }catch(error){
+
+        console.error(error);
+
+        res.send(
+            "Prüfung fehlgeschlagen"
+        );
+    }
+});
+
+app.post("/check-all-monitored-websites", async (req, res) => {
+
+    try{
+
+        const {
+            adminUsername
+        } = req.body;
+
+        if(
+            !await isRealAdmin(
+                adminUsername
+            )
+        ){
+            return res
+                .status(403)
+                .send("Keine Berechtigung");
+        }
+
+        await runWebsiteMonitoring();
+
+        res.send(
+            "Alle Webseiten wurden geprüft"
+        );
+
+    }catch(error){
+
+        console.error(error);
+
+        res.send(
+            "Prüfung fehlgeschlagen"
+        );
     }
 });
 
