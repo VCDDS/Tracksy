@@ -438,13 +438,37 @@ body.modal-open{
         </h2>
 
         <p class="project-request-intro">
-            Beschreibe dein geplantes Projekt. Die Anfrage wird direkt in Tracksy gespeichert und anschließend geprüft.
+            Beschreibe dein geplantes Projekt. Die Anfrage wird direkt per E-Mail an VisualCode.dev gesendet.
         </p>
 
         <form
             id="project-request-form"
             onsubmit="sendProjectRequest(event)"
         >
+
+        <input
+    type="hidden"
+    name="access_key"
+    value="d3a29dfc-38c2-4c83-9618-8522fdd4f570"
+>
+
+<input
+    type="hidden"
+    name="subject"
+    value="Neue Projektanfrage über Tracksy"
+>
+
+<input
+    type="hidden"
+    name="from_name"
+    value="Tracksy Projektanfrage"
+>
+
+<input
+    type="checkbox"
+    name="botcheck"
+    style="display:none"
+>
             <div class="project-request-grid">
 
                 <div class="project-request-field">
@@ -885,8 +909,8 @@ if(submitButton){
 try{
 
     const response =
-        await fetch(
-            "/create-project-request",
+    await fetch(
+        "https://api.web3forms.com/submit",
             {
                 method: "POST",
 

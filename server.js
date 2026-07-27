@@ -1740,7 +1740,8 @@ app.post(
             return res.status(500).json({
                 success: false,
                 message:
-                    "Projektanfrage konnte nicht gespeichert werden."
+                    error.message ||
+                    "Projektanfrage konnte nicht gesendet werden."
             });
         }
     }
