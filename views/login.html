@@ -546,43 +546,14 @@ body.modal-open{
             Projektart *
         </label>
 
-        <select
-            id="request-project-type"
-            name="Projektart"
-            required
-        >
-            <option value="">
-                Bitte auswählen
-            </option>
+        <label for="request-type">Projektart</label>
 
-            <option value="Webseite">
-                Webseite
-            </option>
-
-            <option value="Web-App">
-                Web-App
-            </option>
-
-            <option value="Mobile App">
-                Mobile App
-            </option>
-
-            <option value="Online-Shop">
-                Online-Shop
-            </option>
-
-            <option value="Werbung">
-                Werbung
-            </option>
-
-            <option value="Erweiterung eines Projekts">
-                Erweiterung eines Projekts
-            </option>
-
-            <option value="Sonstiges">
-                Sonstiges
-            </option>
-        </select>
+<select id="request-type" name="Projektart" required>
+    <option value="">Bitte auswählen</option>
+    <option value="Webseite">Webseite</option>
+    <option value="App">App</option>
+    <option value="Werbung">Werbung</option>
+</select>
     </div>
 
     <div class="project-request-field full">
