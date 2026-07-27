@@ -669,7 +669,11 @@ body.modal-open{
     </div>
 </div>
 
+
 <script>
+
+
+
     const tracksyLoginMessage =
         sessionStorage.getItem(
             "tracksyLoginMessage"
@@ -760,6 +764,50 @@ body.modal-open{
         }
     }
     
+    function openProjectRequest(){
+
+const modal =
+    document.getElementById(
+        "project-request-modal"
+    );
+
+if(!modal){
+    console.error(
+        "Projektanfrage-Modal wurde nicht gefunden."
+    );
+
+    return;
+}
+
+modal.classList.add(
+    "is-open"
+);
+
+document.body.classList.add(
+    "modal-open"
+);
+}
+
+function closeProjectRequest(){
+
+const modal =
+    document.getElementById(
+        "project-request-modal"
+    );
+
+if(!modal){
+    return;
+}
+
+modal.classList.remove(
+    "is-open"
+);
+
+document.body.classList.remove(
+    "modal-open"
+);
+}
+
     document.addEventListener(
     "keydown",
     function(event){
