@@ -647,14 +647,13 @@ body.modal-open{
                 >
                     Abbrechen
                 </button>
-
+                
                 <button
-                    type="submit"
-                    id="project-request-submit"
-                    class="project-request-submit"
-                >
-                    Projektanfrage senden
-                </button>
+                type="submit"
+                class="project-request-submit"
+            >
+                Projektanfrage senden
+            </button>
 
             </div>
 
@@ -838,6 +837,111 @@ document.body.classList.remove(
         }
     }
 );
+
+async function sendProjectRequest(event){
+
+if(event){
+    event.preventDefault();
+}
+
+const form =
+    document.getElementById(
+        "project-request-form"
+    );
+
+const message =
+    document.getElementById(
+        "project-request-message"
+    );
+
+const submitButton =
+    form.querySelector(
+        ".project-request-submit"
+    );
+
+if(!form.checkValidity()){
+    form.reportValidity();
+    return;
+}
+
+const formData =
+    new FormData(form);
+
+const payload =
+    Object.fromEntries(
+        formData.entries()
+    );
+
+message.className =
+    "project-request-message";
+
+message.textContent =
+    "Projektanfrage wird gesendet ...";
+
+if(submitButton){
+    submitButton.disabled = true;
+}
+
+try{
+
+    const response =
+        await fetch(
+            "/create-project-request",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify(
+                        payload
+                    )
+            }
+        );
+
+    const data =
+        await response.json();
+
+    if(!response.ok){
+        throw new Error(
+            data.message ||
+            "Projektanfrage konnte nicht gesendet werden."
+        );
+    }
+
+    message.className =
+        "project-request-message is-success";
+
+    message.textContent =
+        data.message ||
+        "Projektanfrage wurde erfolgreich gesendet.";
+
+    form.reset();
+
+}catch(error){
+
+    console.error(
+        "Projektanfrage Fehler:",
+        error
+    );
+
+    message.className =
+        "project-request-message is-error";
+
+    message.textContent =
+        error.message ||
+        "Projektanfrage konnte nicht gesendet werden.";
+
+}finally{
+
+    if(submitButton){
+        submitButton.disabled = false;
+    }
+}
+}
     </script>
 
 </body>
