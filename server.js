@@ -11,8 +11,20 @@ const http = require("http");
 const https = require("https");
 const dns = require("dns").promises;
 const net = require("net");
+const nodemailer = require("nodemailer");
 
 const app = express();
+
+
+const mailTransporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: process.env.SMTP_SECURE === "true",
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD
+    }
+});
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
