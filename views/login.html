@@ -449,7 +449,7 @@ body.modal-open{
         <input
     type="hidden"
     name="access_key"
-    value="d3a29dfc-38c2-4c83-9618-8522fdd4f570"
+    value="c382cac6-53ec-4a98-aa9c-485623b60dd2"
 >
 
 <input
@@ -469,198 +469,202 @@ body.modal-open{
     name="botcheck"
     style="display:none"
 >
-            <div class="project-request-grid">
+<div class="project-request-grid">
 
-                <div class="project-request-field">
-                    <label for="request-name">
-                        Vor- und Nachname *
-                    </label>
+    <div class="project-request-field">
+        <label for="request-name">
+            Vor- und Nachname *
+        </label>
 
-                    <input
-                        id="request-name"
-                        name="name"
-                        maxlength="150"
-                        autocomplete="name"
-                        required
-                    >
-                </div>
+        <input
+            id="request-name"
+            name="Name"
+            maxlength="150"
+            autocomplete="name"
+            required
+        >
+    </div>
 
-                <div class="project-request-field">
-                    <label for="request-company">
-                        Firma
-                    </label>
+    <div class="project-request-field">
+        <label for="request-company">
+            Firma
+        </label>
 
-                    <input
-                        id="request-company"
-                        name="company"
-                        maxlength="150"
-                        autocomplete="organization"
-                    >
-                </div>
+        <input
+            id="request-company"
+            name="Firma"
+            maxlength="150"
+            autocomplete="organization"
+        >
+    </div>
 
-                <div class="project-request-field">
-                    <label for="request-email">
-                        E-Mail-Adresse *
-                    </label>
+    <div class="project-request-field">
+        <label for="request-email">
+            E-Mail-Adresse *
+        </label>
 
-                    <input
-                        id="request-email"
-                        name="email"
-                        type="email"
-                        maxlength="250"
-                        autocomplete="email"
-                        required
-                    >
-                </div>
+        <input
+            id="request-email"
+            name="E-Mail"
+            type="email"
+            maxlength="250"
+            autocomplete="email"
+            required
+        >
+    </div>
 
-                <div class="project-request-field">
-                    <label for="request-phone">
-                        Telefonnummer *
-                    </label>
+    <div class="project-request-field">
+        <label for="request-phone">
+            Telefonnummer *
+        </label>
 
-                    <input
-                        id="request-phone"
-                        name="phone"
-                        type="tel"
-                        maxlength="80"
-                        autocomplete="tel"
-                        required
-                    >
-                </div>
+        <input
+            id="request-phone"
+            name="Telefon"
+            type="tel"
+            maxlength="80"
+            autocomplete="tel"
+            required
+        >
+    </div>
 
-                <div class="project-request-field">
-                    <label for="request-project-name">
-                        Projektname *
-                    </label>
+    <div class="project-request-field">
+        <label for="request-project-name">
+            Projektname *
+        </label>
 
-                    <input
-                        id="request-project-name"
-                        name="projectName"
-                        maxlength="200"
-                        required
-                    >
-                </div>
+        <input
+            id="request-project-name"
+            name="Projektname"
+            maxlength="200"
+            required
+        >
+    </div>
 
-                <div class="project-request-field">
-                    <label for="request-project-type">
-                        Projektart *
-                    </label>
+    <div class="project-request-field">
+        <label for="request-project-type">
+            Projektart *
+        </label>
 
-                    <select
-                        id="request-project-type"
-                        name="projectType"
-                        required
-                    >
-                        <option value="">
-                            Bitte auswählen
-                        </option>
+        <select
+            id="request-project-type"
+            name="Projektart"
+            required
+        >
+            <option value="">
+                Bitte auswählen
+            </option>
 
-                        <option value="Webseite">
-                            Webseite
-                        </option>
+            <option value="Webseite">
+                Webseite
+            </option>
 
-                        <option value="Web-App">
-                            Web-App
-                        </option>
+            <option value="Web-App">
+                Web-App
+            </option>
 
-                        <option value="Mobile App">
-                            Mobile App
-                        </option>
+            <option value="Mobile App">
+                Mobile App
+            </option>
 
-                        <option value="Online-Shop">
-                            Online-Shop
-                        </option>
+            <option value="Online-Shop">
+                Online-Shop
+            </option>
 
-                        <option value="Erweiterung eines Projekts">
-                            Erweiterung eines Projekts
-                        </option>
+            <option value="Werbung">
+                Werbung
+            </option>
 
-                        <option value="Sonstiges">
-                            Sonstiges
-                        </option>
-                    </select>
-                </div>
+            <option value="Erweiterung eines Projekts">
+                Erweiterung eines Projekts
+            </option>
 
-                <div class="project-request-field full">
-                    <label for="request-description">
-                        Projektbeschreibung *
-                    </label>
+            <option value="Sonstiges">
+                Sonstiges
+            </option>
+        </select>
+    </div>
 
-                    <textarea
-                        id="request-description"
-                        name="description"
-                        maxlength="5000"
-                        placeholder="Was soll entwickelt oder umgesetzt werden?"
-                        required
-                    ></textarea>
-                </div>
+    <div class="project-request-field full">
+        <label for="request-description">
+            Projektbeschreibung *
+        </label>
 
-                <div class="project-request-field full">
-                    <label for="request-functions">
-                        Gewünschte Funktionen *
-                    </label>
+        <textarea
+            id="request-description"
+            name="Projektbeschreibung"
+            maxlength="5000"
+            placeholder="Was soll entwickelt oder umgesetzt werden?"
+            required
+        ></textarea>
+    </div>
 
-                    <textarea
-                        id="request-functions"
-                        name="requestedFunctions"
-                        maxlength="5000"
-                        placeholder="Welche Funktionen werden benötigt?"
-                        required
-                    ></textarea>
-                </div>
+    <div class="project-request-field full">
+        <label for="request-functions">
+            Gewünschte Funktionen *
+        </label>
 
-                <div class="project-request-field">
-                    <label for="request-start">
-                        Gewünschter Projektstart
-                    </label>
+        <textarea
+            id="request-functions"
+            name="Gewünschte Funktionen"
+            maxlength="5000"
+            placeholder="Welche Funktionen werden benötigt?"
+            required
+        ></textarea>
+    </div>
 
-                    <input
-                        id="request-start"
-                        name="projectStart"
-                        type="date"
-                    >
-                </div>
+    <div class="project-request-field">
+        <label for="request-start">
+            Gewünschter Projektstart
+        </label>
 
-                <div class="project-request-field">
-                    <label for="request-deadline">
-                        Fertigstellungstermin *
-                    </label>
+        <input
+            id="request-start"
+            name="Projektstart"
+            type="date"
+        >
+    </div>
 
-                    <input
-                        id="request-deadline"
-                        name="deadline"
-                        type="date"
-                        required
-                    >
-                </div>
+    <div class="project-request-field">
+        <label for="request-deadline">
+            Fertigstellungstermin *
+        </label>
 
-                <div class="project-request-field full">
-                    <label for="request-budget">
-                        Geplantes Budget
-                    </label>
+        <input
+            id="request-deadline"
+            name="Fertigstellung"
+            type="date"
+            required
+        >
+    </div>
 
-                    <input
-                        id="request-budget"
-                        name="budget"
-                        maxlength="150"
-                        placeholder="z. B. 1.500 € bis 3.000 €"
-                    >
-                </div>
+    <div class="project-request-field full">
+        <label for="request-budget">
+            Geplantes Budget
+        </label>
 
-                <div class="project-request-field full">
-                    <label for="request-notes">
-                        Weitere Informationen
-                    </label>
+        <input
+            id="request-budget"
+            name="Budget"
+            maxlength="150"
+            placeholder="z. B. 1.500 € bis 3.000 €"
+        >
+    </div>
 
-                    <textarea
-                        id="request-notes"
-                        name="notes"
-                        maxlength="5000"
-                        placeholder="Weitere Wünsche, Hinweise oder bestehende Systeme"
-                    ></textarea>
-                </div>
+    <div class="project-request-field full">
+        <label for="request-notes">
+            Weitere Informationen
+        </label>
 
-            </div>
+        <textarea
+            id="request-notes"
+            name="Weitere Informationen"
+            maxlength="5000"
+            placeholder="Weitere Wünsche, Hinweise oder bestehende Systeme"
+        ></textarea>
+    </div>
+
+</div>
 
             <div class="project-request-actions">
 
