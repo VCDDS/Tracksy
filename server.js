@@ -6135,6 +6135,23 @@ async function ensureArchiveDeleteTable(client){
     `);
 
     await client.query(`
+        ALTER TABLE archive_delete_batches
+        ENABLE ROW LEVEL SECURITY
+    `);
+
+    await client.query(`
+        REVOKE ALL
+        ON TABLE archive_delete_batches
+        FROM anon, authenticated
+    `);
+
+    await client.query(`
+        REVOKE ALL
+        ON SEQUENCE archive_delete_batches_id_seq
+        FROM anon, authenticated
+    `);
+
+    await client.query(`
         CREATE INDEX IF NOT EXISTS
         archive_delete_batches_admin_index
 
