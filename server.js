@@ -4077,82 +4077,8 @@ app.post("/delete-suggestion-comment", async (req, res) => {
 
 /* TICKETS */
 
-app.post("/create-tracksy-ticket", async (req, res) => {
-    try{
-        const {
-            username,
-            userRole,
-            title,
-            message,
-            priority
-        } = req.body;
-
-        if(userRole !== "admin" && userRole !== "user"){
-            return res.send("Keine Berechtigung");
-        }
-
-        if(!username || !title || !message){
-            return res.send("Bitte alle Pflichtfelder ausfüllen");
-        }
-
-        const allowedPriorities = ["Niedrig", "Normal", "Hoch"];
-
-        const finalPriority = allowedPriorities.includes(priority)
-            ? priority
-            : "Normal";
-
-        await pool.query(
-            `INSERT INTO tickets (
-                project,
-                source,
-                customer_name,
-                customer_email,
-                title,
-                message,
-                priority,
-                status,
-                created_at
-            )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [
-                "Tracksy",
-                "Tracksy intern",
-                username,
-                "",
-                title.trim(),
-                message.trim(),
-                finalPriority,
-                "Offen",
-                new Date().toLocaleString("de-DE", {
-                    timeZone:"Europe/Berlin"
-                })
-            ]
-        );
-
-        res.send("Tracksy-Ticket erstellt");
-
-    }catch(err){
-        console.log(err);
-        res.send("Tracksy-Ticket konnte nicht erstellt werden");
-    }
-});
-
-app.get("/tickets", async (req, res) => {
-    try{
-        const result = await pool.query(
-            "SELECT * FROM tickets ORDER BY id DESC"
-        );
-
-        res.json(result.rows);
-
-    }catch(err){
-        console.log(err);
-        res.json([]);
-    }
-});
-
 app.post("/create-ticket", async (req, res) => {
-    try{
+    try {
         const {
             project,
             source,
@@ -4163,30 +4089,36 @@ app.post("/create-ticket", async (req, res) => {
             priority
         } = req.body;
 
-        if(!project || !title || !message){
-            return res.send("Ticket Daten fehlen");
+        if (!project || !title || !message) {
+            return res.status(400).send("Ticket Daten fehlen");
         }
 
-        const allowedPriorities = ["Niedrig", "Normal", "Hoch"];
+        const priorityMap = {
+            niedrig: "Niedrig",
+            normal: "Normal",
+            hoch: "Hoch"
+        };
+
+        const incomingPriority =
+            typeof priority === "string"
+                ? priority.trim().toLowerCase()
+                : "";
+
+        let finalPriority = priorityMap[incomingPriority];
 
         const legacyPriorityMatch = message.match(
             /(?:^|\n)\s*Priorität:\s*(Niedrig|Normal|Hoch)\s*(?:\n|$)/i
         );
 
-        let finalPriority = allowedPriorities.includes(priority)
-            ? priority
-            : "Normal";
+        if (!finalPriority && legacyPriorityMatch) {
+            finalPriority =
+                priorityMap[legacyPriorityMatch[1].trim().toLowerCase()];
+        }
 
-        if(!allowedPriorities.includes(priority) && legacyPriorityMatch){
-            const foundPriority = legacyPriorityMatch[1].toLowerCase();
-
-            if(foundPriority === "hoch"){
-                finalPriority = "Hoch";
-            }else if(foundPriority === "niedrig"){
-                finalPriority = "Niedrig";
-            }else{
-                finalPriority = "Normal";
-            }
+        if (!finalPriority) {
+            return res.status(400).send(
+                `Ungültige Priorität empfangen: ${String(priority)}`
+            );
         }
 
         const cleanMessage = message
@@ -4224,9 +4156,9 @@ app.post("/create-ticket", async (req, res) => {
 
         res.send("Ticket erstellt");
 
-    }catch(err){
-        console.log(err);
-        res.send("Ticket Fehler");
+    } catch (err) {
+        console.error("Ticket-Erstellung fehlgeschlagen:", err);
+        res.status(500).send("Ticket Fehler");
     }
 });
 
