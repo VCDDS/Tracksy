@@ -5737,3 +5737,64 @@ h4{
         grid-template-columns:1fr;
     }
 }
+
+/* =====================================================
+   DIENSTPLAN – EINZELNER BENUTZER
+===================================================== */
+
+.planning-user-picker{
+    width:100%;
+    max-width:320px;
+    min-width:260px;
+}
+
+.planning-user-picker label{
+    display:block;
+    margin-bottom:6px;
+
+    color:var(--muted);
+    font-size:12px;
+    font-weight:800;
+}
+
+.planning-user-picker select{
+    width:100%;
+    margin:0;
+}
+
+.planning-grid-single-user{
+    width:100%;
+    min-width:0;
+}
+
+.planning-grid-single-user-scroll{
+    overflow-x:hidden;
+}
+
+@media (max-width:900px){
+
+    .planning-board-head{
+        align-items:stretch;
+        flex-direction:column;
+        gap:14px;
+    }
+
+    .planning-user-picker{
+        width:100%;
+        max-width:none;
+        min-width:0;
+    }
+}
+
+@media (max-width:768px){
+
+    .planning-grid-single-user{
+        grid-template-columns:
+            86px minmax(0, 1fr) !important;
+    }
+
+    .planning-day-header,
+    .planning-cell{
+        min-height:125px;
+    }
+}

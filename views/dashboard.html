@@ -4083,10 +4083,27 @@ function renderAdminPlanningPage(){
         return;
     }
 
-    const users = data.users || [];
-    const weekDates = getPlanningWeekDates(
-        adminPlanningState.weekStart
-    );
+    const allUsers = data.users || [];
+
+const selectedUser =
+    allUsers.find(
+        user =>
+            Number(user.id) ===
+            Number(
+                adminPlanningState.selectedUserId
+            )
+    ) ||
+    allUsers[0] ||
+    null;
+
+const users =
+    selectedUser
+        ? [selectedUser]
+        : [];
+
+const weekDates = getPlanningWeekDates(
+    adminPlanningState.weekStart
+);
 
     const weekEnd = weekDates[6];
 
@@ -4116,22 +4133,14 @@ function renderAdminPlanningPage(){
         return;
     }
 
-    const selectedUser = users.find(
-        user =>
-            Number(user.id) ===
-            Number(
-                adminPlanningState.selectedUserId
-            )
-    ) || users[0];
-
     const selectedSchedule =
         findAdminPlanningSchedule(
             selectedUser.id,
             adminPlanningState.selectedDate
         );
 
-    const gridColumns =
-        `110px repeat(${users.length}, minmax(190px, 1fr))`;
+        const gridColumns =
+        "110px minmax(0, 1fr)";
 
     let planningGrid = `
         <div class="planning-corner-cell">
@@ -4364,23 +4373,66 @@ ${
 
                     <div class="planning-board-head">
 
-                        <div>
-                            <h3>
-                                Wochenübersicht
-                            </h3>
+    <div>
+        <h3>
+            Wochenübersicht
+        </h3>
 
-                            <p>
-                                Benutzer und Tag anklicken,
-                                um rechts zu bearbeiten.
-                            </p>
-                        </div>
+        <p>
+            Tag anklicken, um Dienstzeit und
+            Aufgaben zu bearbeiten.
+        </p>
+    </div>
 
-                    </div>
+    <div class="planning-user-picker">
 
-                    <div class="planning-grid-scroll">
+        <label for="planningUserSelect">
+            Benutzer auswählen
+        </label>
 
-                        <div
-                            class="planning-grid"
+        <select
+            id="planningUserSelect"
+            onchange="
+                changeAdminPlanningUser(
+                    this.value
+                )
+            "
+        >
+            ${
+                allUsers.map(user => `
+                    <option
+                        value="${user.id}"
+                        ${
+                            Number(user.id) ===
+                            Number(selectedUser.id)
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        ${
+                            escapePlanningHtml(
+                                user.username
+                            )
+                        }
+                    </option>
+                `).join("")
+            }
+        </select>
+
+    </div>
+
+</div>
+
+                    <div class="
+    planning-grid-scroll
+    planning-grid-single-user-scroll
+">
+
+    <div
+        class="
+            planning-grid
+            planning-grid-single-user
+        "
                             style="
                                 grid-template-columns:
                                 ${gridColumns};
@@ -4743,6 +4795,22 @@ function renderAdminPlanningDetail(
         </section>
     `;
 }
+
+function changeAdminPlanningUser(value){
+
+const userId =
+    Number(value);
+
+if(!Number.isFinite(userId)){
+    return;
+}
+
+adminPlanningState.selectedUserId =
+    userId;
+
+renderAdminPlanningPage();
+}
+
 
 function selectPlanningCell(
     userId,
