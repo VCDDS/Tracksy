@@ -6092,6 +6092,707 @@ app.post("/delete-service-addon", async (req, res) => {
         );
     }
 });
+
+/* =====================================================
+   ARCHIV LÖSCHEN & RÜCKGÄNGIG
+===================================================== */
+
+const ARCHIVE_UNDO_MINUTES = 10;
+
+async function ensureArchiveDeleteTable(client){
+
+    await client.query(`
+        CREATE TABLE IF NOT EXISTS archive_delete_batches (
+            id BIGSERIAL PRIMARY KEY,
+            admin_username TEXT NOT NULL,
+            payload JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            undone_at TIMESTAMPTZ DEFAULT NULL
+        )
+    `);
+
+    await client.query(`
+        CREATE INDEX IF NOT EXISTS
+        archive_delete_batches_admin_index
+
+        ON archive_delete_batches (
+            admin_username,
+            created_at DESC
+        )
+    `);
+}
+
+function normalizeArchiveItems(items){
+
+    const normalizedItems = [];
+    const usedItems = new Set();
+
+    if(!Array.isArray(items)){
+        return normalizedItems;
+    }
+
+    items.forEach(item => {
+
+        const type =
+            String(item?.type || "");
+
+        const id =
+            Number(item?.id);
+
+        if(
+            (
+                type !== "ticket" &&
+                type !== "contract"
+            ) ||
+            !Number.isInteger(id) ||
+            id <= 0
+        ){
+            return;
+        }
+
+        const key =
+            `${type}:${id}`;
+
+        if(usedItems.has(key)){
+            return;
+        }
+
+        usedItems.add(key);
+
+        normalizedItems.push({
+            type,
+            id
+        });
+    });
+
+    return normalizedItems;
+}
+
+async function loadSelectedArchiveRows(
+    client,
+    items
+){
+
+    const ticketIds =
+        items
+            .filter(item =>
+                item.type === "ticket"
+            )
+            .map(item => item.id);
+
+    const contractIds =
+        items
+            .filter(item =>
+                item.type === "contract"
+            )
+            .map(item => item.id);
+
+    let tickets = [];
+    let contracts = [];
+
+    if(ticketIds.length > 0){
+
+        const ticketResult =
+            await client.query(`
+                SELECT *
+
+                FROM tickets
+
+                WHERE id = ANY($1::int[])
+
+                AND LOWER(
+                    COALESCE(status, '')
+                ) LIKE '%gelöscht%'
+            `, [
+                ticketIds
+            ]);
+
+        tickets =
+            ticketResult.rows;
+    }
+
+    if(contractIds.length > 0){
+
+        const contractResult =
+            await client.query(`
+                SELECT *
+
+                FROM service_tariffs
+
+                WHERE id = ANY($1::int[])
+
+                AND LOWER(
+                    COALESCE(status, '')
+                ) IN (
+                    'gekündigt',
+                    'cancelled'
+                )
+            `, [
+                contractIds
+            ]);
+
+        contracts =
+            contractResult.rows;
+    }
+
+    return {
+        tickets,
+        contracts
+    };
+}
+
+async function loadAllArchiveRows(client){
+
+    const ticketResult =
+        await client.query(`
+            SELECT *
+
+            FROM tickets
+
+            WHERE LOWER(
+                COALESCE(status, '')
+            ) LIKE '%gelöscht%'
+        `);
+
+    const contractResult =
+        await client.query(`
+            SELECT *
+
+            FROM service_tariffs
+
+            WHERE LOWER(
+                COALESCE(status, '')
+            ) IN (
+                'gekündigt',
+                'cancelled'
+            )
+        `);
+
+    return {
+        tickets: ticketResult.rows,
+        contracts: contractResult.rows
+    };
+}
+
+async function permanentlyDeleteArchiveRows(
+    client,
+    archiveRows
+){
+
+    const ticketIds =
+        archiveRows.tickets.map(
+            ticket => Number(ticket.id)
+        );
+
+    const contractIds =
+        archiveRows.contracts.map(
+            contract => Number(contract.id)
+        );
+
+    if(ticketIds.length > 0){
+
+        await client.query(`
+            DELETE FROM tickets
+
+            WHERE id = ANY($1::int[])
+        `, [
+            ticketIds
+        ]);
+    }
+
+    if(contractIds.length > 0){
+
+        await client.query(`
+            DELETE FROM service_tariffs
+
+            WHERE id = ANY($1::int[])
+        `, [
+            contractIds
+        ]);
+    }
+}
+
+async function createArchiveDeleteBatch(
+    client,
+    adminUsername,
+    archiveRows
+){
+
+    await client.query(`
+        INSERT INTO archive_delete_batches (
+            admin_username,
+            payload
+        )
+
+        VALUES (
+            $1,
+            $2::jsonb
+        )
+    `, [
+        adminUsername,
+        JSON.stringify(archiveRows)
+    ]);
+}
+
+async function deleteArchiveEntries(
+    adminUsername,
+    selectedItems = null
+){
+
+    const client =
+        await pool.connect();
+
+    try{
+
+        await client.query("BEGIN");
+
+        await ensureArchiveDeleteTable(
+            client
+        );
+
+        const archiveRows =
+            selectedItems === null
+                ? await loadAllArchiveRows(
+                    client
+                )
+                : await loadSelectedArchiveRows(
+                    client,
+                    selectedItems
+                );
+
+        const deletedCount =
+            archiveRows.tickets.length +
+            archiveRows.contracts.length;
+
+        if(deletedCount === 0){
+
+            await client.query("ROLLBACK");
+
+            return 0;
+        }
+
+        await createArchiveDeleteBatch(
+            client,
+            adminUsername,
+            archiveRows
+        );
+
+        await permanentlyDeleteArchiveRows(
+            client,
+            archiveRows
+        );
+
+        await client.query("COMMIT");
+
+        return deletedCount;
+
+    }catch(error){
+
+        await client.query("ROLLBACK");
+
+        throw error;
+
+    }finally{
+
+        client.release();
+    }
+}
+
+app.post(
+    "/archive-delete-selected",
+    async (req, res) => {
+
+        try{
+
+            const adminUsername =
+                String(
+                    req.body.adminUsername || ""
+                ).trim();
+
+            const isAdminUser =
+                await isRealAdmin(
+                    adminUsername
+                );
+
+            if(!isAdminUser){
+
+                return res
+                    .status(403)
+                    .send(
+                        "Keine Berechtigung"
+                    );
+            }
+
+            const items =
+                normalizeArchiveItems(
+                    req.body.items
+                );
+
+            if(items.length === 0){
+
+                return res
+                    .status(400)
+                    .send(
+                        "Keine gültigen Archiveinträge ausgewählt"
+                    );
+            }
+
+            const deletedCount =
+                await deleteArchiveEntries(
+                    adminUsername,
+                    items
+                );
+
+            if(deletedCount === 0){
+
+                return res.send(
+                    "Keine passenden Archiveinträge gefunden"
+                );
+            }
+
+            res.send(
+                `${deletedCount} Archiveinträge gelöscht. ` +
+                `Rückgängig ist ${ARCHIVE_UNDO_MINUTES} Minuten möglich.`
+            );
+
+        }catch(error){
+
+            console.error(
+                "Archivauswahl löschen fehlgeschlagen:",
+                error
+            );
+
+            res
+                .status(500)
+                .send(
+                    "Archiveinträge konnten nicht gelöscht werden"
+                );
+        }
+    }
+);
+
+app.post(
+    "/archive-delete-all",
+    async (req, res) => {
+
+        try{
+
+            const adminUsername =
+                String(
+                    req.body.adminUsername || ""
+                ).trim();
+
+            const isAdminUser =
+                await isRealAdmin(
+                    adminUsername
+                );
+
+            if(!isAdminUser){
+
+                return res
+                    .status(403)
+                    .send(
+                        "Keine Berechtigung"
+                    );
+            }
+
+            const deletedCount =
+                await deleteArchiveEntries(
+                    adminUsername
+                );
+
+            if(deletedCount === 0){
+
+                return res.send(
+                    "Das Archiv ist bereits leer"
+                );
+            }
+
+            res.send(
+                `${deletedCount} Archiveinträge gelöscht. ` +
+                `Rückgängig ist ${ARCHIVE_UNDO_MINUTES} Minuten möglich.`
+            );
+
+        }catch(error){
+
+            console.error(
+                "Gesamtes Archiv löschen fehlgeschlagen:",
+                error
+            );
+
+            res
+                .status(500)
+                .send(
+                    "Das Archiv konnte nicht gelöscht werden"
+                );
+        }
+    }
+);
+
+async function restoreArchiveRow(
+    client,
+    tableName,
+    row
+){
+
+    let result;
+
+    if(tableName === "tickets"){
+
+        result = await client.query(`
+            INSERT INTO tickets
+
+            SELECT *
+
+            FROM json_populate_record(
+                NULL::tickets,
+                $1::json
+            )
+
+            ON CONFLICT DO NOTHING
+        `, [
+            JSON.stringify(row)
+        ]);
+
+    }else if(
+        tableName === "service_tariffs"
+    ){
+
+        result = await client.query(`
+            INSERT INTO service_tariffs
+
+            SELECT *
+
+            FROM json_populate_record(
+                NULL::service_tariffs,
+                $1::json
+            )
+
+            ON CONFLICT DO NOTHING
+        `, [
+            JSON.stringify(row)
+        ]);
+
+    }else{
+
+        throw new Error(
+            "Unbekannte Archivtabelle"
+        );
+    }
+
+    if(result.rowCount !== 1){
+
+        const conflictError =
+            new Error(
+                "Ein Archiveintrag existiert bereits und konnte nicht wiederhergestellt werden"
+            );
+
+        conflictError.statusCode = 409;
+
+        throw conflictError;
+    }
+}
+
+async function updateArchiveSequences(client){
+
+    await client.query(`
+        SELECT setval(
+            pg_get_serial_sequence(
+                'tickets',
+                'id'
+            ),
+            (
+                SELECT MAX(id)
+                FROM tickets
+            ),
+            true
+        )
+
+        WHERE EXISTS (
+            SELECT 1
+            FROM tickets
+        )
+    `);
+
+    await client.query(`
+        SELECT setval(
+            pg_get_serial_sequence(
+                'service_tariffs',
+                'id'
+            ),
+            (
+                SELECT MAX(id)
+                FROM service_tariffs
+            ),
+            true
+        )
+
+        WHERE EXISTS (
+            SELECT 1
+            FROM service_tariffs
+        )
+    `);
+}
+
+app.post(
+    "/archive-undo-last",
+    async (req, res) => {
+
+        const client =
+            await pool.connect();
+
+        try{
+
+            const adminUsername =
+                String(
+                    req.body.adminUsername || ""
+                ).trim();
+
+            const isAdminUser =
+                await isRealAdmin(
+                    adminUsername
+                );
+
+            if(!isAdminUser){
+
+                return res
+                    .status(403)
+                    .send(
+                        "Keine Berechtigung"
+                    );
+            }
+
+            await client.query("BEGIN");
+
+            await ensureArchiveDeleteTable(
+                client
+            );
+
+            const batchResult =
+                await client.query(`
+                    SELECT
+                        id,
+                        payload
+
+                    FROM archive_delete_batches
+
+                    WHERE admin_username = $1
+
+                    AND undone_at IS NULL
+
+                    AND created_at >=
+                        NOW() -
+                        (
+                            $2::int *
+                            INTERVAL '1 minute'
+                        )
+
+                    ORDER BY created_at DESC
+
+                    LIMIT 1
+
+                    FOR UPDATE
+                `, [
+                    adminUsername,
+                    ARCHIVE_UNDO_MINUTES
+                ]);
+
+            if(batchResult.rows.length === 0){
+
+                await client.query(
+                    "ROLLBACK"
+                );
+
+                return res.send(
+                    "Keine Löschung vorhanden, die noch rückgängig gemacht werden kann"
+                );
+            }
+
+            const batch =
+                batchResult.rows[0];
+
+            const payload =
+                batch.payload || {};
+
+            const tickets =
+                Array.isArray(payload.tickets)
+                    ? payload.tickets
+                    : [];
+
+            const contracts =
+                Array.isArray(payload.contracts)
+                    ? payload.contracts
+                    : [];
+
+            let restoredCount = 0;
+
+            for(const ticket of tickets){
+
+                await restoreArchiveRow(
+                    client,
+                    "tickets",
+                    ticket
+                );
+
+                restoredCount++;
+            }
+
+            for(const contract of contracts){
+
+                await restoreArchiveRow(
+                    client,
+                    "service_tariffs",
+                    contract
+                );
+
+                restoredCount++;
+            }
+
+            await updateArchiveSequences(
+                client
+            );
+
+            await client.query(`
+                UPDATE archive_delete_batches
+
+                SET undone_at = NOW()
+
+                WHERE id = $1
+            `, [
+                batch.id
+            ]);
+
+            await client.query("COMMIT");
+
+            res.send(
+                `${restoredCount} Archiveinträge wiederhergestellt`
+            );
+
+        }catch(error){
+
+            await client.query("ROLLBACK");
+
+            console.error(
+                "Archiv-Rückgängig fehlgeschlagen:",
+                error
+            );
+
+            res
+                .status(
+                    error.statusCode || 500
+                )
+                .send(
+                    error.message ||
+                    "Rückgängig konnte nicht ausgeführt werden"
+                );
+
+        }finally{
+
+            client.release();
+        }
+    }
+);
+
 app.use((err, req, res, next) => {
     console.log(err);
     res.status(500).send("Server Fehler");
