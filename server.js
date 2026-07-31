@@ -3406,7 +3406,12 @@ app.post("/resume-time", async (req, res) => {
         const { username } = req.body;
 
         const running = await pool.query(
-            "SELECT * FROM times WHERE username = $1 AND stop_time = '' ORDER BY id DESC LIMIT 1",
+            `SELECT *
+             FROM times
+             WHERE username = $1
+             AND stop_time = ''
+             ORDER BY id DESC
+             LIMIT 1`,
             [username]
         );
 
@@ -3415,27 +3420,55 @@ app.post("/resume-time", async (req, res) => {
         }
 
         const time = running.rows[0];
-        const now = new Date();
 
-        let pauseMinutes = 0;
-
-        if(time.pause_start){
-            let pauseStart = new Date(time.pause_start);
-            pauseMinutes = Math.floor((now - pauseStart) / 1000 / 60);
+        if(
+            time.is_paused !== true ||
+            !time.pause_start
+        ){
+            return res.send("Zeit ist nicht pausiert");
         }
 
-        await pool.query(
-            `UPDATE times 
+        const now = new Date();
+        const pauseStart = new Date(time.pause_start);
+
+        if(Number.isNaN(pauseStart.getTime())){
+            return res.send("Ungültige Pausenzeit");
+        }
+
+        const pauseMinutes = Math.max(
+            0,
+            Math.floor(
+                (now - pauseStart) / 1000 / 60
+            )
+        );
+
+        const result = await pool.query(
+            `UPDATE times
              SET is_paused = false,
                  pause_end = $1,
-                 pause_total = pause_total + $2
-             WHERE id = $3`,
+                 pause_start = '',
+                 pause_total =
+                     COALESCE(pause_total, 0) + $2
+             WHERE id = $3
+             AND is_paused = true
+             RETURNING id`,
             [
-                now.toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+                now.toLocaleString(
+                    "de-DE",
+                    {
+                        timeZone: "Europe/Berlin"
+                    }
+                ),
                 pauseMinutes,
                 time.id
             ]
         );
+
+        if(result.rows.length === 0){
+            return res.send(
+                "Zeit wurde bereits fortgesetzt"
+            );
+        }
 
         res.send("Fortgesetzt");
 
