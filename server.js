@@ -4176,6 +4176,83 @@ app.get("/tickets", async (req, res) => {
     }
 });
 
+app.post("/create-tracksy-ticket", async (req, res) => {
+    try {
+        const {
+            username,
+            userRole,
+            title,
+            message,
+            priority
+        } = req.body;
+
+        if (userRole !== "admin" && userRole !== "user") {
+            return res.status(403).send("Keine Berechtigung");
+        }
+
+        if (!username || !title || !message) {
+            return res.status(400).send(
+                "Bitte alle Pflichtfelder ausfüllen"
+            );
+        }
+
+        const priorityMap = {
+            niedrig: "Niedrig",
+            normal: "Normal",
+            hoch: "Hoch"
+        };
+
+        const incomingPriority =
+            typeof priority === "string"
+                ? priority.trim().toLowerCase()
+                : "";
+
+        const finalPriority = priorityMap[incomingPriority];
+
+        if (!finalPriority) {
+            return res.status(400).send(
+                `Ungültige Priorität: ${String(priority)}`
+            );
+        }
+
+        await pool.query(
+            `INSERT INTO tickets (
+                project,
+                source,
+                customer_name,
+                customer_email,
+                title,
+                message,
+                priority,
+                status,
+                created_at
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [
+                "Tracksy",
+                "Tracksy intern",
+                username,
+                "",
+                title.trim(),
+                message.trim(),
+                finalPriority,
+                "Offen",
+                new Date().toLocaleString("de-DE", {
+                    timeZone: "Europe/Berlin"
+                })
+            ]
+        );
+
+        res.send("Tracksy-Ticket erstellt");
+
+    } catch (err) {
+        console.error("Tracksy-Ticket-Erstellung fehlgeschlagen:", err);
+        res.status(500).send(
+            "Tracksy-Ticket konnte nicht erstellt werden"
+        );
+    }
+});
+
 /* ======================================================
    SERVICE & TARIFE
 ====================================================== */
