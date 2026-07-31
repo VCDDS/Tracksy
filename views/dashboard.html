@@ -1060,10 +1060,6 @@ let doneTickets = tickets.filter(t =>
     (t.status || "").toLowerCase() === "erledigt"
 ).length;
 
-let deletedTickets = tickets.filter(t =>
-    (t.status || "").toLowerCase().includes("gelöscht")
-).length;
-
 let html = `
 <div class="ticket-page">
 
@@ -1107,14 +1103,6 @@ let html = `
             <div>
                 <strong>${doneTickets}</strong>
                 <small>Erledigt</small>
-            </div>
-        </div>
-
-        <div class="ticket-stat-card stat-deleted">
-            <span class="ticket-stat-icon">🗑️</span>
-            <div>
-                <strong>${deletedTickets}</strong>
-                <small>Gelöscht</small>
             </div>
         </div>
 
