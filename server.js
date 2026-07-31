@@ -3468,19 +3468,37 @@ app.post("/stop-time", async (req, res) => {
             extraPauseMinutes = Math.floor((now - pauseStart) / 1000 / 60);
         }
 
+        const nowText = now.toLocaleString(
+            "de-DE",
+            {
+                timeZone: "Europe/Berlin"
+            }
+        );
+        
+        const stoppedDuringPause =
+            time.is_paused === true &&
+            Boolean(time.pause_start);
+        
+        const finalPauseEnd =
+            stoppedDuringPause
+                ? nowText
+                : (time.pause_end || "");
+        
         await pool.query(
-            `UPDATE times 
+            `UPDATE times
              SET stop_time = $1,
                  report = $2,
                  admin_only = $3,
                  is_paused = false,
-                 pause_end = $1,
-                 pause_total = pause_total + $4
-             WHERE id = $5`,
+                 pause_end = $4,
+                 pause_total =
+                     COALESCE(pause_total, 0) + $5
+             WHERE id = $6`,
             [
-                now.toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+                nowText,
                 report,
                 adminOnly === true,
+                finalPauseEnd,
                 extraPauseMinutes,
                 time.id
             ]
@@ -3628,11 +3646,31 @@ app.post("/delete-single-auswertung", async (req, res) => {
 
 app.post("/edit-time", async (req, res) => {
     try{
-        const { id, username, project, task, start_time, stop_time, report } = req.body;
+        const {
+            id,
+            username,
+            project,
+            task,
+            start_time,
+            stop_time
+        } = req.body;
 
         await pool.query(
-            "UPDATE times SET username = $1, project = $2, task = $3, start_time = $4, stop_time = $5, report = $6 WHERE id = $7",
-            [username, project, task, start_time || "", stop_time || "", report || "", id]
+            `UPDATE times
+             SET username = $1,
+                 project = $2,
+                 task = $3,
+                 start_time = $4,
+                 stop_time = $5
+             WHERE id = $6`,
+            [
+                username,
+                project,
+                task,
+                start_time || "",
+                stop_time || "",
+                id
+            ]
         );
 
         res.send("Zeit geändert");
