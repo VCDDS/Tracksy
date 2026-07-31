@@ -4162,6 +4162,20 @@ app.post("/create-ticket", async (req, res) => {
     }
 });
 
+app.get("/tickets", async (req, res) => {
+    try {
+        const result = await pool.query(
+            "SELECT * FROM tickets ORDER BY id DESC"
+        );
+
+        res.json(result.rows);
+
+    } catch (err) {
+        console.error("Tickets konnten nicht geladen werden:", err);
+        res.status(500).json([]);
+    }
+});
+
 /* ======================================================
    SERVICE & TARIFE
 ====================================================== */
