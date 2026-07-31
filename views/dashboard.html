@@ -1329,60 +1329,381 @@ const deletedTickets = tickets.filter(ticket =>
         .includes("gelöscht")
 );
 
-const cancelledContracts = management.tariffs.filter(service =>
-    (service.status || "").toLowerCase() === "gekündigt" ||
-    (service.status || "").toLowerCase() === "cancelled"
-);
+const cancelledContracts = (
+    management.tariffs || []
+).filter(service => {
+
+    const status = String(
+        service.status || ""
+    ).toLowerCase();
+
+    return (
+        status === "gekündigt" ||
+        status === "cancelled"
+    );
+});
+
+const archiveTotal =
+    deletedTickets.length +
+    cancelledContracts.length;
 
 content.innerHTML = `
 <div class="archive-page">
 
     <div class="archive-page-head">
-        <p class="dashboard-kicker">Admin Bereich</p>
-        <h2>📦 Archiv</h2>
-        <p>Gelöschte Tickets und gekündigte Verträge.</p>
+
+        <div>
+            <p class="dashboard-kicker">
+                Admin Bereich
+            </p>
+
+            <h2>📦 Archiv</h2>
+
+            <p>
+                Gelöschte Tickets und gekündigte Verträge
+                verwalten und dauerhaft entfernen.
+            </p>
+        </div>
+
     </div>
 
-    <section class="archive-section">
+    <section class="archive-summary">
 
-        <h3>🗑️ Gelöschte Tickets</h3>
+        <div class="archive-summary-card">
+            <span>Archivierte Einträge</span>
+            <strong>${archiveTotal}</strong>
+            <small>Gesamt</small>
+        </div>
 
-        ${
-            deletedTickets.length === 0
-                ? `<p>Keine gelöschten Tickets vorhanden.</p>`
-                : deletedTickets.map(ticket => `
-                    <article class="archive-item">
-                        <strong>#${ticket.id} · ${ticket.title || "-"}</strong>
-                        <span>📁 ${ticket.project || "-"}</span>
-                        <span>👤 ${ticket.customer_name || "-"}</span>
-                        <p>${ticket.message || "-"}</p>
-                    </article>
-                `).join("")
-        }
+        <div class="archive-summary-card">
+            <span>Gelöschte Tickets</span>
+            <strong>${deletedTickets.length}</strong>
+            <small>Ticket-Archiv</small>
+        </div>
+
+        <div class="archive-summary-card">
+            <span>Gekündigte Verträge</span>
+            <strong>${cancelledContracts.length}</strong>
+            <small>Vertrags-Archiv</small>
+        </div>
+
+    </section>
+
+    <section class="archive-toolbar no-print">
+
+        <label class="archive-select-all">
+
+            <input
+                id="archiveSelectAll"
+                type="checkbox"
+                onchange="
+                    toggleArchiveSelection(
+                        this.checked
+                    )
+                "
+            >
+
+            <span>Alles auswählen</span>
+
+        </label>
+
+        <strong id="archiveSelectedCount">
+            0 ausgewählt
+        </strong>
+
+        <div class="archive-toolbar-actions">
+
+            <button
+                onclick="printArchivePdf(false)"
+            >
+                🖨️ Archiv als PDF
+            </button>
+
+            <button
+                onclick="deleteSelectedArchiveItems()"
+            >
+                🗑️ Auswahl löschen
+            </button>
+
+            <button
+                class="danger-btn"
+                onclick="deleteAllArchiveItems()"
+            >
+                🚨 Alles löschen
+            </button>
+
+            <button
+                onclick="undoLastArchiveDelete()"
+            >
+                ↩️ Rückgängig
+            </button>
+
+        </div>
 
     </section>
 
     <section class="archive-section">
 
-        <h3>🛑 Gekündigte Verträge</h3>
+        <div class="archive-section-head">
 
-        ${
-            cancelledContracts.length === 0
-                ? `<p>Keine gekündigten Verträge vorhanden.</p>`
-                : cancelledContracts.map(service => `
-                    <article class="archive-item">
-                        <strong>${service.project || "-"}</strong>
-                        <span>Tarif: ${service.tariff || "Keiner"}</span>
-                        <span>Status: ${service.status || "Gekündigt"}</span>
-                        <span>Abrechnung: ${service.billing_cycle || "-"}</span>
-                    </article>
-                `).join("")
-        }
+            <div>
+                <h3>🗑️ Gelöschte Tickets</h3>
+
+                <p>
+                    Tickets, die im Ticketbereich gelöscht wurden.
+                </p>
+            </div>
+
+            <span class="archive-count-badge">
+                ${deletedTickets.length}
+            </span>
+
+        </div>
+
+        <div class="archive-grid">
+
+            ${
+                deletedTickets.length === 0
+                    ? `
+                        <div class="archive-empty">
+                            Keine gelöschten Tickets vorhanden.
+                        </div>
+                    `
+                    : deletedTickets.map(ticket => `
+
+                        <article
+                            class="archive-item"
+                            data-archive-item
+                            data-archive-type="ticket"
+                            data-archive-id="${Number(ticket.id)}"
+                        >
+
+                            <label class="archive-item-select no-print">
+
+                                <input
+                                    type="checkbox"
+                                    class="archive-check"
+                                    data-type="ticket"
+                                    data-id="${Number(ticket.id)}"
+                                    onchange="
+                                        updateArchiveSelectionCount()
+                                    "
+                                >
+
+                            </label>
+
+                            <div class="archive-item-head">
+
+                                <div>
+                                    <small>
+                                        GELÖSCHTES TICKET
+                                    </small>
+
+                                    <h4>
+                                        #${Number(ticket.id)}
+                                        ·
+                                        ${
+                                            escapeArchiveHtml(
+                                                ticket.title || "-"
+                                            )
+                                        }
+                                    </h4>
+                                </div>
+
+                                <span class="archive-status deleted">
+                                    Gelöscht
+                                </span>
+
+                            </div>
+
+                            <div class="archive-meta">
+
+                                <span>
+                                    📁
+                                    ${
+                                        escapeArchiveHtml(
+                                            ticket.project || "-"
+                                        )
+                                    }
+                                </span>
+
+                                <span>
+                                    👤
+                                    ${
+                                        escapeArchiveHtml(
+                                            ticket.customer_name || "-"
+                                        )
+                                    }
+                                </span>
+
+                                <span>
+                                    📅
+                                    ${
+                                        escapeArchiveHtml(
+                                            ticket.created_at || "-"
+                                        )
+                                    }
+                                </span>
+
+                            </div>
+
+                            <p class="archive-message">
+                                ${
+                                    escapeArchiveHtml(
+                                        ticket.message || "-"
+                                    )
+                                }
+                            </p>
+
+                            ${
+                                ticket.delete_reason
+                                    ? `
+                                        <div class="archive-reason">
+                                            <strong>Löschgrund:</strong>
+                                            ${
+                                                escapeArchiveHtml(
+                                                    ticket.delete_reason
+                                                )
+                                            }
+                                        </div>
+                                    `
+                                    : ""
+                            }
+
+                        </article>
+
+                    `).join("")
+            }
+
+        </div>
+
+    </section>
+
+    <section class="archive-section">
+
+        <div class="archive-section-head">
+
+            <div>
+                <h3>🛑 Gekündigte Verträge</h3>
+
+                <p>
+                    Beendete Service- und Betreuungstarife.
+                </p>
+            </div>
+
+            <span class="archive-count-badge">
+                ${cancelledContracts.length}
+            </span>
+
+        </div>
+
+        <div class="archive-grid">
+
+            ${
+                cancelledContracts.length === 0
+                    ? `
+                        <div class="archive-empty">
+                            Keine gekündigten Verträge vorhanden.
+                        </div>
+                    `
+                    : cancelledContracts.map(service => `
+
+                        <article
+                            class="archive-item"
+                            data-archive-item
+                            data-archive-type="contract"
+                            data-archive-id="${Number(service.id)}"
+                        >
+
+                            <label class="archive-item-select no-print">
+
+                                <input
+                                    type="checkbox"
+                                    class="archive-check"
+                                    data-type="contract"
+                                    data-id="${Number(service.id)}"
+                                    onchange="
+                                        updateArchiveSelectionCount()
+                                    "
+                                >
+
+                            </label>
+
+                            <div class="archive-item-head">
+
+                                <div>
+                                    <small>
+                                        GEKÜNDIGTER VERTRAG
+                                    </small>
+
+                                    <h4>
+                                        ${
+                                            escapeArchiveHtml(
+                                                service.project || "-"
+                                            )
+                                        }
+                                    </h4>
+                                </div>
+
+                                <span class="archive-status cancelled">
+                                    Gekündigt
+                                </span>
+
+                            </div>
+
+                            <div class="archive-meta">
+
+                                <span>
+                                    📦 Tarif:
+                                    ${
+                                        escapeArchiveHtml(
+                                            service.tariff || "Keiner"
+                                        )
+                                    }
+                                </span>
+
+                                <span>
+                                    🔄 Abrechnung:
+                                    ${
+                                        escapeArchiveHtml(
+                                            service.billing_cycle || "-"
+                                        )
+                                    }
+                                </span>
+
+                                <span>
+                                    📅 Beginn:
+                                    ${
+                                        escapeArchiveHtml(
+                                            service.contract_start || "-"
+                                        )
+                                    }
+                                </span>
+
+                            </div>
+
+                            <div class="archive-message">
+                                Status:
+                                ${
+                                    escapeArchiveHtml(
+                                        service.status || "Gekündigt"
+                                    )
+                                }
+                            </div>
+
+                        </article>
+
+                    `).join("")
+            }
+
+        </div>
 
     </section>
 
 </div>
 `;
+
+updateArchiveSelectionCount();
 
 return;
 }
@@ -2712,6 +3033,359 @@ content.innerHTML = html;
 return;
 }
 
+}
+
+/* =====================================================
+   ARCHIV
+===================================================== */
+
+function escapeArchiveHtml(value){
+
+return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getSelectedArchiveItems(){
+
+return Array.from(
+    document.querySelectorAll(
+        ".archive-check:checked"
+    )
+).map(input => ({
+    type: input.dataset.type,
+    id: Number(input.dataset.id)
+})).filter(item =>
+    (
+        item.type === "ticket" ||
+        item.type === "contract"
+    ) &&
+    Number.isFinite(item.id)
+);
+}
+
+function updateArchiveSelectionCount(){
+
+const allCheckboxes =
+    Array.from(
+        document.querySelectorAll(
+            ".archive-check"
+        )
+    );
+
+const selectedCheckboxes =
+    allCheckboxes.filter(
+        checkbox => checkbox.checked
+    );
+
+const counter =
+    document.getElementById(
+        "archiveSelectedCount"
+    );
+
+const selectAll =
+    document.getElementById(
+        "archiveSelectAll"
+    );
+
+if(counter){
+
+    counter.textContent =
+        `${selectedCheckboxes.length} ausgewählt`;
+}
+
+if(selectAll){
+
+    selectAll.checked =
+        allCheckboxes.length > 0 &&
+        selectedCheckboxes.length ===
+            allCheckboxes.length;
+
+    selectAll.indeterminate =
+        selectedCheckboxes.length > 0 &&
+        selectedCheckboxes.length <
+            allCheckboxes.length;
+}
+}
+
+function toggleArchiveSelection(checked){
+
+document
+    .querySelectorAll(
+        ".archive-check"
+    )
+    .forEach(input => {
+        input.checked = checked;
+    });
+
+updateArchiveSelectionCount();
+}
+
+function printArchivePdf(
+    selectedOnly = false
+){
+
+const selectedItems =
+    getSelectedArchiveItems();
+
+if(
+    selectedOnly &&
+    selectedItems.length === 0
+){
+    alert(
+        "Bitte zuerst mindestens einen Archiveintrag auswählen."
+    );
+
+    return false;
+}
+
+const selectedKeys =
+    new Set(
+        selectedItems.map(
+            item =>
+                `${item.type}:${item.id}`
+        )
+    );
+
+const archiveItems =
+    Array.from(
+        document.querySelectorAll(
+            "[data-archive-item]"
+        )
+    );
+
+if(selectedOnly){
+
+    archiveItems.forEach(item => {
+
+        const key =
+            `${item.dataset.archiveType}:${item.dataset.archiveId}`;
+
+        item.classList.toggle(
+            "archive-print-hidden",
+            !selectedKeys.has(key)
+        );
+    });
+}
+
+document.body.classList.add(
+    "archive-print-mode"
+);
+
+let cleanupFinished = false;
+
+const cleanup = () => {
+
+    if(cleanupFinished){
+        return;
+    }
+
+    cleanupFinished = true;
+
+    document.body.classList.remove(
+        "archive-print-mode"
+    );
+
+    archiveItems.forEach(item => {
+        item.classList.remove(
+            "archive-print-hidden"
+        );
+    });
+};
+
+window.addEventListener(
+    "afterprint",
+    cleanup,
+    {
+        once: true
+    }
+);
+
+window.print();
+
+/*
+ * Ersatz, falls der Browser kein
+ * afterprint-Ereignis auslöst.
+ */
+window.setTimeout(
+    cleanup,
+    1500
+);
+
+return true;
+}
+
+function askArchivePdfBeforeDelete(
+    selectedOnly
+){
+
+const answer = prompt(
+    "Archiv vor dem endgültigen Löschen als PDF sichern?\n\n" +
+    "1 = PDF speichern\n" +
+    "2 = Ohne PDF fortfahren\n\n" +
+    "Abbrechen = Nichts löschen",
+    "1"
+);
+
+if(answer === null){
+    return false;
+}
+
+const choice =
+    answer.trim();
+
+if(choice === "1"){
+
+    const printed =
+        printArchivePdf(
+            selectedOnly
+        );
+
+    if(!printed){
+        return false;
+    }
+
+}else if(choice !== "2"){
+
+    alert(
+        "Bitte 1 oder 2 eingeben."
+    );
+
+    return false;
+}
+
+return true;
+}
+
+async function deleteSelectedArchiveItems(){
+
+const items =
+    getSelectedArchiveItems();
+
+if(items.length === 0){
+
+    alert(
+        "Bitte zuerst Archiveinträge auswählen."
+    );
+
+    return;
+}
+
+if(
+    !askArchivePdfBeforeDelete(true)
+){
+    return;
+}
+
+if(
+    !confirm(
+        `${items.length} ausgewählte Archiveinträge endgültig löschen?\n\n` +
+        "Diese Aktion kann nur über „Rückgängig“ wiederhergestellt werden."
+    )
+){
+    return;
+}
+
+const result = await apiPost(
+    "/archive-delete-selected",
+    {
+        adminUsername: currentUser,
+        items
+    }
+);
+
+alert(result);
+
+if(
+    result.includes("gelöscht")
+){
+    await loadPage("archiv");
+}
+}
+
+async function deleteAllArchiveItems(){
+
+const archiveItems =
+    document.querySelectorAll(
+        "[data-archive-item]"
+    );
+
+if(archiveItems.length === 0){
+
+    alert(
+        "Das Archiv ist bereits leer."
+    );
+
+    return;
+}
+
+if(
+    !askArchivePdfBeforeDelete(false)
+){
+    return;
+}
+
+const securityText = prompt(
+    "ACHTUNG: Das vollständige Archiv wird endgültig gelöscht.\n\n" +
+    "Zum Bestätigen bitte exakt eingeben:\n\n" +
+    "ARCHIV LÖSCHEN"
+);
+
+if(
+    securityText !==
+    "ARCHIV LÖSCHEN"
+){
+
+    alert(
+        "Löschen wurde abgebrochen."
+    );
+
+    return;
+}
+
+const result = await apiPost(
+    "/archive-delete-all",
+    {
+        adminUsername: currentUser
+    }
+);
+
+alert(result);
+
+if(
+    result.includes("gelöscht")
+){
+    await loadPage("archiv");
+}
+}
+
+async function undoLastArchiveDelete(){
+
+if(
+    !confirm(
+        "Die zuletzt durchgeführte Archivlöschung rückgängig machen?"
+    )
+){
+    return;
+}
+
+const result = await apiPost(
+    "/archive-undo-last",
+    {
+        adminUsername: currentUser
+    }
+);
+
+alert(result);
+
+if(
+    result.includes("wiederhergestellt")
+){
+    await loadPage("archiv");
+}
 }
 
 /* =====================================================
