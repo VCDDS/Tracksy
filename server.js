@@ -26,24 +26,23 @@ const mailTransporter = nodemailer.createTransport({
     }
 });
 
-async function sendTracksyNotification(subject, text){
-    try{
-        console.log("📧 E-Mail-Versand wird gestartet...");
-        console.log("Empfänger:", process.env.PROJECT_REQUEST_EMAIL);
-        console.log("Betreff:", subject);
+function sendTracksyNotification(subject, text){
+    console.log("📧 E-Mail-Versand wird gestartet...");
+    console.log("Empfänger:", process.env.PROJECT_REQUEST_EMAIL);
+    console.log("Betreff:", subject);
 
-        const info = await mailTransporter.sendMail({
-            from: `"Tracksy Benachrichtigungen" <${process.env.SMTP_USER}>`,
-            to: process.env.PROJECT_REQUEST_EMAIL,
-            subject,
-            text
-        });
-
+    mailTransporter.sendMail({
+        from: `"Tracksy Benachrichtigungen" <${process.env.SMTP_USER}>`,
+        to: process.env.PROJECT_REQUEST_EMAIL,
+        subject,
+        text
+    })
+    .then(info => {
         console.log("✅ E-Mail erfolgreich versendet:", info.messageId);
-    }catch(error){
-        console.error("❌ Tracksy E-Mail fehlgeschlagen:");
-        console.error(error);
-    }
+    })
+    .catch(error => {
+        console.error("❌ Tracksy E-Mail fehlgeschlagen:", error);
+    });
 }
 
 const supabase = createClient(
@@ -3602,7 +3601,7 @@ app.post("/send-message", async (req, res) => {
             [from, to, text, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })]
         );
         
-        await sendTracksyNotification(
+        sendTracksyNotification(
             `Tracksy – Neue Nachricht von ${from}`,
             `Neue Nachricht in Tracksy
         
@@ -3978,7 +3977,7 @@ app.post("/create-suggestion", async (req, res) => {
             ]
         );
 
-        await sendTracksyNotification(
+        sendTracksyNotification(
             `Tracksy – Neuer Vorschlag: ${title.trim()}`,
             `Neuer Vorschlag in Tracksy
         
@@ -4197,7 +4196,7 @@ app.post("/create-ticket", async (req, res) => {
             ]
         );
 
-        await sendTracksyNotification(
+        sendTracksyNotification(
             `Tracksy – Neues Ticket: ${title.trim()}`,
             `Neues Ticket eingegangen
         
@@ -4303,7 +4302,7 @@ app.post("/create-tracksy-ticket", async (req, res) => {
             ]
         );
 
-        await sendTracksyNotification(
+        sendTracksyNotification(
             `Tracksy – Neues Ticket: ${title.trim()}`,
             `Neues internes Ticket
         
@@ -4722,7 +4721,7 @@ app.post("/create-service-request", async (req, res) => {
             cancellation: "Kündigung"
         }[requestType] || requestType;
         
-        await sendTracksyNotification(
+        sendTracksyNotification(
             `Tracksy – Neue ${requestTypeName}-Anfrage`,
             `Neue Serviceanfrage
         
