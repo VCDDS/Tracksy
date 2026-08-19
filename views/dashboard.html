@@ -292,35 +292,99 @@ if(isCustomer){
     }
 }
 
-async function apiGet(url){
+const tracksyApiCache = new Map();
 
-const start = performance.now();
+const TRACKSY_API_CACHE_TIME =
+    5000;
 
-const res = await fetch(url);
+async function apiGet(
+    url,
+    options = {}
+){
 
-const duration = Math.round(
-    performance.now() - start
-);
+    const {
+        force = false,
+        cacheMs =
+            TRACKSY_API_CACHE_TIME
+    } = options;
 
-console.log(
-    `[Tracksy] ${url}: ${duration} ms`
-);
+    const now = Date.now();
 
-if(!res.ok){
-    throw new Error(
-        `${url} konnte nicht geladen werden`
+    const cached =
+        tracksyApiCache.get(url);
+
+    if(
+        !force &&
+        cached &&
+        now - cached.time < cacheMs
+    ){
+
+        return cached.data;
+    }
+
+    const start =
+        performance.now();
+
+    const res =
+        await fetch(url);
+
+    const duration =
+        Math.round(
+            performance.now() -
+            start
+        );
+
+    console.log(
+        `[Tracksy] ${url}: ${duration} ms`
     );
+
+    if(!res.ok){
+
+        throw new Error(
+            `${url} konnte nicht geladen werden`
+        );
+    }
+
+    const data =
+        await res.json();
+
+    tracksyApiCache.set(
+        url,
+        {
+            time: Date.now(),
+            data
+        }
+    );
+
+    return data;
 }
 
-return await res.json();
-}
+async function apiPost(
+    url,
+    data
+){
 
-async function apiPost(url, data){
-    let res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-    });
+    const res =
+        await fetch(
+            url,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify(data)
+            }
+        );
+
+    /*
+     * Nach einer Änderung alte
+     * GET-Daten verwerfen.
+     */
+    tracksyApiCache.clear();
 
     return await res.text();
 }
@@ -1370,8 +1434,18 @@ return;
 
 if(page === "archiv"){
 
-const tickets = await apiGet("/tickets");
-const management = await apiGet("/service-management");
+const [
+    tickets,
+    management
+] = await Promise.all([
+
+    apiGet("/tickets"),
+
+    apiGet(
+        "/service-management"
+    )
+
+]);
 
 const deletedTickets = tickets.filter(ticket =>
     (ticket.status || "")
@@ -7375,11 +7449,6 @@ box.innerHTML = users
 
 setInterval(loadOnlineUsers, 30000);
 
-setInterval(checkNewSuggestions, 60000);
-setInterval(checkNewMessages, 60000);
-setInterval(checkNewDocuments, 60000);
-setInterval(checkNewProjects, 60000);
-
 async function createTracksyTicket(){
 
 let titleInput =
@@ -7638,18 +7707,50 @@ if(badge){
 }
 }
 
-setTimeout(() => {
-    checkNewSuggestions();
-    checkNewMessages();
-    checkNewDocuments();
-    checkNewProjects();
-}, 2000);
+let tracksyBadgeRefreshRunning =
+    false;
 
-setInterval(checkNewSuggestions, 10000);
-setInterval(checkNewMessages, 10000);
-setInterval(checkNewDocuments, 10000);
-setInterval(checkNewProjects, 10000);
+async function refreshTracksyBadges(){
 
+    /*
+     * Im Hintergrund keine unnötigen
+     * Serveranfragen durchführen.
+     */
+    if(
+        document.hidden ||
+        tracksyBadgeRefreshRunning
+    ){
+        return;
+    }
+
+    tracksyBadgeRefreshRunning =
+        true;
+
+    try{
+
+        await Promise.allSettled([
+            checkNewSuggestions(),
+            checkNewMessages(),
+            checkNewDocuments(),
+            checkNewProjects()
+        ]);
+
+    }finally{
+
+        tracksyBadgeRefreshRunning =
+            false;
+    }
+}
+
+setTimeout(
+    refreshTracksyBadges,
+    1500
+);
+
+setInterval(
+    refreshTracksyBadges,
+    30000
+);
 
 
 /* =====================================================
@@ -7675,9 +7776,31 @@ async function showServiceTariffs(){
 
 currentPage = "serviceTariffs";
 
-const management = await apiGet("/service-management");
-servicePackages = await apiGet("/service-packages");
-serviceAddons = await apiGet("/service-addons");
+const [
+    management,
+    loadedServicePackages,
+    loadedServiceAddons
+] = await Promise.all([
+
+    apiGet(
+        "/service-management"
+    ),
+
+    apiGet(
+        "/service-packages"
+    ),
+
+    apiGet(
+        "/service-addons"
+    )
+
+]);
+
+servicePackages =
+    loadedServicePackages;
+
+serviceAddons =
+    loadedServiceAddons;
 
 const activeServiceTariffs =
     management.tariffs.filter(service => {
