@@ -1190,6 +1190,11 @@ await pool.query(`
             updated_at TEXT DEFAULT ''
         )
     `);
+
+    await pool.query(`
+        ALTER TABLE service_requests
+        ADD COLUMN IF NOT EXISTS customer_hidden BOOLEAN NOT NULL DEFAULT false
+    `);
     
     await pool.query(`
         CREATE TABLE IF NOT EXISTS service_history (
@@ -4378,10 +4383,46 @@ app.get("/service-status/:project", async (req, res) => {
         const pending = await pool.query(`
             SELECT *
             FROM service_requests
+        
             WHERE project = $1
+            AND request_type IN (
+                'tariff',
+                'cancellation'
+            )
             AND status = 'Offen'
+        
             ORDER BY id DESC
             LIMIT 1
+        `,[project]);
+        
+        const requestHistory = await pool.query(`
+            SELECT
+                id,
+                request_type,
+                title,
+                description,
+                tariff,
+                billing_cycle,
+                price_monthly,
+                price_yearly,
+                price_once,
+                status,
+                created_at,
+                updated_at
+        
+            FROM service_requests
+        
+            WHERE project = $1
+            AND request_type IN (
+                'tariff',
+                'addon'
+            )
+            AND COALESCE(
+                customer_hidden,
+                false
+            ) = false
+        
+            ORDER BY id DESC
         `,[project]);
 
         res.json({
@@ -4412,9 +4453,12 @@ app.get("/service-status/:project", async (req, res) => {
             }),
         
             pending_request:
-                pending.rows.length
-                    ? pending.rows[0]
-                    : null
+    pending.rows.length
+        ? pending.rows[0]
+        : null,
+
+request_history:
+    requestHistory.rows
         
         });
 
@@ -4443,12 +4487,71 @@ app.get("/service-status/:project", async (req, res) => {
             open_amount: 0,
             payment_status: "Beglichen",
         
-            pending_request: null
+            pending_request: null,
+request_history: []
         
         });
 
     }
 
+});
+
+app.post("/hide-service-request", async (req, res) => {
+
+    try{
+
+        const {
+            id,
+            project
+        } = req.body;
+
+        if(!id || !project){
+
+            return res
+                .status(400)
+                .send("Daten fehlen");
+        }
+
+        const result = await pool.query(`
+            UPDATE service_requests
+
+            SET customer_hidden = true
+
+            WHERE id = $1
+            AND project = $2
+            AND request_type IN (
+                'tariff',
+                'addon'
+            )
+
+            RETURNING id
+        `,[
+            id,
+            project
+        ]);
+
+        if(result.rows.length === 0){
+
+            return res
+                .status(404)
+                .send(
+                    "Anfrage nicht gefunden"
+                );
+        }
+
+        res.send("Meldung gelöscht");
+
+    }catch(error){
+
+        console.error(
+            "Anfragemeldung löschen fehlgeschlagen:",
+            error
+        );
+
+        res.status(500).send(
+            "Meldung konnte nicht gelöscht werden"
+        );
+    }
 });
 
 /* Anfrage von verbundenen Webseiten */
