@@ -4700,24 +4700,6 @@ app.post("/create-service-request", async (req, res) => {
             addon: "Zusatzleistung",
             cancellation: "Kündigung"
         }[requestType] || requestType;
-        
-        await sendTracksyNotification(
-            `Tracksy – Neue ${requestTypeName}-Anfrage`,
-            `Neue Serviceanfrage
-        
-        Projekt: ${project}
-        Art: ${requestTypeName}
-        Leistung: ${requestTitle || "Nicht angegeben"}
-        Tarif: ${requestTariff || "Nicht angegeben"}
-        Abrechnung: ${billingCycle || "Nicht angegeben"}
-        
-        Monatlich: ${requestPriceMonthly.toFixed(2)} €
-        Jährlich: ${requestPriceYearly.toFixed(2)} €
-        Einmalig: ${requestPriceOnce.toFixed(2)} €
-        
-        Beschreibung:
-        ${requestDescription || "Keine Beschreibung"}`
-        );
 
         res.send("Anfrage erfolgreich gesendet");
 
