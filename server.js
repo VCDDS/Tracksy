@@ -28,17 +28,21 @@ const mailTransporter = nodemailer.createTransport({
 
 async function sendTracksyNotification(subject, text){
     try{
-        await mailTransporter.sendMail({
+        console.log("📧 E-Mail-Versand wird gestartet...");
+        console.log("Empfänger:", process.env.PROJECT_REQUEST_EMAIL);
+        console.log("Betreff:", subject);
+
+        const info = await mailTransporter.sendMail({
             from: `"Tracksy Benachrichtigungen" <${process.env.SMTP_USER}>`,
             to: process.env.PROJECT_REQUEST_EMAIL,
             subject,
             text
         });
+
+        console.log("✅ E-Mail erfolgreich versendet:", info.messageId);
     }catch(error){
-        console.error(
-            "Tracksy E-Mail-Benachrichtigung fehlgeschlagen:",
-            error
-        );
+        console.error("❌ Tracksy E-Mail fehlgeschlagen:");
+        console.error(error);
     }
 }
 
