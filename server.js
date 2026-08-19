@@ -44,12 +44,15 @@ function sendTracksyNotification(subject, text){
         })
     })
     .then(async response => {
-        const result = await response.json();
-
-        if(result.success){
-            console.log("✅ Web3Forms E-Mail erfolgreich versendet");
+        const rawResponse = await response.text();
+    
+        console.log("📨 Web3Forms HTTP-Status:", response.status);
+        console.log("📨 Web3Forms Antwort:", rawResponse);
+    
+        if(response.ok){
+            console.log("✅ Web3Forms Anfrage angenommen");
         }else{
-            console.error("❌ Web3Forms Fehler:", result);
+            console.error("❌ Web3Forms Fehler");
         }
     })
     .catch(error => {
