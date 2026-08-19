@@ -9187,24 +9187,102 @@ ${(userRole === "admin" || userRole === "user") ? `
                         </div>
 
                         ${
-                            projectHistory.length === 0
-                            ? `
-                                <p class="service-section-empty">
-                                    Noch kein Verlauf vorhanden.
-                                </p>
-                            `
-                            : projectHistory.map(entry => `
-                                <div class="service-history-entry">
+    projectHistory.length === 0
+    ? `
+        <p class="service-section-empty">
+            Noch kein Verlauf vorhanden.
+        </p>
+    `
+    : `
+        <div class="service-history-timeline">
 
-                                    <small>${entry.created_at}</small>
+            ${
+                projectHistory.map(entry => {
 
-                                    <strong>${entry.action}</strong>
+                    const action =
+                        String(
+                            entry.action || ""
+                        ).toLowerCase();
 
-                                    <p>${entry.details || "-"}</p>
+                    let icon = "📌";
+                    let typeClass = "default";
+
+                    if(action.includes("angefragt")){
+                        icon = "📨";
+                        typeClass = "requested";
+                    }
+
+                    if(action.includes("angenommen")){
+                        icon = "✅";
+                        typeClass = "accepted";
+                    }
+
+                    if(action.includes("abgelehnt")){
+                        icon = "❌";
+                        typeClass = "rejected";
+                    }
+
+                    if(action.includes("erledigt")){
+                        icon = "✔️";
+                        typeClass = "done";
+                    }
+
+                    if(action.includes("gekündigt")){
+                        icon = "🚫";
+                        typeClass = "cancelled";
+                    }
+
+                    if(
+                        action.includes("betrag") ||
+                        action.includes("zahlung")
+                    ){
+                        icon = "💳";
+                        typeClass = "payment";
+                    }
+
+                    if(action.includes("status")){
+                        icon = "🔄";
+                        typeClass = "status";
+                    }
+
+                    return `
+                        <div
+                            class="service-history-item ${typeClass}"
+                        >
+
+                            <div class="service-history-icon">
+                                ${icon}
+                            </div>
+
+                            <div class="service-history-content">
+
+                                <div class="service-history-item-head">
+
+                                    <strong>
+                                        ${entry.action || "-"}
+                                    </strong>
+
+                                    <small>
+                                        ${entry.created_at || "-"}
+                                    </small>
 
                                 </div>
-                            `).join("")
-                        }
+
+                                <p>
+                                    ${entry.details || "-"}
+                                </p>
+
+                            </div>
+
+                        </div>
+                    `;
+
+                }).join("")
+            }
+
+        </div>
+    `
+}
 
                     </section>
 

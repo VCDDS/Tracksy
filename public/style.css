@@ -6182,3 +6182,166 @@ h4 {
         color: #000 !important;
     }
 }
+/* =====================================================
+   SERVICE HISTORY TIMELINE
+===================================================== */
+
+.service-history-timeline{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    padding:5px 0;
+}
+
+.service-history-item{
+    position:relative;
+    display:grid;
+    grid-template-columns:46px 1fr;
+    gap:14px;
+    min-height:80px;
+}
+
+.service-history-item:not(:last-child)::before{
+    content:"";
+    position:absolute;
+    left:22px;
+    top:42px;
+    bottom:-4px;
+    width:2px;
+    background:rgba(255,255,255,0.10);
+}
+
+.service-history-icon{
+    position:relative;
+    z-index:2;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    width:44px;
+    height:44px;
+
+    border-radius:50%;
+
+    font-size:18px;
+
+    background:#111827;
+    border:2px solid #6366f1;
+}
+
+.service-history-content{
+    margin-bottom:14px;
+    padding:14px 16px;
+
+    border-radius:14px;
+
+    background:rgba(255,255,255,0.035);
+    border:1px solid rgba(255,255,255,0.07);
+}
+
+.service-history-item-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:15px;
+}
+
+.service-history-item-head strong{
+    color:#fff;
+    font-size:15px;
+}
+
+.service-history-item-head small{
+    flex-shrink:0;
+    color:#7f8da4;
+    font-size:12px;
+}
+
+.service-history-content p{
+    margin:7px 0 0;
+    color:#aeb8ca;
+    line-height:1.5;
+}
+
+
+/* ANGEFRAGT */
+
+.service-history-item.requested
+.service-history-icon{
+    border-color:#f59e0b;
+}
+
+
+/* ANGENOMMEN */
+
+.service-history-item.accepted
+.service-history-icon{
+    border-color:#22c55e;
+}
+
+
+/* ABGELEHNT */
+
+.service-history-item.rejected
+.service-history-icon{
+    border-color:#ef4444;
+}
+
+
+/* ERLEDIGT */
+
+.service-history-item.done
+.service-history-icon{
+    border-color:#3b82f6;
+}
+
+
+/* GEKÜNDIGT */
+
+.service-history-item.cancelled
+.service-history-icon{
+    border-color:#ef4444;
+}
+
+
+/* ZAHLUNG */
+
+.service-history-item.payment
+.service-history-icon{
+    border-color:#a855f7;
+}
+
+
+/* STATUS */
+
+.service-history-item.status
+.service-history-icon{
+    border-color:#06b6d4;
+}
+
+
+@media(max-width:600px){
+
+    .service-history-item{
+        grid-template-columns:40px 1fr;
+        gap:10px;
+    }
+
+    .service-history-icon{
+        width:38px;
+        height:38px;
+        font-size:16px;
+    }
+
+    .service-history-item:not(:last-child)::before{
+        left:19px;
+        top:38px;
+    }
+
+    .service-history-item-head{
+        flex-direction:column;
+        gap:4px;
+    }
+}

@@ -4798,6 +4798,51 @@ app.post("/create-service-request", async (req, res) => {
             project
         ]);
 
+        let historyAction = "";
+        let historyDetails = "";
+        
+        if(requestType === "tariff"){
+        
+            historyAction =
+                "Abo angefragt";
+        
+            historyDetails =
+                `${requestTitle} – ${billingCycle || "Keine Abrechnung"}`;
+        }
+        
+        if(requestType === "addon"){
+        
+            historyAction =
+                "Zusatzleistung angefragt";
+        
+            historyDetails =
+                `${requestTitle} – ${requestPriceOnce.toFixed(2)} €`;
+        }
+        
+        if(historyAction){
+        
+            await pool.query(`
+                INSERT INTO service_history (
+                    project,
+                    action,
+                    details,
+                    created_at
+                )
+        
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4
+                )
+            `,[
+                project,
+                historyAction,
+                historyDetails,
+                now
+            ]);
+        }
+
         const requestTypeName = {
             tariff: "Tarif",
             addon: "Zusatzleistung",
