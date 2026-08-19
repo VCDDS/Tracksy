@@ -8701,6 +8701,138 @@ ${
     `
 }
 
+<section class="service-global-history">
+
+    <div class="service-history-head">
+
+        <div>
+            <small>Serviceverwaltung</small>
+            <h3>📜 Verlauf</h3>
+
+            <p>
+                Verlauf von Abos und Zusatzleistungen.
+            </p>
+        </div>
+
+    </div>
+
+    ${
+        !Array.isArray(management.history) ||
+        management.history.length === 0
+        ? `
+            <p class="service-section-empty">
+                Noch kein Verlauf vorhanden.
+            </p>
+        `
+        : `
+            <div class="service-history-timeline">
+
+                ${
+                    management.history.map(entry => {
+
+                        const action =
+                            String(
+                                entry.action || ""
+                            ).toLowerCase();
+
+                        let icon = "📌";
+                        let typeClass = "default";
+
+                        if(action.includes("angefragt")){
+                            icon = "📨";
+                            typeClass = "requested";
+                        }
+
+                        if(action.includes("angenommen")){
+                            icon = "✅";
+                            typeClass = "accepted";
+                        }
+
+                        if(action.includes("abgelehnt")){
+                            icon = "❌";
+                            typeClass = "rejected";
+                        }
+
+                        if(action.includes("erledigt")){
+                            icon = "✔️";
+                            typeClass = "done";
+                        }
+
+                        if(action.includes("gekündigt")){
+                            icon = "🚫";
+                            typeClass = "cancelled";
+                        }
+
+                        if(
+                            action.includes("betrag") ||
+                            action.includes("zahlung")
+                        ){
+                            icon = "💳";
+                            typeClass = "payment";
+                        }
+
+                        if(action.includes("status")){
+                            icon = "🔄";
+                            typeClass = "status";
+                        }
+
+                        return `
+                            <article
+                                class="service-history-item ${typeClass}"
+                            >
+
+                                <div class="service-history-icon">
+                                    ${icon}
+                                </div>
+
+                                <div class="service-history-content">
+
+                                    <div class="service-history-item-head">
+
+                                        <div>
+
+                                            <small>
+                                                📁 ${escapeServiceHtml(
+                                                    entry.project || "-"
+                                                )}
+                                            </small>
+
+                                            <strong>
+                                                ${escapeServiceHtml(
+                                                    entry.action || "-"
+                                                )}
+                                            </strong>
+
+                                        </div>
+
+                                        <small>
+                                            ${escapeServiceHtml(
+                                                entry.created_at || "-"
+                                            )}
+                                        </small>
+
+                                    </div>
+
+                                    <p>
+                                        ${escapeServiceHtml(
+                                            entry.details || "-"
+                                        )}
+                                    </p>
+
+                                </div>
+
+                            </article>
+                        `;
+
+                    }).join("")
+                }
+
+            </div>
+        `
+    }
+
+</section>
+
     ${
         activeServiceTariffs.length === 0
         ? ""
@@ -8727,10 +8859,6 @@ ${
                     request.status === "Offen" ||
                     request.status === "Angenommen"
                 )
-            );
-
-            const projectHistory = management.history.filter(entry =>
-                entry.project === service.project
             );
 
             const activePackage =
@@ -9166,123 +9294,6 @@ ${(userRole === "admin" || userRole === "user") ? `
                         >
                             💾 Zahlung speichern
                         </button>
-
-                    </section>
-
-                    <section class="service-section">
-
-                        <div class="service-history-head">
-
-                            <h3>📜 History</h3>
-
-                            <button
-                                class="danger-btn"
-                                onclick="clearServiceHistory(
-                                    '${service.project}'
-                                )"
-                            >
-                                🗑️ Alles löschen
-                            </button>
-
-                        </div>
-
-                        ${
-    projectHistory.length === 0
-    ? `
-        <p class="service-section-empty">
-            Noch kein Verlauf vorhanden.
-        </p>
-    `
-    : `
-        <div class="service-history-timeline">
-
-            ${
-                projectHistory.map(entry => {
-
-                    const action =
-                        String(
-                            entry.action || ""
-                        ).toLowerCase();
-
-                    let icon = "📌";
-                    let typeClass = "default";
-
-                    if(action.includes("angefragt")){
-                        icon = "📨";
-                        typeClass = "requested";
-                    }
-
-                    if(action.includes("angenommen")){
-                        icon = "✅";
-                        typeClass = "accepted";
-                    }
-
-                    if(action.includes("abgelehnt")){
-                        icon = "❌";
-                        typeClass = "rejected";
-                    }
-
-                    if(action.includes("erledigt")){
-                        icon = "✔️";
-                        typeClass = "done";
-                    }
-
-                    if(action.includes("gekündigt")){
-                        icon = "🚫";
-                        typeClass = "cancelled";
-                    }
-
-                    if(
-                        action.includes("betrag") ||
-                        action.includes("zahlung")
-                    ){
-                        icon = "💳";
-                        typeClass = "payment";
-                    }
-
-                    if(action.includes("status")){
-                        icon = "🔄";
-                        typeClass = "status";
-                    }
-
-                    return `
-                        <div
-                            class="service-history-item ${typeClass}"
-                        >
-
-                            <div class="service-history-icon">
-                                ${icon}
-                            </div>
-
-                            <div class="service-history-content">
-
-                                <div class="service-history-item-head">
-
-                                    <strong>
-                                        ${entry.action || "-"}
-                                    </strong>
-
-                                    <small>
-                                        ${entry.created_at || "-"}
-                                    </small>
-
-                                </div>
-
-                                <p>
-                                    ${entry.details || "-"}
-                                </p>
-
-                            </div>
-
-                        </div>
-                    `;
-
-                }).join("")
-            }
-
-        </div>
-    `
-}
 
                     </section>
 
