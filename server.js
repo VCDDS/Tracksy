@@ -27,21 +27,33 @@ const mailTransporter = nodemailer.createTransport({
 });
 
 function sendTracksyNotification(subject, text){
-    console.log("📧 E-Mail-Versand wird gestartet...");
-    console.log("Empfänger:", process.env.PROJECT_REQUEST_EMAIL);
+    console.log("📧 Web3Forms-Benachrichtigung wird gestartet...");
     console.log("Betreff:", subject);
 
-    mailTransporter.sendMail({
-        from: `"Tracksy Benachrichtigungen" <${process.env.SMTP_USER}>`,
-        to: process.env.PROJECT_REQUEST_EMAIL,
-        subject,
-        text
+    fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
+        body: JSON.stringify({
+            access_key: process.env.WEB3FORMS_ACCESS_KEY,
+            subject: subject,
+            from_name: "Tracksy",
+            message: text
+        })
     })
-    .then(info => {
-        console.log("✅ E-Mail erfolgreich versendet:", info.messageId);
+    .then(async response => {
+        const result = await response.json();
+
+        if(result.success){
+            console.log("✅ Web3Forms E-Mail erfolgreich versendet");
+        }else{
+            console.error("❌ Web3Forms Fehler:", result);
+        }
     })
     .catch(error => {
-        console.error("❌ Tracksy E-Mail fehlgeschlagen:", error);
+        console.error("❌ Web3Forms Verbindung fehlgeschlagen:", error);
     });
 }
 
@@ -3601,7 +3613,7 @@ app.post("/send-message", async (req, res) => {
             [from, to, text, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })]
         );
         
-        sendTracksyNotification(
+        await sendTracksyNotification(
             `Tracksy – Neue Nachricht von ${from}`,
             `Neue Nachricht in Tracksy
         
@@ -3977,7 +3989,7 @@ app.post("/create-suggestion", async (req, res) => {
             ]
         );
 
-        sendTracksyNotification(
+        await sendTracksyNotification(
             `Tracksy – Neuer Vorschlag: ${title.trim()}`,
             `Neuer Vorschlag in Tracksy
         
@@ -4196,7 +4208,7 @@ app.post("/create-ticket", async (req, res) => {
             ]
         );
 
-        sendTracksyNotification(
+        await sendTracksyNotification(
             `Tracksy – Neues Ticket: ${title.trim()}`,
             `Neues Ticket eingegangen
         
@@ -4302,7 +4314,7 @@ app.post("/create-tracksy-ticket", async (req, res) => {
             ]
         );
 
-        sendTracksyNotification(
+        await sendTracksyNotification(
             `Tracksy – Neues Ticket: ${title.trim()}`,
             `Neues internes Ticket
         
@@ -4721,7 +4733,7 @@ app.post("/create-service-request", async (req, res) => {
             cancellation: "Kündigung"
         }[requestType] || requestType;
         
-        sendTracksyNotification(
+        await sendTracksyNotification(
             `Tracksy – Neue ${requestTypeName}-Anfrage`,
             `Neue Serviceanfrage
         
