@@ -7164,21 +7164,44 @@ loadPage("kalender");
 
 async function createSuggestion(){
 
-let project = document.getElementById("suggestionProject").value;
-let title = document.getElementById("suggestionTitle").value;
-let description = document.getElementById("suggestionDescription").value;
+let project =
+    document.getElementById("suggestionProject").value;
 
-if(!title.trim()){
+let title =
+    document.getElementById("suggestionTitle").value.trim();
+
+let description =
+    document.getElementById("suggestionDescription").value.trim();
+
+if(!title){
     alert("Titel fehlt");
     return;
 }
 
-let msg = await apiPost("/create-suggestion", {
-    username: currentUser,
-    project,
-    title,
-    description
-});
+let msg = await apiPost(
+    "/create-suggestion",
+    {
+        username: currentUser,
+        project,
+        title,
+        description
+    }
+);
+
+if(msg === "Vorschlag gespeichert"){
+
+    await sendWeb3FormsNotification(
+        `Tracksy – Neuer Vorschlag: ${title}`,
+        `Neuer Vorschlag in Tracksy
+
+Von: ${currentUser}
+Projekt: ${project || "Nicht angegeben"}
+Titel: ${title}
+
+Beschreibung:
+${description || "Keine Beschreibung"}`
+    );
+}
 
 alert(msg);
 
@@ -7359,36 +7382,85 @@ setInterval(checkNewProjects, 60000);
 
 async function createTracksyTicket(){
 
-let titleInput = document.getElementById("tracksyTicketTitle");
-let messageInput = document.getElementById("tracksyTicketMessage");
-let priorityInput = document.getElementById("tracksyTicketPriority");
+let titleInput =
+    document.getElementById("tracksyTicketTitle");
 
-if(!titleInput || !messageInput || !priorityInput){
+let messageInput =
+    document.getElementById("tracksyTicketMessage");
+
+let priorityInput =
+    document.getElementById("tracksyTicketPriority");
+
+if(
+    !titleInput ||
+    !messageInput ||
+    !priorityInput
+){
     return;
 }
 
-let title = titleInput.value.trim();
-let message = messageInput.value.trim();
-let priority = priorityInput.value;
+let title =
+    titleInput.value.trim();
+
+let message =
+    messageInput.value.trim();
+
+let priority =
+    priorityInput.value;
 
 if(!title || !message){
-    alert("Titel und Beschreibung ausfüllen");
+    alert(
+        "Titel und Beschreibung ausfüllen"
+    );
     return;
 }
 
-let result = await apiPost("/create-tracksy-ticket", {
-    username: currentUser,
-    userRole,
-    title,
-    message,
-    priority
-});
-
-alert(result);
+let result = await apiPost(
+    "/create-tracksy-ticket",
+    {
+        username: currentUser,
+        userRole,
+        title,
+        message,
+        priority
+    }
+);
 
 if(result === "Tracksy-Ticket erstellt"){
+
+    const priorityNames = {
+        niedrig: "Niedrig",
+        normal: "Normal",
+        hoch: "Hoch"
+    };
+
+    const finalPriority =
+        priorityNames[
+            String(priority).toLowerCase()
+        ] || priority;
+
+    sendWeb3FormsNotification(
+        `Tracksy – Neues Ticket: ${title}`,
+        `Neues internes Ticket
+
+Von: ${currentUser}
+Priorität: ${finalPriority}
+
+Titel:
+${title}
+
+Nachricht:
+${message}`
+    );
+
+    alert(result);
+
     loadPage("tickets");
+
+    return;
 }
+
+alert(result);
 }
 
 async function changeTicketStatus(id, status){

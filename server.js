@@ -3981,18 +3981,6 @@ app.post("/create-suggestion", async (req, res) => {
             ]
         );
 
-        await sendTracksyNotification(
-            `Tracksy – Neuer Vorschlag: ${title.trim()}`,
-            `Neuer Vorschlag in Tracksy
-        
-        Von: ${username}
-        Projekt: ${project || "Nicht angegeben"}
-        Titel: ${title.trim()}
-        
-        Beschreibung:
-        ${description || "Keine Beschreibung"}`
-        );
-
         res.send("Vorschlag gespeichert");
 
     }catch(err){
@@ -4304,18 +4292,6 @@ app.post("/create-tracksy-ticket", async (req, res) => {
                     timeZone: "Europe/Berlin"
                 })
             ]
-        );
-
-        await sendTracksyNotification(
-            `Tracksy – Neues Ticket: ${title.trim()}`,
-            `Neues internes Ticket
-        
-        Von: ${username}
-        Priorität: ${finalPriority}
-        Titel: ${title.trim()}
-        
-        Nachricht:
-        ${message.trim()}`
         );
 
         res.send("Tracksy-Ticket erstellt");
