@@ -26,6 +26,22 @@ const mailTransporter = nodemailer.createTransport({
     }
 });
 
+async function sendTracksyNotification(subject, text){
+    try{
+        await mailTransporter.sendMail({
+            from: `"Tracksy Benachrichtigungen" <${process.env.SMTP_USER}>`,
+            to: process.env.PROJECT_REQUEST_EMAIL,
+            subject,
+            text
+        });
+    }catch(error){
+        console.error(
+            "Tracksy E-Mail-Benachrichtigung fehlgeschlagen:",
+            error
+        );
+    }
+}
+
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
@@ -3581,7 +3597,18 @@ app.post("/send-message", async (req, res) => {
             "INSERT INTO messages (sender, receiver, text, date) VALUES ($1, $2, $3, $4)",
             [from, to, text, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })]
         );
-
+        
+        await sendTracksyNotification(
+            `Tracksy – Neue Nachricht von ${from}`,
+            `Neue Nachricht in Tracksy
+        
+        Von: ${from}
+        An: ${to}
+        
+        Nachricht:
+        ${text}`
+        );
+        
         res.send("Nachricht gesendet");
 
     }catch(err){
@@ -3947,6 +3974,18 @@ app.post("/create-suggestion", async (req, res) => {
             ]
         );
 
+        await sendTracksyNotification(
+            `Tracksy – Neuer Vorschlag: ${title.trim()}`,
+            `Neuer Vorschlag in Tracksy
+        
+        Von: ${username}
+        Projekt: ${project || "Nicht angegeben"}
+        Titel: ${title.trim()}
+        
+        Beschreibung:
+        ${description || "Keine Beschreibung"}`
+        );
+
         res.send("Vorschlag gespeichert");
 
     }catch(err){
@@ -4154,6 +4193,23 @@ app.post("/create-ticket", async (req, res) => {
             ]
         );
 
+        await sendTracksyNotification(
+            `Tracksy – Neues Ticket: ${title.trim()}`,
+            `Neues Ticket eingegangen
+        
+        Projekt: ${project}
+        Quelle: ${source || "Nicht angegeben"}
+        Kunde: ${customerName || "Nicht angegeben"}
+        E-Mail: ${customerEmail || "Nicht angegeben"}
+        Priorität: ${finalPriority}
+        
+        Titel:
+        ${title.trim()}
+        
+        Nachricht:
+        ${cleanMessage}`
+        );
+
         res.send("Ticket erstellt");
 
     } catch (err) {
@@ -4241,6 +4297,18 @@ app.post("/create-tracksy-ticket", async (req, res) => {
                     timeZone: "Europe/Berlin"
                 })
             ]
+        );
+
+        await sendTracksyNotification(
+            `Tracksy – Neues Ticket: ${title.trim()}`,
+            `Neues internes Ticket
+        
+        Von: ${username}
+        Priorität: ${finalPriority}
+        Titel: ${title.trim()}
+        
+        Nachricht:
+        ${message.trim()}`
         );
 
         res.send("Tracksy-Ticket erstellt");
@@ -4643,6 +4711,30 @@ app.post("/create-service-request", async (req, res) => {
         `,[
             project
         ]);
+
+        const requestTypeName = {
+            tariff: "Tarif",
+            addon: "Zusatzleistung",
+            cancellation: "Kündigung"
+        }[requestType] || requestType;
+        
+        await sendTracksyNotification(
+            `Tracksy – Neue ${requestTypeName}-Anfrage`,
+            `Neue Serviceanfrage
+        
+        Projekt: ${project}
+        Art: ${requestTypeName}
+        Leistung: ${requestTitle || "Nicht angegeben"}
+        Tarif: ${requestTariff || "Nicht angegeben"}
+        Abrechnung: ${billingCycle || "Nicht angegeben"}
+        
+        Monatlich: ${requestPriceMonthly.toFixed(2)} €
+        Jährlich: ${requestPriceYearly.toFixed(2)} €
+        Einmalig: ${requestPriceOnce.toFixed(2)} €
+        
+        Beschreibung:
+        ${requestDescription || "Keine Beschreibung"}`
+        );
 
         res.send("Anfrage erfolgreich gesendet");
 
