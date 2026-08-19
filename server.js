@@ -3616,17 +3616,6 @@ app.post("/send-message", async (req, res) => {
             [from, to, text, new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })]
         );
         
-        await sendTracksyNotification(
-            `Tracksy – Neue Nachricht von ${from}`,
-            `Neue Nachricht in Tracksy
-        
-        Von: ${from}
-        An: ${to}
-        
-        Nachricht:
-        ${text}`
-        );
-        
         res.send("Nachricht gesendet");
 
     }catch(err){

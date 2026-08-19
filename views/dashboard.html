@@ -153,6 +153,56 @@
 <script>
 const content = document.getElementById("content");
 
+const WEB3FORMS_ACCESS_KEY = "a427efd6-40bb-47ed-843f-c5905d69a0b4";
+
+async function sendWeb3FormsNotification(subject, message){
+
+    try{
+
+        const response = await fetch(
+            "https://api.web3forms.com/submit",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    access_key: WEB3FORMS_ACCESS_KEY,
+                    from_name: "Tracksy",
+                    subject: subject,
+                    message: message
+                })
+            }
+        );
+
+        const result = await response.json();
+
+        if(!response.ok || !result.success){
+            console.error(
+                "Web3Forms Fehler:",
+                result
+            );
+            return false;
+        }
+
+        console.log(
+            "✅ Tracksy E-Mail versendet"
+        );
+
+        return true;
+
+    }catch(error){
+
+        console.error(
+            "Web3Forms Verbindung fehlgeschlagen:",
+            error
+        );
+
+        return false;
+    }
+}
+
 let currentUser = localStorage.getItem("username") || "Gast";
 let servicePackages = [];
 let serviceAddons = [];
@@ -6528,22 +6578,46 @@ async function deleteUser(username){
 }
 
 async function sendMessage(){
-    let to = document.getElementById("msgTo").value;
-    let text = document.getElementById("msgText").value;
 
-    if(!to || !text){
-        alert("Empfänger und Nachricht ausfüllen");
-        return;
-    }
+let to =
+    document.getElementById("msgTo").value;
 
-    let msg = await apiPost("/send-message", {
+let text =
+    document.getElementById("msgText").value;
+
+if(!to || !text){
+    alert(
+        "Empfänger und Nachricht ausfüllen"
+    );
+    return;
+}
+
+let msg = await apiPost(
+    "/send-message",
+    {
         from: currentUser,
         to,
         text
-    });
+    }
+);
 
-    alert(msg);
-    loadPage("nachrichten");
+if(msg === "Nachricht gesendet"){
+
+    sendWeb3FormsNotification(
+        `Tracksy – Neue Nachricht von ${currentUser}`,
+        `Neue Nachricht in Tracksy
+
+Von: ${currentUser}
+An: ${to}
+
+Nachricht:
+${text}`
+    );
+}
+
+alert(msg);
+
+loadPage("nachrichten");
 }
 
 function replyToMessage(sender){
