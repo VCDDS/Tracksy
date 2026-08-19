@@ -8714,6 +8714,20 @@ ${
             </p>
         </div>
 
+        ${
+            Array.isArray(management.history) &&
+            management.history.length > 0
+            ? `
+                <button
+                    class="danger-btn"
+                    onclick="clearAllServiceHistory()"
+                >
+                    🗑️ Verlauf löschen
+                </button>
+            `
+            : ""
+        }
+
     </div>
 
     ${
@@ -9372,6 +9386,77 @@ showServiceTariffs();
 
 }
 
+async function clearAllServiceHistory(){
+
+if(
+    !confirm(
+        "Den kompletten Service-Verlauf wirklich löschen?\n\n" +
+        "Alle Einträge zu Abos und Zusatzleistungen werden entfernt."
+    )
+){
+    return;
+}
+
+try{
+
+    const management =
+        await apiGet(
+            "/service-management"
+        );
+
+    const projects = [
+        ...new Set(
+            (management.history || [])
+                .map(entry =>
+                    String(
+                        entry.project || ""
+                    ).trim()
+                )
+                .filter(Boolean)
+        )
+    ];
+
+    if(projects.length === 0){
+
+        alert(
+            "Kein Verlauf vorhanden."
+        );
+
+        return;
+    }
+
+    await Promise.all(
+
+        projects.map(project =>
+
+            apiPost(
+                "/clear-service-history",
+                {
+                    project
+                }
+            )
+
+        )
+    );
+
+    alert(
+        "Verlauf wurde gelöscht."
+    );
+
+    await showServiceTariffs();
+
+}catch(error){
+
+    console.error(
+        "Service-Verlauf löschen fehlgeschlagen:",
+        error
+    );
+
+    alert(
+        "Verlauf konnte nicht vollständig gelöscht werden."
+    );
+}
+}
 
 async function saveContractInformation(serviceId, project){
 
