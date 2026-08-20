@@ -1205,6 +1205,26 @@ await pool.query(`
             created_at TEXT NOT NULL
         )
     `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS service_payments (
+            id SERIAL PRIMARY KEY,
+            project TEXT NOT NULL,
+            due_date DATE NOT NULL,
+            paid_at DATE,
+            amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'Offen',
+            created_at TEXT NOT NULL,
+            updated_at TEXT DEFAULT '',
+            CHECK (amount >= 0),
+            CHECK (status IN ('Offen', 'Bezahlt'))
+        )
+    `);
+    
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_service_payments_project
+        ON service_payments (project)
+    `);
     
     await pool.query(`
         ALTER TABLE tickets
