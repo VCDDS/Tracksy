@@ -12,6 +12,7 @@ const https = require("https");
 const dns = require("dns").promises;
 const net = require("net");
 const nodemailer = require("nodemailer");
+const crypto = require("crypto");
 
 const app = express();
 
@@ -30,6 +31,326 @@ const mailTransporter = nodemailer.createTransport({
     greetingTimeout: 10000,
     socketTimeout: 20000
 });
+
+const MICROSOFT_AUTHORITY =
+    "https://login.microsoftonline.com/consumers/oauth2/v2.0";
+
+const MICROSOFT_SCOPES = [
+    "offline_access",
+    "https://graph.microsoft.com/Mail.Send"
+].join(" ");
+
+function getMicrosoftMailConfig(){
+    const config = {
+        clientId: String(
+            process.env.MICROSOFT_CLIENT_ID || ""
+        ).trim(),
+
+        clientSecret: String(
+            process.env.MICROSOFT_CLIENT_SECRET || ""
+        ).trim(),
+
+        redirectUri: String(
+            process.env.MICROSOFT_REDIRECT_URI || ""
+        ).trim(),
+
+        senderEmail: String(
+            process.env.MICROSOFT_SENDER_EMAIL || ""
+        ).trim().toLowerCase()
+    };
+
+    if(
+        !config.clientId ||
+        !config.clientSecret ||
+        !config.redirectUri ||
+        !config.senderEmail
+    ){
+        throw new Error(
+            "Microsoft-Mailversand ist nicht vollständig konfiguriert"
+        );
+    }
+
+    return config;
+}
+
+function getMicrosoftTokenKey(){
+    const { clientSecret } =
+        getMicrosoftMailConfig();
+
+    return crypto
+        .createHash("sha256")
+        .update(
+            "Tracksy Microsoft Token|" +
+            clientSecret,
+            "utf8"
+        )
+        .digest();
+}
+
+function encryptMicrosoftRefreshToken(
+    refreshToken
+){
+    const iv = crypto.randomBytes(12);
+
+    const cipher = crypto.createCipheriv(
+        "aes-256-gcm",
+        getMicrosoftTokenKey(),
+        iv
+    );
+
+    const encrypted = Buffer.concat([
+        cipher.update(refreshToken, "utf8"),
+        cipher.final()
+    ]);
+
+    return {
+        encryptedToken:
+            encrypted.toString("base64"),
+
+        tokenIv:
+            iv.toString("base64"),
+
+        tokenTag:
+            cipher
+                .getAuthTag()
+                .toString("base64")
+    };
+}
+
+function decryptMicrosoftRefreshToken(row){
+    const decipher = crypto.createDecipheriv(
+        "aes-256-gcm",
+        getMicrosoftTokenKey(),
+        Buffer.from(row.token_iv, "base64")
+    );
+
+    decipher.setAuthTag(
+        Buffer.from(row.token_tag, "base64")
+    );
+
+    const decrypted = Buffer.concat([
+        decipher.update(
+            Buffer.from(
+                row.encrypted_refresh_token,
+                "base64"
+            )
+        ),
+
+        decipher.final()
+    ]);
+
+    return decrypted.toString("utf8");
+}
+
+async function microsoftFetch(
+    url,
+    options = {},
+    timeoutMs = 20000
+){
+    const controller =
+        new AbortController();
+
+    const timeout = setTimeout(
+        () => controller.abort(),
+        timeoutMs
+    );
+
+    try{
+        return await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+
+    }finally{
+        clearTimeout(timeout);
+    }
+}
+async function saveMicrosoftRefreshToken(
+    refreshToken
+){
+    const encrypted =
+        encryptMicrosoftRefreshToken(
+            refreshToken
+        );
+
+    const { senderEmail } =
+        getMicrosoftMailConfig();
+
+    await pool.query(`
+        INSERT INTO microsoft_mail_tokens (
+            id,
+            encrypted_refresh_token,
+            token_iv,
+            token_tag,
+            connected_email,
+            connected_at,
+            updated_at
+        )
+        VALUES (1,$1,$2,$3,$4,NOW(),NOW())
+
+        ON CONFLICT (id)
+        DO UPDATE SET
+            encrypted_refresh_token =
+                EXCLUDED.encrypted_refresh_token,
+            token_iv =
+                EXCLUDED.token_iv,
+            token_tag =
+                EXCLUDED.token_tag,
+            connected_email =
+                EXCLUDED.connected_email,
+            updated_at = NOW()
+    `, [
+        encrypted.encryptedToken,
+        encrypted.tokenIv,
+        encrypted.tokenTag,
+        senderEmail
+    ]);
+}
+
+async function getMicrosoftAccessToken(){
+    const result = await pool.query(`
+        SELECT
+            encrypted_refresh_token,
+            token_iv,
+            token_tag
+
+        FROM microsoft_mail_tokens
+
+        WHERE id = 1
+
+        LIMIT 1
+    `);
+
+    if(result.rows.length === 0){
+        throw new Error(
+            "Microsoft-Konto ist noch nicht mit Tracksy verbunden"
+        );
+    }
+
+    const refreshToken =
+        decryptMicrosoftRefreshToken(
+            result.rows[0]
+        );
+
+    const config =
+        getMicrosoftMailConfig();
+
+    const response = await microsoftFetch(
+        `${MICROSOFT_AUTHORITY}/token`,
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                    "application/x-www-form-urlencoded"
+            },
+
+            body: new URLSearchParams({
+                client_id:
+                    config.clientId,
+
+                client_secret:
+                    config.clientSecret,
+
+                grant_type:
+                    "refresh_token",
+
+                refresh_token:
+                    refreshToken,
+
+                redirect_uri:
+                    config.redirectUri,
+
+                scope:
+                    MICROSOFT_SCOPES
+            })
+        }
+    );
+
+    const data = await response.json();
+
+    if(
+        !response.ok ||
+        !data.access_token
+    ){
+        throw new Error(
+            data.error_description ||
+            "Microsoft-Zugriff konnte nicht erneuert werden"
+        );
+    }
+
+    if(
+        data.refresh_token &&
+        data.refresh_token !== refreshToken
+    ){
+        await saveMicrosoftRefreshToken(
+            data.refresh_token
+        );
+    }
+
+    return data.access_token;
+}
+
+async function sendMicrosoftMail({
+    to,
+    subject,
+    text
+}){
+    const accessToken =
+        await getMicrosoftAccessToken();
+
+    const response = await microsoftFetch(
+        "https://graph.microsoft.com/v1.0/me/sendMail",
+        {
+            method: "POST",
+
+            headers: {
+                Authorization:
+                    `Bearer ${accessToken}`,
+
+                "Content-Type":
+                    "application/json"
+            },
+
+            body: JSON.stringify({
+                message: {
+                    subject,
+
+                    body: {
+                        contentType: "Text",
+                        content: text
+                    },
+
+                    toRecipients: [
+                        {
+                            emailAddress: {
+                                address: to
+                            }
+                        }
+                    ]
+                },
+
+                saveToSentItems: true
+            })
+        }
+    );
+
+    if(response.status !== 202){
+        const responseText =
+            await response.text();
+
+        throw new Error(
+            "Microsoft Graph Versandfehler: " +
+            response.status +
+            (
+                responseText
+                    ? " | " +
+                      responseText.slice(0, 500)
+                    : ""
+            )
+        );
+    }
+}
 
 function sendTracksyNotification(subject, text){
     console.log("📧 Web3Forms-Benachrichtigung wird gestartet...");
@@ -1352,6 +1673,44 @@ await pool.query(`
         ON payment_reminders (project, sent_at DESC)
     `);
     
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS microsoft_mail_tokens (
+            id SMALLINT PRIMARY KEY,
+            encrypted_refresh_token TEXT NOT NULL,
+            token_iv TEXT NOT NULL,
+            token_tag TEXT NOT NULL,
+            connected_email TEXT NOT NULL,
+            connected_at TIMESTAMPTZ
+                NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ
+                NOT NULL DEFAULT NOW(),
+    
+            CHECK (id = 1)
+        )
+    `);
+    
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS microsoft_oauth_states (
+            state_hash TEXT PRIMARY KEY,
+            created_by TEXT NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL
+        )
+    `);
+    
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS
+            idx_microsoft_oauth_states_expiry
+    
+        ON microsoft_oauth_states (
+            expires_at
+        )
+    `);
+    
+    await pool.query(`
+        DELETE FROM microsoft_oauth_states
+        WHERE expires_at <= NOW()
+    `);
+
     await pool.query(`
         ALTER TABLE tickets
         ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'Normal'
@@ -4627,6 +4986,258 @@ app.get("/service-status/:project", async (req, res) => {
     }
 });
 
+app.post("/microsoft/connect-url", async (req, res) => {
+    try{
+        const adminUsername =
+            String(
+                req.body.adminUsername || ""
+            ).trim();
+
+        const adminPassword =
+            String(
+                req.body.adminPassword || ""
+            );
+
+        const verified =
+            await verifyAdminPassword(
+                adminUsername,
+                adminPassword
+            );
+
+        if(!verified){
+            return res.status(403).send(
+                "Admin-Passwort ist falsch"
+            );
+        }
+
+        const config =
+            getMicrosoftMailConfig();
+
+        const state =
+            crypto
+                .randomBytes(32)
+                .toString("hex");
+
+        const stateHash =
+            crypto
+                .createHash("sha256")
+                .update(state, "utf8")
+                .digest("hex");
+
+        await pool.query(`
+            DELETE FROM microsoft_oauth_states
+            WHERE expires_at <= NOW()
+        `);
+
+        await pool.query(`
+            INSERT INTO microsoft_oauth_states (
+                state_hash,
+                created_by,
+                expires_at
+            )
+            VALUES (
+                $1,
+                $2,
+                NOW() + INTERVAL '10 minutes'
+            )
+        `, [
+            stateHash,
+            adminUsername
+        ]);
+
+        const authorizeUrl = new URL(
+            `${MICROSOFT_AUTHORITY}/authorize`
+        );
+
+        authorizeUrl.search =
+            new URLSearchParams({
+                client_id:
+                    config.clientId,
+
+                response_type:
+                    "code",
+
+                redirect_uri:
+                    config.redirectUri,
+
+                response_mode:
+                    "query",
+
+                scope:
+                    MICROSOFT_SCOPES,
+
+                state,
+
+                prompt:
+                    "consent",
+
+                login_hint:
+                    config.senderEmail
+            }).toString();
+
+        res.send(
+            authorizeUrl.toString()
+        );
+
+    }catch(err){
+        console.log(err);
+
+        res.status(500).send(
+            err.message ||
+            "Microsoft-Verbindung konnte nicht gestartet werden"
+        );
+    }
+});
+
+app.get("/microsoft/callback", async (req, res) => {
+    try{
+        const code =
+            String(req.query.code || "");
+
+        const state =
+            String(req.query.state || "");
+
+        if(req.query.error){
+            return res.status(400).send(
+                "Microsoft-Anmeldung wurde abgebrochen"
+            );
+        }
+
+        if(!code || !state){
+            return res.status(400).send(
+                "Microsoft-Anmeldedaten fehlen"
+            );
+        }
+
+        const stateHash =
+            crypto
+                .createHash("sha256")
+                .update(state, "utf8")
+                .digest("hex");
+
+        const stateResult =
+            await pool.query(`
+                DELETE FROM microsoft_oauth_states
+
+                WHERE state_hash = $1
+                AND expires_at > NOW()
+
+                RETURNING created_by
+            `, [stateHash]);
+
+        if(stateResult.rows.length === 0){
+            return res.status(400).send(
+                "Microsoft-Anmeldung ist ungültig oder abgelaufen"
+            );
+        }
+
+        const config =
+            getMicrosoftMailConfig();
+
+        const tokenResponse =
+            await microsoftFetch(
+                `${MICROSOFT_AUTHORITY}/token`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/x-www-form-urlencoded"
+                    },
+
+                    body:
+                        new URLSearchParams({
+                            client_id:
+                                config.clientId,
+
+                            client_secret:
+                                config.clientSecret,
+
+                            code,
+
+                            redirect_uri:
+                                config.redirectUri,
+
+                            grant_type:
+                                "authorization_code",
+
+                            scope:
+                                MICROSOFT_SCOPES
+                        })
+                }
+            );
+
+        const tokenData =
+            await tokenResponse.json();
+
+        if(
+            !tokenResponse.ok ||
+            !tokenData.refresh_token
+        ){
+            throw new Error(
+                tokenData.error_description ||
+                "Microsoft hat keinen Aktualisierungsschlüssel zurückgegeben"
+            );
+        }
+
+        await saveMicrosoftRefreshToken(
+            tokenData.refresh_token
+        );
+
+        res.type("html").send(`
+            <!DOCTYPE html>
+            <html lang="de">
+            <head>
+                <meta charset="UTF-8">
+
+                <meta
+                    name="viewport"
+                    content="width=device-width, initial-scale=1.0"
+                >
+
+                <title>
+                    Microsoft verbunden
+                </title>
+            </head>
+
+            <body style="
+                font-family:Arial,sans-serif;
+                padding:40px;
+                background:#0b1220;
+                color:#ffffff;
+            ">
+                <h1>
+                    Microsoft-Konto verbunden
+                </h1>
+
+                <p>
+                    Tracksy kann jetzt E-Mails über
+                    VisualCode.dev@hotmail.com versenden.
+                </p>
+
+                <a
+                    href="/"
+                    style="color:#6ee7b7"
+                >
+                    Zurück zu Tracksy
+                </a>
+            </body>
+            </html>
+        `);
+
+    }catch(err){
+        console.log(err);
+
+        res.status(500).send(
+            "Microsoft-Konto konnte nicht verbunden werden: " +
+            String(
+                err.message ||
+                "Unbekannter Fehler"
+            ).slice(0, 500)
+        );
+    }
+});
+
 app.get("/payment-reminder-management", async (req, res) => {
     try{
         const adminUsername =
@@ -4698,10 +5309,28 @@ app.get("/payment-reminder-management", async (req, res) => {
             LIMIT 100
         `);
 
-        res.json({
-            projects: projects.rows,
-            reminders: reminders.rows
-        });
+        const microsoftMail =
+    await pool.query(`
+        SELECT
+            connected_email,
+            connected_at,
+            updated_at
+
+        FROM microsoft_mail_tokens
+
+        WHERE id = 1
+
+        LIMIT 1
+    `);
+
+    res.json({
+        projects: projects.rows,
+        reminders: reminders.rows,
+    
+        microsoftMail:
+            microsoftMail.rows[0] ||
+            null
+    });
 
     }catch(err){
         console.log(err);
@@ -4952,14 +5581,9 @@ app.post("/send-payment-reminder", async (req, res) => {
         ]);
 
         try{
-            await mailTransporter.sendMail({
-                from:
-                    `"VisualCode.dev" <${process.env.SMTP_USER}>`,
-
+            await sendMicrosoftMail({
                 to: cleanCustomerEmail,
-
                 subject: cleanSubject,
-
                 text: cleanMessage
             });
 

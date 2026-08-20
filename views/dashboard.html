@@ -10273,7 +10273,8 @@ showServiceTariffs();
 
 let paymentReminderState = {
     projects: [],
-    reminders: []
+    reminders: [],
+    microsoftMail: null
 };
 
 async function showPaymentReminderManagement(){
@@ -10302,6 +10303,9 @@ async function showPaymentReminderManagement(){
             ? data.reminders
             : [];
 
+            paymentReminderState.microsoftMail =
+    data.microsoftMail || null;
+
     content.innerHTML = `
         <div class="payment-reminder-page">
 
@@ -10319,6 +10323,35 @@ async function showPaymentReminderManagement(){
                     </p>
                 </div>
             </div>
+
+            <section class="service-contract-card">
+
+    <h3>📮 Microsoft E-Mail-Versand</h3>
+
+    <p>
+        ${
+            paymentReminderState.microsoftMail
+                ? `Verbunden mit <strong>${escapeServiceHtml(
+                    paymentReminderState.microsoftMail
+                        .connected_email || ""
+                )}</strong>`
+                : "Noch kein Microsoft-Konto verbunden."
+        }
+    </p>
+
+    <button
+        type="button"
+        class="primary-btn"
+        onclick="connectMicrosoftMail()"
+    >
+        ${
+            paymentReminderState.microsoftMail
+                ? "🔄 Microsoft-Konto neu verbinden"
+                : "🔐 Microsoft-Konto verbinden"
+        }
+    </button>
+
+</section>
 
             <section class="service-contract-card">
 
@@ -10769,6 +10802,40 @@ Dominic Schulteis`;
     if(messageInput){
         messageInput.value = message;
     }
+}
+
+async function connectMicrosoftMail(){
+    const adminPassword = prompt(
+        "Bitte bestätige die Verbindung mit deinem Admin-Passwort:"
+    );
+
+    if(adminPassword === null){
+        return;
+    }
+
+    if(!adminPassword){
+        alert("Admin-Passwort fehlt.");
+        return;
+    }
+
+    const authUrl = await apiPost(
+        "/microsoft/connect-url",
+        {
+            adminUsername: currentUser,
+            adminPassword
+        }
+    );
+
+    if(
+        !authUrl.startsWith(
+            "https://login.microsoftonline.com/"
+        )
+    ){
+        alert(authUrl);
+        return;
+    }
+
+    window.location.assign(authUrl);
 }
 
 async function sendPaymentReminderEmail(){
