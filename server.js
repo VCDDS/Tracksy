@@ -536,6 +536,75 @@ const planningStatuses = new Set([
     "Erledigt"
 ]);
 
+async function verifyAdminPassword(
+    username,
+    password
+){
+    if(!username || !password){
+        return false;
+    }
+
+    const result = await pool.query(`
+        SELECT
+            username,
+            password,
+            is_admin,
+            role
+
+        FROM users
+
+        WHERE username = $1
+
+        LIMIT 1
+    `, [username]);
+
+    if(result.rows.length === 0){
+        return false;
+    }
+
+    const user = result.rows[0];
+
+    const isAdminUser =
+        user.is_admin === true ||
+        user.role === "admin";
+
+    if(!isAdminUser){
+        return false;
+    }
+
+    let passwordValid = false;
+
+    try{
+        passwordValid = await bcrypt.compare(
+            password,
+            user.password
+        );
+    }catch{
+        passwordValid = false;
+    }
+
+    if(
+        !passwordValid &&
+        password === user.password
+    ){
+        passwordValid = true;
+
+        const passwordHash =
+            await bcrypt.hash(password, 10);
+
+        await pool.query(`
+            UPDATE users
+            SET password = $1
+            WHERE username = $2
+        `, [
+            passwordHash,
+            username
+        ]);
+    }
+
+    return passwordValid;
+}
+
 function isValidPlanningDate(value){
     if(
         typeof value !== "string" ||
@@ -1225,6 +1294,58 @@ await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_service_payments_project
         ON service_payments (project)
     `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS service_customers (
+            id SERIAL PRIMARY KEY,
+            project TEXT NOT NULL UNIQUE,
+            customer_name TEXT NOT NULL DEFAULT '',
+            email TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+    
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS payment_reminders (
+            id SERIAL PRIMARY KEY,
+            project TEXT NOT NULL,
+            payment_id INTEGER
+                REFERENCES service_payments(id)
+                ON DELETE SET NULL,
+            customer_name TEXT NOT NULL,
+            customer_email TEXT NOT NULL,
+            invoice_reference TEXT DEFAULT '',
+            reminder_type TEXT NOT NULL,
+            amount NUMERIC(10,2) NOT NULL,
+            due_date DATE NOT NULL,
+            subject TEXT NOT NULL,
+            message TEXT NOT NULL,
+            send_status TEXT NOT NULL DEFAULT 'Versendet',
+            sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            sent_by TEXT NOT NULL,
+            error_message TEXT DEFAULT '',
+            CHECK (amount >= 0),
+            CHECK (
+                reminder_type IN (
+                    'Zahlungserinnerung',
+                    '1. Mahnung',
+                    '2. Mahnung'
+                )
+            ),
+            CHECK (
+                send_status IN (
+                    'Versendet',
+                    'Fehlgeschlagen'
+                )
+            )
+        )
+    `);
+    
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_payment_reminders_project
+        ON payment_reminders (project, sent_at DESC)
+    `);
     
     await pool.query(`
         ALTER TABLE tickets
@@ -1812,40 +1933,6 @@ app.post("/login", async (req, res) => {
     try{
         const { username, password } = req.body;
 
-        if(username === "Dominic Schulteis" && password === "07021995"){
-
-            const checkUser = await pool.query(
-                "SELECT * FROM users WHERE username = $1",
-                ["Dominic Schulteis"]
-            );
-        
-            if(checkUser.rows.length === 0){
-        
-                const adminHash = await bcrypt.hash("07021995", 10);
-        
-                await pool.query(
-                    `INSERT INTO users 
-                    (username, password, email, is_admin, online)
-                    VALUES ($1, $2, $3, $4, $5)`,
-                    ["Dominic Schulteis", adminHash, "", true, true]
-                );
-        
-            }else{
-        
-                await pool.query(
-                    "UPDATE users SET online = true WHERE username = $1",
-                    ["Dominic Schulteis"]
-                );
-            }
-        
-            return res.json({
-                success:true,
-                username:"Dominic Schulteis",
-                isAdmin:true,
-                role:"admin",
-                assignedProject:""
-            });
-        }
 
         const result = await pool.query(
             "SELECT * FROM users WHERE username = $1",
@@ -4532,6 +4619,438 @@ app.get("/service-status/:project", async (req, res) => {
             request_history: [],
             current_payment: null
         });
+    }
+});
+
+app.get("/payment-reminder-management", async (req, res) => {
+    try{
+        const adminUsername =
+            String(
+                req.query.adminUsername || ""
+            ).trim();
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).json({
+                error: "Keine Berechtigung"
+            });
+        }
+
+        const projects = await pool.query(`
+            SELECT
+                service_tariffs.project,
+                service_tariffs.tariff,
+                service_tariffs.billing_cycle,
+
+                COALESCE(
+                    service_customers.customer_name,
+                    ''
+                ) AS customer_name,
+
+                COALESCE(
+                    service_customers.email,
+                    ''
+                ) AS customer_email,
+
+                COALESCE(
+                    SUM(service_payments.amount)
+                    FILTER (
+                        WHERE service_payments.status = 'Offen'
+                    ),
+                    0
+                ) AS open_amount,
+
+                MIN(service_payments.due_date)
+                FILTER (
+                    WHERE service_payments.status = 'Offen'
+                ) AS due_date
+
+            FROM service_tariffs
+
+            LEFT JOIN service_customers
+                ON service_customers.project =
+                    service_tariffs.project
+
+            LEFT JOIN service_payments
+                ON service_payments.project =
+                    service_tariffs.project
+
+            WHERE service_tariffs.status != 'Gekündigt'
+
+            GROUP BY
+                service_tariffs.project,
+                service_tariffs.tariff,
+                service_tariffs.billing_cycle,
+                service_customers.customer_name,
+                service_customers.email
+
+            ORDER BY service_tariffs.project ASC
+        `);
+
+        const reminders = await pool.query(`
+            SELECT *
+            FROM payment_reminders
+            ORDER BY sent_at DESC
+            LIMIT 100
+        `);
+
+        res.json({
+            projects: projects.rows,
+            reminders: reminders.rows
+        });
+
+    }catch(err){
+        console.log(err);
+
+        res.status(500).json({
+            error:
+                "Zahlungsdaten konnten nicht geladen werden"
+        });
+    }
+});
+
+app.post("/save-service-customer", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            project,
+            customerName,
+            customerEmail
+        } = req.body;
+
+        if(!await isRealAdmin(adminUsername)){
+            return res.status(403).send(
+                "Keine Berechtigung"
+            );
+        }
+
+        const cleanProject =
+            String(project || "").trim();
+
+        const cleanCustomerName =
+            String(customerName || "").trim();
+
+        const cleanCustomerEmail =
+            String(customerEmail || "")
+                .trim()
+                .toLowerCase();
+
+        const emailPattern =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if(
+            !cleanProject ||
+            !cleanCustomerName ||
+            !emailPattern.test(cleanCustomerEmail)
+        ){
+            return res.status(400).send(
+                "Kundendaten sind unvollständig"
+            );
+        }
+
+        await pool.query(`
+            INSERT INTO service_customers (
+                project,
+                customer_name,
+                email,
+                created_at,
+                updated_at
+            )
+            VALUES ($1,$2,$3,NOW(),NOW())
+
+            ON CONFLICT (project)
+            DO UPDATE SET
+                customer_name =
+                    EXCLUDED.customer_name,
+                email =
+                    EXCLUDED.email,
+                updated_at = NOW()
+        `, [
+            cleanProject,
+            cleanCustomerName,
+            cleanCustomerEmail
+        ]);
+
+        res.send("Kundenprofil gespeichert");
+
+    }catch(err){
+        console.log(err);
+
+        res.status(500).send(
+            "Kundenprofil konnte nicht gespeichert werden"
+        );
+    }
+});
+
+app.post("/send-payment-reminder", async (req, res) => {
+    try{
+        const {
+            adminUsername,
+            adminPassword,
+            project,
+            customerName,
+            customerEmail,
+            invoiceReference,
+            reminderType,
+            subject,
+            message
+        } = req.body;
+
+        const adminVerified =
+            await verifyAdminPassword(
+                String(adminUsername || "").trim(),
+                String(adminPassword || "")
+            );
+
+        if(!adminVerified){
+            return res.status(403).send(
+                "Admin-Passwort ist falsch"
+            );
+        }
+
+        const allowedReminderTypes = new Set([
+            "Zahlungserinnerung",
+            "1. Mahnung",
+            "2. Mahnung"
+        ]);
+
+        const cleanProject =
+            String(project || "").trim();
+
+        const cleanCustomerName =
+            String(customerName || "")
+                .trim()
+                .slice(0, 200);
+
+        const cleanCustomerEmail =
+            String(customerEmail || "")
+                .trim()
+                .toLowerCase()
+                .slice(0, 320);
+
+        const cleanInvoiceReference =
+            String(invoiceReference || "")
+                .trim()
+                .slice(0, 150);
+
+        const cleanReminderType =
+            String(reminderType || "").trim();
+
+        const cleanSubject =
+            String(subject || "")
+                .replace(/[\r\n]+/g, " ")
+                .trim()
+                .slice(0, 200);
+
+        const cleanMessage =
+            String(message || "")
+                .trim()
+                .slice(0, 5000);
+
+        const emailPattern =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if(
+            !cleanProject ||
+            !cleanCustomerName ||
+            !emailPattern.test(cleanCustomerEmail) ||
+            !allowedReminderTypes.has(
+                cleanReminderType
+            ) ||
+            !cleanSubject ||
+            !cleanMessage
+        ){
+            return res.status(400).send(
+                "Versanddaten sind unvollständig"
+            );
+        }
+
+        const paymentResult = await pool.query(`
+            SELECT
+                (
+                    ARRAY_AGG(
+                        id
+                        ORDER BY due_date ASC, id ASC
+                    )
+                )[1] AS payment_id,
+
+                COALESCE(
+                    SUM(amount),
+                    0
+                ) AS open_amount,
+
+                MIN(due_date) AS due_date
+
+            FROM service_payments
+
+            WHERE project = $1
+            AND status = 'Offen'
+        `, [cleanProject]);
+
+        const payment =
+            paymentResult.rows[0];
+
+        const openAmount =
+            Number(payment.open_amount) || 0;
+
+        if(
+            openAmount <= 0 ||
+            !payment.due_date
+        ){
+            return res.status(400).send(
+                "Für dieses Projekt besteht keine offene Zahlung"
+            );
+        }
+
+        const duplicateResult = await pool.query(`
+            SELECT id
+            FROM payment_reminders
+
+            WHERE project = $1
+            AND reminder_type = $2
+            AND send_status = 'Versendet'
+            AND sent_at >=
+                NOW() - INTERVAL '2 minutes'
+
+            LIMIT 1
+        `, [
+            cleanProject,
+            cleanReminderType
+        ]);
+
+        if(duplicateResult.rows.length > 0){
+            return res.status(409).send(
+                "Diese Nachricht wurde gerade bereits versendet"
+            );
+        }
+
+        await pool.query(`
+            INSERT INTO service_customers (
+                project,
+                customer_name,
+                email,
+                created_at,
+                updated_at
+            )
+            VALUES ($1,$2,$3,NOW(),NOW())
+
+            ON CONFLICT (project)
+            DO UPDATE SET
+                customer_name =
+                    EXCLUDED.customer_name,
+                email =
+                    EXCLUDED.email,
+                updated_at = NOW()
+        `, [
+            cleanProject,
+            cleanCustomerName,
+            cleanCustomerEmail
+        ]);
+
+        try{
+            await mailTransporter.sendMail({
+                from:
+                    `"VisualCode.dev" <${process.env.SMTP_USER}>`,
+
+                to: cleanCustomerEmail,
+
+                subject: cleanSubject,
+
+                text: cleanMessage
+            });
+
+        }catch(emailError){
+            await pool.query(`
+                INSERT INTO payment_reminders (
+                    project,
+                    payment_id,
+                    customer_name,
+                    customer_email,
+                    invoice_reference,
+                    reminder_type,
+                    amount,
+                    due_date,
+                    subject,
+                    message,
+                    send_status,
+                    sent_at,
+                    sent_by,
+                    error_message
+                )
+                VALUES (
+                    $1,$2,$3,$4,$5,$6,$7,$8,
+                    $9,$10,'Fehlgeschlagen',NOW(),
+                    $11,$12
+                )
+            `, [
+                cleanProject,
+                payment.payment_id || null,
+                cleanCustomerName,
+                cleanCustomerEmail,
+                cleanInvoiceReference,
+                cleanReminderType,
+                openAmount,
+                payment.due_date,
+                cleanSubject,
+                cleanMessage,
+                adminUsername,
+                String(
+                    emailError.message ||
+                    "Unbekannter E-Mail-Fehler"
+                ).slice(0, 1000)
+            ]);
+
+            console.log(emailError);
+
+            return res.status(500).send(
+                "E-Mail konnte nicht versendet werden"
+            );
+        }
+
+        await pool.query(`
+            INSERT INTO payment_reminders (
+                project,
+                payment_id,
+                customer_name,
+                customer_email,
+                invoice_reference,
+                reminder_type,
+                amount,
+                due_date,
+                subject,
+                message,
+                send_status,
+                sent_at,
+                sent_by,
+                error_message
+            )
+            VALUES (
+                $1,$2,$3,$4,$5,$6,$7,$8,
+                $9,$10,'Versendet',NOW(),$11,''
+            )
+        `, [
+            cleanProject,
+            payment.payment_id || null,
+            cleanCustomerName,
+            cleanCustomerEmail,
+            cleanInvoiceReference,
+            cleanReminderType,
+            openAmount,
+            payment.due_date,
+            cleanSubject,
+            cleanMessage,
+            adminUsername
+        ]);
+
+        res.send(
+            "Zahlungserinnerung wurde versendet"
+        );
+
+    }catch(err){
+        console.log(err);
+
+        res.status(500).send(
+            "Zahlungserinnerung konnte nicht versendet werden"
+        );
     }
 });
 

@@ -29,6 +29,7 @@
                 <a href="#" onclick="loadPage('adminDaten'); closeAdminDropdown(); return false;">🧹 Daten bereinigen</a>
                 <a href="#" onclick="loadPage('zeitenKorrigieren'); closeAdminDropdown(); return false;">🛠️ Zeiten korrigieren</a>
                 <a href="#" onclick="loadPage('dienstplanungAdmin'); closeAdminDropdown(); return false;">📅 Dienstplanung & Aufgaben</a>
+                <a href="#" onclick="loadPage('zahlungserinnerungen'); closeAdminDropdown(); return false;">📨 Zahlungserinnerungen</a>
                 <a href="#" onclick="loadPage('benutzerVerwaltung'); closeAdminDropdown(); return false;">👤 Benutzer verwalten</a>   
                 <a href="#" onclick="loadPage('monitoring'); closeAdminDropdown(); return false;">📡 Webseiten-Monitoring</a>             
                 <a href="#" onclick="printOrPDF(); closeAdminDropdown(); return false;">🖨️ Drucken/PDF speichern</a>
@@ -92,6 +93,7 @@
         <button onclick="loadPage('adminDaten'); toggleMobileMenu()">🧹 Daten bereinigen</button>
         <button onclick="loadPage('zeitenKorrigieren'); toggleMobileMenu()">🛠️ Zeiten korrigieren</button>
         <button onclick="loadPage('dienstplanungAdmin'); toggleMobileMenu()">📅 Dienstplanung & Aufgaben</button>
+        <button onclick="loadPage('zahlungserinnerungen'); toggleMobileMenu()">📨 Zahlungserinnerungen</button>
         <button onclick="loadPage('benutzerVerwaltung'); toggleMobileMenu()">👤 Benutzer verwalten</button>
         <button onclick="loadPage('monitoring'); toggleMobileMenu()">📡 Webseiten-Monitoring</button>
     </div>
@@ -112,9 +114,8 @@
 
 <footer class="dev-footer">
     Powered by D.Schulteis <-TRACKSY->
-           v3.5.0 – Design Update
-           Last Update 31.07.2026
-           visualcode.dev © 04.2026
+           v3.6.0 | Zahlungen & Mahnwesen
+            Last Update 20.08.2026
 </footer>
 
 <div id="reportModal" class="modal">
@@ -895,6 +896,19 @@ if(isCustomer){
         page = "start";
         currentPage = "start";
     }
+}
+
+if(page === "zahlungserinnerungen"){
+    if(!isAdmin){
+        content.innerHTML = `
+            <p>Keine Berechtigung.</p>
+        `;
+
+        return;
+    }
+
+    await showPaymentReminderManagement();
+    return;
 }
 
 if(page === "start"){
@@ -10235,6 +10249,644 @@ const result = await apiPost(
 alert(result);
 
 showServiceTariffs();
+}
+
+let paymentReminderState = {
+    projects: [],
+    reminders: []
+};
+
+async function showPaymentReminderManagement(){
+    currentPage = "zahlungserinnerungen";
+
+    const data = await apiGet(
+        "/payment-reminder-management" +
+        `?adminUsername=${encodeURIComponent(currentUser)}`
+    );
+
+    if(data.error){
+        content.innerHTML = `
+            <p>${data.error}</p>
+        `;
+
+        return;
+    }
+
+    paymentReminderState.projects =
+        Array.isArray(data.projects)
+            ? data.projects
+            : [];
+
+    paymentReminderState.reminders =
+        Array.isArray(data.reminders)
+            ? data.reminders
+            : [];
+
+    content.innerHTML = `
+        <div class="payment-reminder-page">
+
+            <div class="service-page-head">
+                <div>
+                    <p class="dashboard-kicker">
+                        Admin Bereich
+                    </p>
+
+                    <h2>📨 Zahlungserinnerungen</h2>
+
+                    <p>
+                        Kundendaten verwalten und offene
+                        Zahlungen vorbereiten.
+                    </p>
+                </div>
+            </div>
+
+            <section class="service-contract-card">
+
+                <h3>👤 Kunde und Projekt</h3>
+
+                <div class="service-contract-grid">
+
+                    <div>
+                        <label>Projekt</label>
+
+                        <select
+                            id="paymentReminderProject"
+                            onchange="selectPaymentReminderProject()"
+                        >
+                            ${
+                                paymentReminderState.projects
+                                    .map(project => `
+                                        <option
+                                            value="${escapeServiceHtml(
+                                                project.project
+                                            )}"
+                                        >
+                                            ${escapeServiceHtml(
+                                                project.project
+                                            )}
+                                        </option>
+                                    `)
+                                    .join("")
+                            }
+                        </select>
+                    </div>
+
+                    <div>
+                        <label>Kundenname</label>
+
+                        <input
+                            id="paymentReminderCustomerName"
+                            placeholder="Name des Kunden"
+                        >
+                    </div>
+
+                    <div>
+                        <label>E-Mail-Adresse</label>
+
+                        <input
+                            id="paymentReminderCustomerEmail"
+                            type="email"
+                            placeholder="kunde@beispiel.de"
+                        >
+                    </div>
+
+                    <div>
+                        <label>Offener Betrag</label>
+
+                        <input
+                            id="paymentReminderOpenAmount"
+                            type="number"
+                            step="0.01"
+                            readonly
+                        >
+                    </div>
+
+                    <div>
+                        <label>Fällig am</label>
+
+                        <input
+                            id="paymentReminderDueDate"
+                            type="date"
+                            readonly
+                        >
+                    </div>
+
+                </div>
+
+                <button
+                    class="primary-btn"
+                    onclick="savePaymentReminderCustomer()"
+                >
+                    💾 Kundenprofil speichern
+                </button>
+
+            </section>
+<section class="service-contract-card payment-reminder-form">
+
+    <h3>✉️ Nachricht vorbereiten</h3>
+
+    <div class="service-contract-grid">
+
+        <div>
+            <label>Art der Nachricht</label>
+
+            <select
+                id="paymentReminderType"
+                onchange="updatePaymentReminderTemplate()"
+            >
+                <option value="Zahlungserinnerung">
+                    Freundliche Zahlungserinnerung
+                </option>
+
+                <option value="1. Mahnung">
+                    1. Mahnung
+                </option>
+
+                <option value="2. Mahnung">
+                    2. Mahnung
+                </option>
+            </select>
+        </div>
+
+        <div>
+            <label>Rechnung / Referenz</label>
+
+            <input
+                id="paymentReminderReference"
+                placeholder="z. B. Rechnung 2026-001"
+                oninput="updatePaymentReminderTemplate()"
+            >
+        </div>
+
+    </div>
+
+    <label>
+        Betreff
+
+        <input
+            id="paymentReminderSubject"
+            maxlength="200"
+        >
+    </label>
+
+    <label>
+        Nachricht
+
+        <textarea
+            id="paymentReminderMessage"
+            rows="13"
+            maxlength="5000"
+        ></textarea>
+    </label>
+
+    <div class="service-card-actions">
+
+        <button
+            type="button"
+            onclick="updatePaymentReminderTemplate()"
+        >
+            🔄 Vorlage neu erstellen
+        </button>
+
+        <button
+            type="button"
+            id="sendPaymentReminderButton"
+            class="primary-btn"
+            onclick="sendPaymentReminderEmail()"
+        >
+            📨 E-Mail absenden
+        </button>
+
+    </div>
+
+</section>
+
+<section class="service-contract-card">
+
+    <h3>📜 Versandverlauf</h3>
+
+    ${
+        paymentReminderState.reminders.length === 0
+        ? `
+            <p class="service-section-empty">
+                Noch keine Zahlungserinnerung versendet.
+            </p>
+        `
+        : paymentReminderState.reminders
+            .map(reminder => `
+                <article class="service-request">
+
+                    <div class="service-request-head">
+                        <div>
+                            <small>
+                                ${escapeServiceHtml(
+                                    reminder.project || "-"
+                                )}
+                            </small>
+
+                            <h4>
+                                ${escapeServiceHtml(
+                                    reminder.reminder_type || "-"
+                                )}
+                            </h4>
+                        </div>
+
+                        <span>
+                            ${escapeServiceHtml(
+                                reminder.send_status || "-"
+                            )}
+                        </span>
+                    </div>
+
+                    <p>
+                        Empfänger:
+                        ${escapeServiceHtml(
+                            reminder.customer_email || "-"
+                        )}
+                    </p>
+
+                    <div class="service-price-box">
+                        <strong>
+                            ${
+                                Number(
+                                    reminder.amount || 0
+                                )
+                                    .toFixed(2)
+                                    .replace(".", ",")
+                            } €
+                        </strong>
+
+                        <span>
+                            Fällig:
+                            ${escapeServiceHtml(
+                                String(
+                                    reminder.due_date || "-"
+                                ).slice(0, 10)
+                            )}
+                        </span>
+
+                        <small>
+                            ${
+                                reminder.sent_at
+                                    ? new Date(
+                                        reminder.sent_at
+                                    ).toLocaleString(
+                                        "de-DE"
+                                    )
+                                    : "-"
+                            }
+                        </small>
+                    </div>
+
+                </article>
+            `)
+            .join("")
+    }
+
+</section>
+        </div>
+    `;
+
+    selectPaymentReminderProject();
+}
+
+function selectPaymentReminderProject(){
+    const projectName =
+        document.getElementById(
+            "paymentReminderProject"
+        )?.value;
+
+    const project =
+        paymentReminderState.projects.find(
+            item => item.project === projectName
+        );
+
+    if(!project){
+        return;
+    }
+
+    document.getElementById(
+        "paymentReminderCustomerName"
+    ).value = project.customer_name || "";
+
+    document.getElementById(
+        "paymentReminderCustomerEmail"
+    ).value = project.customer_email || "";
+
+    document.getElementById(
+        "paymentReminderOpenAmount"
+    ).value =
+        Number(project.open_amount || 0).toFixed(2);
+
+    document.getElementById(
+        "paymentReminderDueDate"
+    ).value =
+        String(project.due_date || "").slice(0, 10);
+        updatePaymentReminderTemplate();
+}
+
+
+async function savePaymentReminderCustomer(){
+    const project =
+        document.getElementById(
+            "paymentReminderProject"
+        ).value;
+
+    const customerName =
+        document.getElementById(
+            "paymentReminderCustomerName"
+        ).value.trim();
+
+    const customerEmail =
+        document.getElementById(
+            "paymentReminderCustomerEmail"
+        ).value.trim();
+
+    const result = await apiPost(
+        "/save-service-customer",
+        {
+            adminUsername: currentUser,
+            project,
+            customerName,
+            customerEmail
+        }
+    );
+
+    alert(result);
+
+    await showPaymentReminderManagement();
+}
+
+function formatPaymentReminderDate(value){
+    if(!value){
+        return "";
+    }
+
+    const parts =
+        String(value)
+            .slice(0, 10)
+            .split("-");
+
+    if(parts.length !== 3){
+        return String(value);
+    }
+
+    return (
+        `${parts[2]}.` +
+        `${parts[1]}.` +
+        `${parts[0]}`
+    );
+}
+
+function updatePaymentReminderTemplate(){
+    const project =
+        document.getElementById(
+            "paymentReminderProject"
+        )?.value || "";
+
+    const customerName =
+        document.getElementById(
+            "paymentReminderCustomerName"
+        )?.value.trim() || "Kunde";
+
+    const amount =
+        Number(
+            document.getElementById(
+                "paymentReminderOpenAmount"
+            )?.value
+        ) || 0;
+
+    const dueDate =
+        formatPaymentReminderDate(
+            document.getElementById(
+                "paymentReminderDueDate"
+            )?.value
+        );
+
+    const reminderType =
+        document.getElementById(
+            "paymentReminderType"
+        )?.value || "Zahlungserinnerung";
+
+    const reference =
+        document.getElementById(
+            "paymentReminderReference"
+        )?.value.trim() || project;
+
+    const formattedAmount =
+        amount.toLocaleString(
+            "de-DE",
+            {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }
+        ) + " €";
+
+    let subject =
+        `Zahlungserinnerung: ${reference}`;
+
+    let introduction =
+        "bei der Prüfung unserer Zahlungseingänge haben wir festgestellt, dass der folgende Betrag noch offen ist.";
+
+    let requestText =
+        "Wir bitten Sie, den offenen Betrag zu überweisen.";
+
+    if(reminderType === "1. Mahnung"){
+        subject =
+            `1. Mahnung: ${reference}`;
+
+        introduction =
+            "leider konnten wir für den folgenden offenen Betrag noch keinen Zahlungseingang feststellen.";
+
+        requestText =
+            "Wir bitten Sie, den offenen Betrag zeitnah zu überweisen.";
+    }
+
+    if(reminderType === "2. Mahnung"){
+        subject =
+            `2. Mahnung: ${reference}`;
+
+        introduction =
+            "trotz unserer bisherigen Nachricht konnten wir für den folgenden Betrag noch keinen Zahlungseingang feststellen.";
+
+        requestText =
+            "Wir bitten Sie, den offenen Betrag unverzüglich zu überweisen.";
+    }
+
+    const message =
+`Guten Tag ${customerName},
+
+${introduction}
+
+Projekt: ${project}
+Referenz: ${reference}
+Offener Betrag: ${formattedAmount}
+Ursprünglich fällig am: ${dueDate || "Nicht angegeben"}
+
+${requestText}
+
+Sollte die Zahlung bereits erfolgt sein, betrachten Sie diese Nachricht bitte als gegenstandslos.
+
+Mit freundlichen Grüßen
+
+VisualCode.dev
+Dominic Schulteis`;
+
+    const subjectInput =
+        document.getElementById(
+            "paymentReminderSubject"
+        );
+
+    const messageInput =
+        document.getElementById(
+            "paymentReminderMessage"
+        );
+
+    if(subjectInput){
+        subjectInput.value = subject;
+    }
+
+    if(messageInput){
+        messageInput.value = message;
+    }
+}
+
+async function sendPaymentReminderEmail(){
+    const project =
+        document.getElementById(
+            "paymentReminderProject"
+        ).value;
+
+    const customerName =
+        document.getElementById(
+            "paymentReminderCustomerName"
+        ).value.trim();
+
+    const customerEmail =
+        document.getElementById(
+            "paymentReminderCustomerEmail"
+        ).value.trim();
+
+    const invoiceReference =
+        document.getElementById(
+            "paymentReminderReference"
+        ).value.trim();
+
+    const reminderType =
+        document.getElementById(
+            "paymentReminderType"
+        ).value;
+
+    const subject =
+        document.getElementById(
+            "paymentReminderSubject"
+        ).value.trim();
+
+    const message =
+        document.getElementById(
+            "paymentReminderMessage"
+        ).value.trim();
+
+    const openAmount =
+        Number(
+            document.getElementById(
+                "paymentReminderOpenAmount"
+            ).value
+        ) || 0;
+
+    const dueDate =
+        document.getElementById(
+            "paymentReminderDueDate"
+        ).value;
+
+    if(
+        !project ||
+        !customerName ||
+        !customerEmail ||
+        !subject ||
+        !message
+    ){
+        alert(
+            "Bitte alle Versanddaten vollständig ausfüllen."
+        );
+
+        return;
+    }
+
+    if(openAmount <= 0 || !dueDate){
+        alert(
+            "Für dieses Projekt besteht keine offene Zahlung."
+        );
+
+        return;
+    }
+
+    const confirmed = confirm(
+        `${reminderType} wirklich versenden?\n\n` +
+        `Empfänger: ${customerEmail}\n` +
+        `Projekt: ${project}\n` +
+        `Offener Betrag: ${openAmount.toFixed(2)} €`
+    );
+
+    if(!confirmed){
+        return;
+    }
+
+    const adminPassword = prompt(
+        "Bitte bestätige den Versand mit deinem Admin-Passwort:"
+    );
+
+    if(adminPassword === null){
+        return;
+    }
+
+    if(!adminPassword){
+        alert("Admin-Passwort fehlt.");
+        return;
+    }
+
+    const sendButton =
+        document.getElementById(
+            "sendPaymentReminderButton"
+        );
+
+    sendButton.disabled = true;
+    sendButton.textContent = "📨 Wird versendet...";
+
+    try{
+        const result = await apiPost(
+            "/send-payment-reminder",
+            {
+                adminUsername: currentUser,
+                adminPassword,
+                project,
+                customerName,
+                customerEmail,
+                invoiceReference,
+                reminderType,
+                subject,
+                message
+            }
+        );
+
+        alert(result);
+
+        if(
+            result ===
+            "Zahlungserinnerung wurde versendet"
+        ){
+            await showPaymentReminderManagement();
+        }
+
+    }finally{
+        if(
+            document.body.contains(sendButton)
+        ){
+            sendButton.disabled = false;
+            sendButton.textContent =
+                "📨 E-Mail absenden";
+        }
+    }
 }
 
 loadPage("start");
