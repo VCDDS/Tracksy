@@ -10518,6 +10518,28 @@ async function showPaymentReminderManagement(){
 
     <h3>📜 Versandverlauf</h3>
 
+    <div class="service-card-actions">
+
+    <select id="paymentReminderDeleteScope">
+        <option value="project">
+            Nur ausgewähltes Projekt
+        </option>
+
+        <option value="all">
+            Gesamter Verlauf aller Projekte
+        </option>
+    </select>
+
+    <button
+        type="button"
+        class="danger-btn"
+        onclick="clearPaymentReminderHistory()"
+    >
+        🗑️ Verlauf löschen
+    </button>
+
+</div>
+
     ${
         paymentReminderState.reminders.length === 0
         ? `
@@ -10973,6 +10995,73 @@ async function sendPaymentReminderEmail(){
             sendButton.textContent =
                 "📨 E-Mail absenden";
         }
+    }
+}
+
+async function clearPaymentReminderHistory(){
+    const scope =
+        document.getElementById(
+            "paymentReminderDeleteScope"
+        ).value;
+
+    const project =
+        document.getElementById(
+            "paymentReminderProject"
+        )?.value || "";
+
+    if(scope === "project" && !project){
+        alert(
+            "Bitte zuerst ein Projekt auswählen."
+        );
+
+        return;
+    }
+
+    const description =
+        scope === "all"
+            ? "den gesamten Versandverlauf aller Projekte"
+            : `den Versandverlauf von ${project}`;
+
+    const confirmed = confirm(
+        `Möchtest du ${description} wirklich löschen?\n\n` +
+        "Offene Zahlungen und Kundenprofile bleiben erhalten."
+    );
+
+    if(!confirmed){
+        return;
+    }
+
+    const adminPassword = prompt(
+        "Bitte bestätige das Löschen mit deinem Admin-Passwort:"
+    );
+
+    if(adminPassword === null){
+        return;
+    }
+
+    if(!adminPassword){
+        alert("Admin-Passwort fehlt.");
+        return;
+    }
+
+    const result = await apiPost(
+        "/clear-payment-reminder-history",
+        {
+            adminUsername: currentUser,
+            adminPassword,
+            scope,
+            project
+        }
+    );
+
+    alert(result);
+
+    if(
+        result.startsWith(
+            "Verlauf gelöscht:"
+        )
+    ){
+        await showPaymentReminderManagement();
     }
 }
 

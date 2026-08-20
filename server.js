@@ -5683,6 +5683,86 @@ app.post("/send-payment-reminder", async (req, res) => {
     }
 });
 
+app.post(
+    "/clear-payment-reminder-history",
+    async (req, res) => {
+        try{
+            const {
+                adminUsername,
+                adminPassword,
+                scope,
+                project
+            } = req.body;
+
+            const verified =
+                await verifyAdminPassword(
+                    String(
+                        adminUsername || ""
+                    ).trim(),
+
+                    String(
+                        adminPassword || ""
+                    )
+                );
+
+            if(!verified){
+                return res.status(403).send(
+                    "Admin-Passwort ist falsch"
+                );
+            }
+
+            if(
+                scope !== "project" &&
+                scope !== "all"
+            ){
+                return res.status(400).send(
+                    "Ungültige Lösch-Auswahl"
+                );
+            }
+
+            let result;
+
+            if(scope === "all"){
+                result = await pool.query(`
+                    DELETE FROM payment_reminders
+                `);
+
+            }else{
+                const cleanProject =
+                    String(project || "").trim();
+
+                if(!cleanProject){
+                    return res.status(400).send(
+                        "Projekt fehlt"
+                    );
+                }
+
+                result = await pool.query(`
+                    DELETE FROM payment_reminders
+                    WHERE project = $1
+                `, [cleanProject]);
+            }
+
+            res.send(
+                "Verlauf gelöscht: " +
+                result.rowCount +
+                (
+                    result.rowCount === 1
+                        ? " Eintrag"
+                        : " Einträge"
+                )
+            );
+
+        }catch(err){
+            console.log(err);
+
+            res.status(500).send(
+                "Versandverlauf konnte nicht gelöscht werden"
+            );
+        }
+    }
+);
+
 app.post("/hide-service-request", async (req, res) => {
 
     try{
