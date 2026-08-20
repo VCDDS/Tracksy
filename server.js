@@ -6663,6 +6663,139 @@ app.post("/update-service-payment", async (req, res) => {
     }
 });
 
+app.post("/delete-service-payment", async (req, res) => {
+    const client = await pool.connect();
+
+    try{
+        const {
+            adminUsername,
+            adminPassword,
+            paymentId,
+            project
+        } = req.body;
+
+        const verified =
+            await verifyAdminPassword(
+                String(
+                    adminUsername || ""
+                ).trim(),
+
+                String(
+                    adminPassword || ""
+                )
+            );
+
+        if(!verified){
+            return res.status(403).send(
+                "Admin-Passwort ist falsch"
+            );
+        }
+
+        const normalizedPaymentId =
+            Number(paymentId);
+
+        const cleanProject =
+            String(project || "").trim();
+
+        if(
+            !Number.isInteger(
+                normalizedPaymentId
+            ) ||
+            normalizedPaymentId <= 0 ||
+            !cleanProject
+        ){
+            return res.status(400).send(
+                "Ungültige Zahlungsdaten"
+            );
+        }
+
+        await client.query("BEGIN");
+
+        const deleteResult =
+            await client.query(`
+                DELETE FROM service_payments
+
+                WHERE id = $1
+                AND project = $2
+
+                RETURNING id
+            `, [
+                normalizedPaymentId,
+                cleanProject
+            ]);
+
+        if(deleteResult.rowCount === 0){
+            await client.query("ROLLBACK");
+
+            return res.status(404).send(
+                "Zahlung nicht gefunden"
+            );
+        }
+
+        const openResult =
+            await client.query(`
+                SELECT
+                    COALESCE(
+                        SUM(amount),
+                        0
+                    ) AS open_amount
+
+                FROM service_payments
+
+                WHERE project = $1
+                AND status = 'Offen'
+            `, [cleanProject]);
+
+        const openAmount =
+            Number(
+                openResult.rows[0].open_amount
+            ) || 0;
+
+        const now =
+            new Date().toLocaleString(
+                "de-DE",
+                {
+                    timeZone:
+                        "Europe/Berlin"
+                }
+            );
+
+        await client.query(`
+            UPDATE service_tariffs
+
+            SET
+                open_amount = $1,
+                payment_status = $2,
+                updated_at = $3
+
+            WHERE project = $4
+        `, [
+            openAmount,
+            openAmount > 0
+                ? "Offen"
+                : "Beglichen",
+            now,
+            cleanProject
+        ]);
+
+        await client.query("COMMIT");
+
+        res.send("Zahlung gelöscht");
+
+    }catch(err){
+        await client.query("ROLLBACK");
+
+        console.log(err);
+
+        res.status(500).send(
+            "Zahlung konnte nicht gelöscht werden"
+        );
+
+    }finally{
+        client.release();
+    }
+});
+
 /* History löschen */
 
 app.post("/clear-service-history", async (req, res) => {

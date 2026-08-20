@@ -9584,15 +9584,32 @@ ${(userRole === "admin" || userRole === "user") ? `
 
                 </div>
 
-                <button
-                    onclick="saveServicePayment(
-                        ${payment.id},
-                        ${service.id},
-                        '${service.project}'
-                    )"
-                >
-                    💾 Zahlung aktualisieren
-                </button>
+                <div class="service-card-actions">
+
+    <button
+        onclick="saveServicePayment(
+            ${payment.id},
+            ${service.id},
+            '${service.project}'
+        )"
+    >
+        💾 Zahlung aktualisieren
+    </button>
+
+    <button
+        type="button"
+        class="danger-btn"
+        onclick='deleteServicePayment(
+            ${payment.id},
+            ${JSON.stringify(
+                service.project
+            )}
+        )'
+    >
+        🗑️ Zahlung löschen
+    </button>
+
+</div>
 
             </article>
 
@@ -9698,6 +9715,53 @@ async function saveServicePayment(
     showServiceTariffs();
 }
 
+async function deleteServicePayment(
+    paymentId,
+    project
+){
+    const confirmed = confirm(
+        "Diese Zahlung wirklich löschen?\n\n" +
+        `Projekt: ${project}\n\n` +
+        "Der offene Gesamtbetrag wird anschließend neu berechnet."
+    );
+
+    if(!confirmed){
+        return;
+    }
+
+    const adminPassword = prompt(
+        "Bitte bestätige das Löschen mit deinem Admin-Passwort:"
+    );
+
+    if(adminPassword === null){
+        return;
+    }
+
+    if(!adminPassword){
+        alert("Admin-Passwort fehlt.");
+        return;
+    }
+
+    const result = await apiPost(
+        "/delete-service-payment",
+        {
+            adminUsername:
+                currentUser,
+
+            adminPassword,
+
+            paymentId,
+
+            project
+        }
+    );
+
+    alert(result);
+
+    if(result === "Zahlung gelöscht"){
+        await showServiceTariffs();
+    }
+}
 
 async function clearAllServiceHistory(){
 
