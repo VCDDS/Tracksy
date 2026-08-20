@@ -360,13 +360,17 @@ async function apiGet(
     return data;
 }
 
-async function apiPost(
-    url,
-    data
-){
+async function apiPost(url, data){
+    const controller =
+        new AbortController();
 
-    const res =
-        await fetch(
+    const timeout = setTimeout(
+        () => controller.abort(),
+        30000
+    );
+
+    try{
+        const res = await fetch(
             url,
             {
                 method: "POST",
@@ -376,18 +380,34 @@ async function apiPost(
                         "application/json"
                 },
 
-                body:
-                    JSON.stringify(data)
+                body: JSON.stringify(data),
+
+                signal: controller.signal
             }
         );
 
-    /*
-     * Nach einer Änderung alte
-     * GET-Daten verwerfen.
-     */
-    tracksyApiCache.clear();
+        tracksyApiCache.clear();
 
-    return await res.text();
+        return await res.text();
+
+    }catch(error){
+        console.error(
+            "POST-Anfrage fehlgeschlagen:",
+            error
+        );
+
+        if(error.name === "AbortError"){
+            return (
+                "Zeitüberschreitung: " +
+                "Der Server hat nicht rechtzeitig geantwortet."
+            );
+        }
+
+        return "Verbindung zum Server fehlgeschlagen.";
+
+    }finally{
+        clearTimeout(timeout);
+    }
 }
 
 /* =====================================================
