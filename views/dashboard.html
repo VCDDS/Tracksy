@@ -8998,6 +8998,14 @@ ${
                 )
             );
 
+            const projectPayments =
+    Array.isArray(management.payments)
+        ? management.payments.filter(
+            payment =>
+                payment.project === service.project
+        )
+        : [];
+
             const activePackage =
     servicePackages.find(
         packageItem =>
@@ -9394,45 +9402,170 @@ ${(userRole === "admin" || userRole === "user") ? `
 
                     </section>
 
-                    <section class="service-section">
+                    <section class="service-section service-payment-management">
 
-                        <h3>💳 Aktuell offener Betrag</h3>
+    <h3>💳 Neue Zahlung</h3>
 
+    <div class="service-contract-grid">
+
+        <div>
+            <label>Fällig am</label>
+            <input
+                type="date"
+                id="newServicePayment-${service.id}-due"
+                value="${service.first_payment || ""}"
+            >
+        </div>
+
+        <div>
+            <label>Bezahlt am</label>
+            <input
+                type="date"
+                id="newServicePayment-${service.id}-paid"
+            >
+        </div>
+
+        <div>
+            <label>Betrag</label>
+            <input
+                type="number"
+                min="0"
+                step="0.01"
+                id="newServicePayment-${service.id}-amount"
+                value="0"
+            >
+        </div>
+
+        <div>
+            <label>Status</label>
+            <select
+                id="newServicePayment-${service.id}-status"
+            >
+                <option value="Offen">
+                    Offen
+                </option>
+
+                <option value="Bezahlt">
+                    Bezahlt
+                </option>
+            </select>
+        </div>
+
+    </div>
+
+    <button
+        onclick="saveServicePayment(
+            null,
+            ${service.id},
+            '${service.project}'
+        )"
+    >
+        ➕ Zahlung hinzufügen
+    </button>
+
+    <h3>📋 Zahlungshistorie</h3>
+
+    ${
+        projectPayments.length === 0
+        ? `
+            <p class="service-section-empty">
+                Noch keine Zahlungen eingetragen.
+            </p>
+        `
+        : projectPayments.map(payment => `
+
+            <article class="service-request">
+
+                <div class="service-contract-grid">
+
+                    <div>
+                        <label>Fällig am</label>
                         <input
-                            id="serviceAmount_${service.id}"
+                            type="date"
+                            id="servicePayment-${payment.id}-due"
+                            value="${
+                                String(
+                                    payment.due_date || ""
+                                ).slice(0, 10)
+                            }"
+                        >
+                    </div>
+
+                    <div>
+                        <label>Bezahlt am</label>
+                        <input
+                            type="date"
+                            id="servicePayment-${payment.id}-paid"
+                            value="${
+                                String(
+                                    payment.paid_at || ""
+                                ).slice(0, 10)
+                            }"
+                        >
+                    </div>
+
+                    <div>
+                        <label>Betrag</label>
+                        <input
                             type="number"
                             min="0"
                             step="0.01"
-                            value="${service.open_amount || 0}"
-                            placeholder="Offener Betrag"
+                            id="servicePayment-${payment.id}-amount"
+                            value="${
+                                Number(
+                                    payment.amount || 0
+                                ).toFixed(2)
+                            }"
                         >
+                    </div>
 
-                        <select id="servicePaymentStatus_${service.id}">
+                    <div>
+                        <label>Status</label>
+                        <select
+                            id="servicePayment-${payment.id}-status"
+                        >
                             <option
                                 value="Offen"
-                                ${service.payment_status === "Offen" ? "selected" : ""}
+                                ${
+                                    payment.status === "Offen"
+                                        ? "selected"
+                                        : ""
+                                }
                             >
                                 Offen
                             </option>
 
                             <option
-                                value="Beglichen"
-                                ${service.payment_status === "Beglichen" ? "selected" : ""}
+                                value="Bezahlt"
+                                ${
+                                    payment.status === "Bezahlt"
+                                        ? "selected"
+                                        : ""
+                                }
                             >
-                                Beglichen
+                                Bezahlt
                             </option>
                         </select>
+                    </div>
 
-                        <button
-                            onclick="saveServicePayment(
-                                ${service.id},
-                                '${service.project}'
-                            )"
-                        >
-                            💾 Zahlung speichern
-                        </button>
+                </div>
 
-                    </section>
+                <button
+                    onclick="saveServicePayment(
+                        ${payment.id},
+                        ${service.id},
+                        '${service.project}'
+                    )"
+                >
+                    💾 Zahlung aktualisieren
+                </button>
+
+            </article>
+
+        `).join("")
+    }
+
+</section>
 
                 </div>
 
@@ -9471,42 +9604,65 @@ await apiPost("/update-service-status", {
 
 }
 
-async function saveServicePayment(id, project){
-
-const openAmount =
-    document.getElementById(`serviceAmount_${id}`).value;
-
-const paymentStatus =
-    document.getElementById(`servicePaymentStatus_${id}`).value;
-
-const result = await apiPost("/update-service-payment",{
-
-    project,
-    openAmount,
-    paymentStatus
-
-});
-
-alert(result);
-
-showServiceTariffs();
-
-}
-
-async function clearServiceHistory(project){
-
-if(!confirm("Verlauf wirklich löschen?")){
-    return;
-}
-
-await apiPost("/clear-service-history",{
-
+async function saveServicePayment(
+    paymentId,
+    serviceId,
     project
+){
+    const elementPrefix =
+        paymentId
+            ? `servicePayment-${paymentId}`
+            : `newServicePayment-${serviceId}`;
 
-});
+    const dueDate =
+        document.getElementById(
+            `${elementPrefix}-due`
+        ).value;
 
-showServiceTariffs();
+    const paidAt =
+        document.getElementById(
+            `${elementPrefix}-paid`
+        ).value;
 
+    const paymentAmount =
+        document.getElementById(
+            `${elementPrefix}-amount`
+        ).value;
+
+    const paymentStatus =
+        document.getElementById(
+            `${elementPrefix}-status`
+        ).value;
+
+    if(!dueDate){
+        alert("Fälligkeitsdatum fehlt");
+        return;
+    }
+
+    if(
+        paymentStatus === "Bezahlt" &&
+        !paidAt
+    ){
+        alert("Zahlungsdatum fehlt");
+        return;
+    }
+
+    const result = await apiPost(
+        "/update-service-payment",
+        {
+            paymentId,
+            project,
+            dueDate,
+            paidAt,
+            paymentAmount,
+            paymentStatus
+        }
+    );
+
+    alert(result);
+
+    showServiceTariffs();
+}
 }
 
 async function clearAllServiceHistory(){

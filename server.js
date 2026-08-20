@@ -4354,10 +4354,17 @@ app.get("/service-management", async (req, res) => {
             ORDER BY id DESC
         `);
 
+        const payments = await pool.query(`
+            SELECT *
+            FROM service_payments
+            ORDER BY due_date DESC, id DESC
+        `);
+
         res.json({
             tariffs: tariffs.rows,
             requests: requests.rows,
-            history: history.rows
+            history: history.rows,
+            payments: payments.rows
         });
 
     }catch(err){
@@ -4366,7 +4373,8 @@ app.get("/service-management", async (req, res) => {
         res.json({
             tariffs: [],
             requests: [],
-            history: []
+            history: [],
+            payments: []
         });
     }
 });
@@ -5252,27 +5260,115 @@ app.post("/update-service-status", async (req, res) => {
 /* Offener Betrag */
 
 app.post("/update-service-payment", async (req, res) => {
+    const client = await pool.connect();
+
     try{
         const {
+            paymentId,
             project,
-            openAmount,
+            dueDate,
+            paidAt,
+            paymentAmount,
             paymentStatus
         } = req.body;
 
+        const amount = Number(paymentAmount);
+        const normalizedPaymentId = Number(paymentId);
+
         if(
             !project ||
-            !["Offen", "Beglichen"].includes(paymentStatus)
+            !dueDate ||
+            !Number.isFinite(amount) ||
+            amount < 0 ||
+            !["Offen", "Bezahlt"].includes(paymentStatus)
         ){
-            return res.send("Ungültige Zahlungsdaten");
+            return res.status(400).send(
+                "Ungültige Zahlungsdaten"
+            );
         }
 
-        const amount = Number(openAmount) || 0;
+        if(paymentStatus === "Bezahlt" && !paidAt){
+            return res.status(400).send(
+                "Zahlungsdatum fehlt"
+            );
+        }
 
         const now = new Date().toLocaleString("de-DE", {
             timeZone: "Europe/Berlin"
         });
 
-        await pool.query(`
+        await client.query("BEGIN");
+
+        if(
+            Number.isInteger(normalizedPaymentId) &&
+            normalizedPaymentId > 0
+        ){
+            const updateResult = await client.query(`
+                UPDATE service_payments
+                SET
+                    due_date = $1,
+                    paid_at = $2,
+                    amount = $3,
+                    status = $4,
+                    updated_at = $5
+                WHERE id = $6
+                AND project = $7
+            `, [
+                dueDate,
+                paymentStatus === "Bezahlt"
+                    ? paidAt
+                    : null,
+                amount,
+                paymentStatus,
+                now,
+                normalizedPaymentId,
+                project
+            ]);
+
+            if(updateResult.rowCount === 0){
+                await client.query("ROLLBACK");
+
+                return res.status(404).send(
+                    "Zahlung nicht gefunden"
+                );
+            }
+
+        }else{
+            await client.query(`
+                INSERT INTO service_payments (
+                    project,
+                    due_date,
+                    paid_at,
+                    amount,
+                    status,
+                    created_at,
+                    updated_at
+                )
+                VALUES ($1,$2,$3,$4,$5,$6,$7)
+            `, [
+                project,
+                dueDate,
+                paymentStatus === "Bezahlt"
+                    ? paidAt
+                    : null,
+                amount,
+                paymentStatus,
+                now,
+                now
+            ]);
+        }
+
+        const openResult = await client.query(`
+            SELECT COALESCE(SUM(amount), 0) AS open_amount
+            FROM service_payments
+            WHERE project = $1
+            AND status = 'Offen'
+        `, [project]);
+
+        const openAmount =
+            Number(openResult.rows[0].open_amount) || 0;
+
+        await client.query(`
             INSERT INTO service_tariffs (
                 project,
                 open_amount,
@@ -5288,12 +5384,12 @@ app.post("/update-service-payment", async (req, res) => {
                 updated_at = EXCLUDED.updated_at
         `, [
             project,
-            paymentStatus === "Beglichen" ? 0 : amount,
-            paymentStatus,
+            openAmount,
+            openAmount > 0 ? "Offen" : "Beglichen",
             now
         ]);
 
-        await pool.query(`
+        await client.query(`
             INSERT INTO service_history (
                 project,
                 action,
@@ -5303,20 +5399,28 @@ app.post("/update-service-payment", async (req, res) => {
             VALUES ($1,$2,$3,$4)
         `, [
             project,
-            paymentStatus === "Beglichen"
-                ? "Betrag beglichen"
-                : "Offener Betrag geändert",
-            paymentStatus === "Beglichen"
-                ? "Beglichen"
-                : amount.toFixed(2) + " €",
+            paymentStatus === "Bezahlt"
+                ? "Zahlung bezahlt"
+                : "Zahlung offen",
+            `${amount.toFixed(2)} € | Fällig: ${dueDate} | Bezahlt: ${paidAt || "Nicht bezahlt"}`,
             now
         ]);
+
+        await client.query("COMMIT");
 
         res.send("Zahlung gespeichert");
 
     }catch(err){
+        await client.query("ROLLBACK");
+
         console.log(err);
-        res.send("Zahlung konnte nicht gespeichert werden");
+
+        res.status(500).send(
+            "Zahlung konnte nicht gespeichert werden"
+        );
+
+    }finally{
+        client.release();
     }
 });
 
