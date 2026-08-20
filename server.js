@@ -4396,9 +4396,7 @@ app.get("/service-tariffs", async (req, res) => {
 });
 
 app.get("/service-status/:project", async (req, res) => {
-
     try{
-
         const project = req.params.project;
 
         const tariff = await pool.query(`
@@ -4406,23 +4404,23 @@ app.get("/service-status/:project", async (req, res) => {
             FROM service_tariffs
             WHERE project = $1
             LIMIT 1
-        `,[project]);
+        `, [project]);
 
         const pending = await pool.query(`
             SELECT *
             FROM service_requests
-        
+
             WHERE project = $1
             AND request_type IN (
                 'tariff',
                 'cancellation'
             )
             AND status = 'Offen'
-        
+
             ORDER BY id DESC
             LIMIT 1
-        `,[project]);
-        
+        `, [project]);
+
         const requestHistory = await pool.query(`
             SELECT
                 id,
@@ -4437,9 +4435,9 @@ app.get("/service-status/:project", async (req, res) => {
                 status,
                 created_at,
                 updated_at
-        
+
             FROM service_requests
-        
+
             WHERE project = $1
             AND request_type IN (
                 'tariff',
@@ -4449,79 +4447,92 @@ app.get("/service-status/:project", async (req, res) => {
                 customer_hidden,
                 false
             ) = false
-        
+
             ORDER BY id DESC
-        `,[project]);
+        `, [project]);
+
+        const currentPayment = await pool.query(`
+            SELECT
+                id,
+                due_date,
+                paid_at,
+                amount,
+                status
+
+            FROM service_payments
+
+            WHERE project = $1
+
+            ORDER BY
+                CASE
+                    WHEN status = 'Offen' THEN 0
+                    ELSE 1
+                END,
+                CASE
+                    WHEN status = 'Offen' THEN due_date
+                END ASC,
+                CASE
+                    WHEN status = 'Bezahlt' THEN paid_at
+                END DESC,
+                id DESC
+
+            LIMIT 1
+        `, [project]);
 
         res.json({
-
             ...(tariff.rows[0] || {
-        
                 project,
-        
                 status: "Offline",
                 tariff: "Keiner",
-        
                 support_active: false,
                 billing_cycle: "",
-        
                 contract_start: "",
                 first_payment: "",
                 subscription_start: "",
-        
                 payment_recipient: "",
                 payment_iban: "",
                 payment_reference: "",
-        
                 next_invoice: "",
-        
                 open_amount: 0,
                 payment_status: "Beglichen"
-        
             }),
-        
-            pending_request:
-    pending.rows.length
-        ? pending.rows[0]
-        : null,
 
-request_history:
-    requestHistory.rows
-        
+            pending_request:
+                pending.rows.length
+                    ? pending.rows[0]
+                    : null,
+
+            request_history:
+                requestHistory.rows,
+
+            current_payment:
+                currentPayment.rows.length
+                    ? currentPayment.rows[0]
+                    : null
         });
 
     }catch(err){
-
         console.log(err);
 
         res.json({
-
             status: "Offline",
             tariff: "Keiner",
-        
             support_active: false,
             billing_cycle: "",
-        
             contract_start: "",
             first_payment: "",
             subscription_start: "",
-        
             payment_recipient: "",
             payment_iban: "",
             payment_reference: "",
-        
             next_invoice: "",
-        
             open_amount: 0,
             payment_status: "Beglichen",
-        
             pending_request: null,
-request_history: []
-        
+            request_history: [],
+            current_payment: null
         });
-
     }
-
 });
 
 app.post("/hide-service-request", async (req, res) => {
