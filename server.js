@@ -4948,6 +4948,16 @@ app.get("/service-status/:project", async (req, res) => {
                 payment_status: "Beglichen"
             }),
 
+            payment_status:
+                currentPayment.rows.length
+                    ? (
+                        currentPayment.rows[0].status ===
+                        "Offen"
+                            ? "Offen"
+                            : "Beglichen"
+                    )
+                    : "Keine Zahlung",
+
             pending_request:
                 pending.rows.length
                     ? pending.rows[0]
@@ -6732,24 +6742,42 @@ app.post("/delete-service-payment", async (req, res) => {
             );
         }
 
-        const openResult =
-            await client.query(`
-                SELECT
-                    COALESCE(
-                        SUM(amount),
-                        0
-                    ) AS open_amount
+        const paymentSummary =
+    await client.query(`
+        SELECT
+            COUNT(*)::INTEGER
+                AS payment_count,
 
-                FROM service_payments
+            COALESCE(
+                SUM(amount) FILTER (
+                    WHERE status = 'Offen'
+                ),
+                0
+            ) AS open_amount
 
-                WHERE project = $1
-                AND status = 'Offen'
-            `, [cleanProject]);
+        FROM service_payments
 
-        const openAmount =
-            Number(
-                openResult.rows[0].open_amount
-            ) || 0;
+        WHERE project = $1
+    `, [cleanProject]);
+
+const paymentCount =
+    Number(
+        paymentSummary.rows[0]
+            .payment_count
+    ) || 0;
+
+const openAmount =
+    Number(
+        paymentSummary.rows[0]
+            .open_amount
+    ) || 0;
+
+const paymentStatus =
+    paymentCount === 0
+        ? "Keine Zahlung"
+        : openAmount > 0
+            ? "Offen"
+            : "Beglichen";
 
         const now =
             new Date().toLocaleString(
@@ -6771,9 +6799,7 @@ app.post("/delete-service-payment", async (req, res) => {
             WHERE project = $4
         `, [
             openAmount,
-            openAmount > 0
-                ? "Offen"
-                : "Beglichen",
+            paymentStatus,
             now,
             cleanProject
         ]);
